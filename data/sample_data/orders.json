@@ -1,0 +1,3608 @@
+[
+  {
+    "order_id": "O00001",
+    "customer_id": "C0055",
+    "order_date": "2024-01-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00002",
+    "customer_id": "C0016",
+    "order_date": "2024-01-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00003",
+    "customer_id": "C0036",
+    "order_date": "2024-01-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00004",
+    "customer_id": "C0056",
+    "order_date": "2024-01-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00005",
+    "customer_id": "C0016",
+    "order_date": "2024-01-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00006",
+    "customer_id": "C0010",
+    "order_date": "2024-01-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00007",
+    "customer_id": "C0029",
+    "order_date": "2024-01-30",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00008",
+    "customer_id": "C0018",
+    "order_date": "2024-01-25",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00009",
+    "customer_id": "C0057",
+    "order_date": "2024-01-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00010",
+    "customer_id": "C0056",
+    "order_date": "2024-01-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00011",
+    "customer_id": "C0043",
+    "order_date": "2024-01-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00012",
+    "customer_id": "C0050",
+    "order_date": "2024-01-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00013",
+    "customer_id": "C0017",
+    "order_date": "2024-01-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00014",
+    "customer_id": "C0029",
+    "order_date": "2024-01-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00015",
+    "customer_id": "C0028",
+    "order_date": "2024-01-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00016",
+    "customer_id": "C0036",
+    "order_date": "2024-01-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00017",
+    "customer_id": "C0056",
+    "order_date": "2024-01-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00018",
+    "customer_id": "C0007",
+    "order_date": "2024-01-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00019",
+    "customer_id": "C0005",
+    "order_date": "2024-01-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00020",
+    "customer_id": "C0008",
+    "order_date": "2024-01-09",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00021",
+    "customer_id": "C0036",
+    "order_date": "2024-01-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00022",
+    "customer_id": "C0031",
+    "order_date": "2024-01-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00023",
+    "customer_id": "C0014",
+    "order_date": "2024-01-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00024",
+    "customer_id": "C0033",
+    "order_date": "2024-01-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00025",
+    "customer_id": "C0051",
+    "order_date": "2024-01-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00026",
+    "customer_id": "C0012",
+    "order_date": "2024-01-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00027",
+    "customer_id": "C0049",
+    "order_date": "2024-01-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00028",
+    "customer_id": "C0060",
+    "order_date": "2024-01-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00029",
+    "customer_id": "C0031",
+    "order_date": "2024-01-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00030",
+    "customer_id": "C0010",
+    "order_date": "2024-01-14",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00031",
+    "customer_id": "C0041",
+    "order_date": "2024-01-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00032",
+    "customer_id": "C0037",
+    "order_date": "2024-01-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00033",
+    "customer_id": "C0043",
+    "order_date": "2024-01-30",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00034",
+    "customer_id": "C0043",
+    "order_date": "2024-01-13",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00035",
+    "customer_id": "C0046",
+    "order_date": "2024-01-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00036",
+    "customer_id": "C0057",
+    "order_date": "2024-01-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00037",
+    "customer_id": "C0059",
+    "order_date": "2024-01-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00038",
+    "customer_id": "C0012",
+    "order_date": "2024-01-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00039",
+    "customer_id": "C0046",
+    "order_date": "2024-01-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00040",
+    "customer_id": "C0017",
+    "order_date": "2024-01-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00041",
+    "customer_id": "C0024",
+    "order_date": "2024-01-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00042",
+    "customer_id": "C0020",
+    "order_date": "2024-01-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00043",
+    "customer_id": "C0034",
+    "order_date": "2024-01-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00044",
+    "customer_id": "C0020",
+    "order_date": "2024-01-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00045",
+    "customer_id": "C0045",
+    "order_date": "2024-01-27",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00046",
+    "customer_id": "C0008",
+    "order_date": "2024-01-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00047",
+    "customer_id": "C0053",
+    "order_date": "2024-01-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00048",
+    "customer_id": "C0025",
+    "order_date": "2024-01-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00049",
+    "customer_id": "C0002",
+    "order_date": "2024-01-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00050",
+    "customer_id": "C0003",
+    "order_date": "2024-02-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00051",
+    "customer_id": "C0032",
+    "order_date": "2024-02-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00052",
+    "customer_id": "C0016",
+    "order_date": "2024-02-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00053",
+    "customer_id": "C0054",
+    "order_date": "2024-02-23",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00054",
+    "customer_id": "C0018",
+    "order_date": "2024-02-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00055",
+    "customer_id": "C0027",
+    "order_date": "2024-02-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00056",
+    "customer_id": "C0018",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00057",
+    "customer_id": "C0029",
+    "order_date": "2024-02-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00058",
+    "customer_id": "C0055",
+    "order_date": "2024-02-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00059",
+    "customer_id": "C0030",
+    "order_date": "2024-02-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00060",
+    "customer_id": "C0035",
+    "order_date": "2024-02-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00061",
+    "customer_id": "C0011",
+    "order_date": "2024-02-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00062",
+    "customer_id": "C0019",
+    "order_date": "2024-02-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00063",
+    "customer_id": "C0020",
+    "order_date": "2024-02-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00064",
+    "customer_id": "C0013",
+    "order_date": "2024-02-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00065",
+    "customer_id": "C0014",
+    "order_date": "2024-02-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00066",
+    "customer_id": "C0005",
+    "order_date": "2024-02-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00067",
+    "customer_id": "C0021",
+    "order_date": "2024-02-14",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00068",
+    "customer_id": "C0031",
+    "order_date": "2024-02-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00069",
+    "customer_id": "C0026",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00070",
+    "customer_id": "C0013",
+    "order_date": "2024-02-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00071",
+    "customer_id": "C0054",
+    "order_date": "2024-02-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00072",
+    "customer_id": "C0009",
+    "order_date": "2024-02-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00073",
+    "customer_id": "C0005",
+    "order_date": "2024-02-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00074",
+    "customer_id": "C0003",
+    "order_date": "2024-02-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00075",
+    "customer_id": "C0026",
+    "order_date": "2024-02-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00076",
+    "customer_id": "C0027",
+    "order_date": "2024-02-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00077",
+    "customer_id": "C0037",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00078",
+    "customer_id": "C0006",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00079",
+    "customer_id": "C0012",
+    "order_date": "2024-02-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00080",
+    "customer_id": "C0006",
+    "order_date": "2024-02-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00081",
+    "customer_id": "C0052",
+    "order_date": "2024-02-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00082",
+    "customer_id": "C0030",
+    "order_date": "2024-02-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00083",
+    "customer_id": "C0052",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00084",
+    "customer_id": "C0056",
+    "order_date": "2024-02-06",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00085",
+    "customer_id": "C0023",
+    "order_date": "2024-02-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00086",
+    "customer_id": "C0034",
+    "order_date": "2024-02-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00087",
+    "customer_id": "C0038",
+    "order_date": "2024-02-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00088",
+    "customer_id": "C0014",
+    "order_date": "2024-02-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00089",
+    "customer_id": "C0032",
+    "order_date": "2024-02-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00090",
+    "customer_id": "C0059",
+    "order_date": "2024-02-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00091",
+    "customer_id": "C0008",
+    "order_date": "2024-02-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00092",
+    "customer_id": "C0038",
+    "order_date": "2024-02-11",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00093",
+    "customer_id": "C0035",
+    "order_date": "2024-02-29",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00094",
+    "customer_id": "C0021",
+    "order_date": "2024-02-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00095",
+    "customer_id": "C0016",
+    "order_date": "2024-02-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00096",
+    "customer_id": "C0024",
+    "order_date": "2024-02-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00097",
+    "customer_id": "C0052",
+    "order_date": "2024-02-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00098",
+    "customer_id": "C0024",
+    "order_date": "2024-02-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00099",
+    "customer_id": "C0055",
+    "order_date": "2024-02-28",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00100",
+    "customer_id": "C0023",
+    "order_date": "2024-02-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00101",
+    "customer_id": "C0014",
+    "order_date": "2024-02-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00102",
+    "customer_id": "C0031",
+    "order_date": "2024-03-02",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00103",
+    "customer_id": "C0014",
+    "order_date": "2024-03-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00104",
+    "customer_id": "C0003",
+    "order_date": "2024-03-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00105",
+    "customer_id": "C0024",
+    "order_date": "2024-03-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00106",
+    "customer_id": "C0016",
+    "order_date": "2024-03-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00107",
+    "customer_id": "C0015",
+    "order_date": "2024-03-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00108",
+    "customer_id": "C0049",
+    "order_date": "2024-03-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00109",
+    "customer_id": "C0001",
+    "order_date": "2024-03-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00110",
+    "customer_id": "C0019",
+    "order_date": "2024-03-28",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00111",
+    "customer_id": "C0024",
+    "order_date": "2024-03-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00112",
+    "customer_id": "C0055",
+    "order_date": "2024-03-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00113",
+    "customer_id": "C0018",
+    "order_date": "2024-03-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00114",
+    "customer_id": "C0036",
+    "order_date": "2024-03-25",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00115",
+    "customer_id": "C0055",
+    "order_date": "2024-03-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00116",
+    "customer_id": "C0053",
+    "order_date": "2024-03-19",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00117",
+    "customer_id": "C0002",
+    "order_date": "2024-03-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00118",
+    "customer_id": "C0058",
+    "order_date": "2024-03-04",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00119",
+    "customer_id": "C0013",
+    "order_date": "2024-03-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00120",
+    "customer_id": "C0024",
+    "order_date": "2024-03-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00121",
+    "customer_id": "C0035",
+    "order_date": "2024-03-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00122",
+    "customer_id": "C0041",
+    "order_date": "2024-03-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00123",
+    "customer_id": "C0049",
+    "order_date": "2024-03-29",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00124",
+    "customer_id": "C0048",
+    "order_date": "2024-03-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00125",
+    "customer_id": "C0008",
+    "order_date": "2024-03-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00126",
+    "customer_id": "C0027",
+    "order_date": "2024-03-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00127",
+    "customer_id": "C0048",
+    "order_date": "2024-03-09",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00128",
+    "customer_id": "C0058",
+    "order_date": "2024-03-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00129",
+    "customer_id": "C0038",
+    "order_date": "2024-03-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00130",
+    "customer_id": "C0039",
+    "order_date": "2024-03-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00131",
+    "customer_id": "C0048",
+    "order_date": "2024-03-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00132",
+    "customer_id": "C0016",
+    "order_date": "2024-03-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00133",
+    "customer_id": "C0043",
+    "order_date": "2024-03-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00134",
+    "customer_id": "C0044",
+    "order_date": "2024-03-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00135",
+    "customer_id": "C0043",
+    "order_date": "2024-03-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00136",
+    "customer_id": "C0041",
+    "order_date": "2024-03-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00137",
+    "customer_id": "C0025",
+    "order_date": "2024-03-20",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00138",
+    "customer_id": "C0023",
+    "order_date": "2024-03-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00139",
+    "customer_id": "C0024",
+    "order_date": "2024-03-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00140",
+    "customer_id": "C0042",
+    "order_date": "2024-03-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00141",
+    "customer_id": "C0058",
+    "order_date": "2024-03-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00142",
+    "customer_id": "C0049",
+    "order_date": "2024-03-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00143",
+    "customer_id": "C0027",
+    "order_date": "2024-03-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00144",
+    "customer_id": "C0050",
+    "order_date": "2024-03-10",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00145",
+    "customer_id": "C0012",
+    "order_date": "2024-03-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00146",
+    "customer_id": "C0002",
+    "order_date": "2024-03-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00147",
+    "customer_id": "C0060",
+    "order_date": "2024-03-15",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00148",
+    "customer_id": "C0033",
+    "order_date": "2024-03-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00149",
+    "customer_id": "C0055",
+    "order_date": "2024-03-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00150",
+    "customer_id": "C0037",
+    "order_date": "2024-03-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00151",
+    "customer_id": "C0053",
+    "order_date": "2024-03-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00152",
+    "customer_id": "C0005",
+    "order_date": "2024-03-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00153",
+    "customer_id": "C0036",
+    "order_date": "2024-03-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00154",
+    "customer_id": "C0040",
+    "order_date": "2024-03-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00155",
+    "customer_id": "C0050",
+    "order_date": "2024-04-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00156",
+    "customer_id": "C0015",
+    "order_date": "2024-04-06",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00157",
+    "customer_id": "C0015",
+    "order_date": "2024-04-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00158",
+    "customer_id": "C0020",
+    "order_date": "2024-04-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00159",
+    "customer_id": "C0006",
+    "order_date": "2024-04-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00160",
+    "customer_id": "C0031",
+    "order_date": "2024-04-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00161",
+    "customer_id": "C0032",
+    "order_date": "2024-04-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00162",
+    "customer_id": "C0003",
+    "order_date": "2024-04-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00163",
+    "customer_id": "C0007",
+    "order_date": "2024-04-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00164",
+    "customer_id": "C0039",
+    "order_date": "2024-04-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00165",
+    "customer_id": "C0047",
+    "order_date": "2024-04-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00166",
+    "customer_id": "C0047",
+    "order_date": "2024-04-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00167",
+    "customer_id": "C0038",
+    "order_date": "2024-04-03",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00168",
+    "customer_id": "C0013",
+    "order_date": "2024-04-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00169",
+    "customer_id": "C0033",
+    "order_date": "2024-04-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00170",
+    "customer_id": "C0043",
+    "order_date": "2024-04-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00171",
+    "customer_id": "C0037",
+    "order_date": "2024-04-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00172",
+    "customer_id": "C0039",
+    "order_date": "2024-04-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00173",
+    "customer_id": "C0021",
+    "order_date": "2024-04-29",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00174",
+    "customer_id": "C0058",
+    "order_date": "2024-04-12",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00175",
+    "customer_id": "C0003",
+    "order_date": "2024-04-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00176",
+    "customer_id": "C0059",
+    "order_date": "2024-04-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00177",
+    "customer_id": "C0001",
+    "order_date": "2024-04-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00178",
+    "customer_id": "C0019",
+    "order_date": "2024-04-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00179",
+    "customer_id": "C0026",
+    "order_date": "2024-04-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00180",
+    "customer_id": "C0024",
+    "order_date": "2024-04-24",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00181",
+    "customer_id": "C0002",
+    "order_date": "2024-04-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00182",
+    "customer_id": "C0008",
+    "order_date": "2024-04-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00183",
+    "customer_id": "C0040",
+    "order_date": "2024-04-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00184",
+    "customer_id": "C0010",
+    "order_date": "2024-04-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00185",
+    "customer_id": "C0056",
+    "order_date": "2024-04-08",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00186",
+    "customer_id": "C0011",
+    "order_date": "2024-04-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00187",
+    "customer_id": "C0003",
+    "order_date": "2024-04-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00188",
+    "customer_id": "C0050",
+    "order_date": "2024-04-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00189",
+    "customer_id": "C0010",
+    "order_date": "2024-04-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00190",
+    "customer_id": "C0031",
+    "order_date": "2024-04-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00191",
+    "customer_id": "C0050",
+    "order_date": "2024-04-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00192",
+    "customer_id": "C0059",
+    "order_date": "2024-04-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00193",
+    "customer_id": "C0032",
+    "order_date": "2024-04-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00194",
+    "customer_id": "C0031",
+    "order_date": "2024-04-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00195",
+    "customer_id": "C0036",
+    "order_date": "2024-04-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00196",
+    "customer_id": "C0013",
+    "order_date": "2024-04-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00197",
+    "customer_id": "C0040",
+    "order_date": "2024-04-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00198",
+    "customer_id": "C0045",
+    "order_date": "2024-04-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00199",
+    "customer_id": "C0028",
+    "order_date": "2024-04-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00200",
+    "customer_id": "C0015",
+    "order_date": "2024-04-06",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00201",
+    "customer_id": "C0006",
+    "order_date": "2024-04-01",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00202",
+    "customer_id": "C0020",
+    "order_date": "2024-04-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00203",
+    "customer_id": "C0018",
+    "order_date": "2024-04-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00204",
+    "customer_id": "C0053",
+    "order_date": "2024-04-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00205",
+    "customer_id": "C0060",
+    "order_date": "2024-04-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00206",
+    "customer_id": "C0014",
+    "order_date": "2024-04-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00207",
+    "customer_id": "C0044",
+    "order_date": "2024-04-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00208",
+    "customer_id": "C0012",
+    "order_date": "2024-04-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00209",
+    "customer_id": "C0060",
+    "order_date": "2024-05-22",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00210",
+    "customer_id": "C0017",
+    "order_date": "2024-05-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00211",
+    "customer_id": "C0017",
+    "order_date": "2024-05-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00212",
+    "customer_id": "C0005",
+    "order_date": "2024-05-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00213",
+    "customer_id": "C0047",
+    "order_date": "2024-05-31",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00214",
+    "customer_id": "C0058",
+    "order_date": "2024-05-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00215",
+    "customer_id": "C0010",
+    "order_date": "2024-05-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00216",
+    "customer_id": "C0053",
+    "order_date": "2024-05-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00217",
+    "customer_id": "C0033",
+    "order_date": "2024-05-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00218",
+    "customer_id": "C0033",
+    "order_date": "2024-05-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00219",
+    "customer_id": "C0047",
+    "order_date": "2024-05-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00220",
+    "customer_id": "C0009",
+    "order_date": "2024-05-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00221",
+    "customer_id": "C0013",
+    "order_date": "2024-05-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00222",
+    "customer_id": "C0015",
+    "order_date": "2024-05-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00223",
+    "customer_id": "C0029",
+    "order_date": "2024-05-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00224",
+    "customer_id": "C0011",
+    "order_date": "2024-05-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00225",
+    "customer_id": "C0006",
+    "order_date": "2024-05-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00226",
+    "customer_id": "C0045",
+    "order_date": "2024-05-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00227",
+    "customer_id": "C0023",
+    "order_date": "2024-05-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00228",
+    "customer_id": "C0010",
+    "order_date": "2024-05-04",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00229",
+    "customer_id": "C0020",
+    "order_date": "2024-05-20",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00230",
+    "customer_id": "C0035",
+    "order_date": "2024-05-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00231",
+    "customer_id": "C0050",
+    "order_date": "2024-05-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00232",
+    "customer_id": "C0022",
+    "order_date": "2024-05-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00233",
+    "customer_id": "C0049",
+    "order_date": "2024-05-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00234",
+    "customer_id": "C0052",
+    "order_date": "2024-05-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00235",
+    "customer_id": "C0018",
+    "order_date": "2024-05-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00236",
+    "customer_id": "C0030",
+    "order_date": "2024-05-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00237",
+    "customer_id": "C0050",
+    "order_date": "2024-05-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00238",
+    "customer_id": "C0030",
+    "order_date": "2024-05-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00239",
+    "customer_id": "C0043",
+    "order_date": "2024-05-17",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00240",
+    "customer_id": "C0019",
+    "order_date": "2024-05-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00241",
+    "customer_id": "C0030",
+    "order_date": "2024-05-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00242",
+    "customer_id": "C0037",
+    "order_date": "2024-05-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00243",
+    "customer_id": "C0039",
+    "order_date": "2024-05-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00244",
+    "customer_id": "C0024",
+    "order_date": "2024-05-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00245",
+    "customer_id": "C0032",
+    "order_date": "2024-05-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00246",
+    "customer_id": "C0049",
+    "order_date": "2024-05-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00247",
+    "customer_id": "C0007",
+    "order_date": "2024-05-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00248",
+    "customer_id": "C0024",
+    "order_date": "2024-05-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00249",
+    "customer_id": "C0028",
+    "order_date": "2024-05-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00250",
+    "customer_id": "C0002",
+    "order_date": "2024-05-29",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00251",
+    "customer_id": "C0058",
+    "order_date": "2024-05-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00252",
+    "customer_id": "C0027",
+    "order_date": "2024-05-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00253",
+    "customer_id": "C0041",
+    "order_date": "2024-05-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00254",
+    "customer_id": "C0015",
+    "order_date": "2024-05-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00255",
+    "customer_id": "C0009",
+    "order_date": "2024-05-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00256",
+    "customer_id": "C0058",
+    "order_date": "2024-05-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00257",
+    "customer_id": "C0008",
+    "order_date": "2024-05-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00258",
+    "customer_id": "C0019",
+    "order_date": "2024-06-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00259",
+    "customer_id": "C0026",
+    "order_date": "2024-06-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00260",
+    "customer_id": "C0046",
+    "order_date": "2024-06-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00261",
+    "customer_id": "C0008",
+    "order_date": "2024-06-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00262",
+    "customer_id": "C0010",
+    "order_date": "2024-06-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00263",
+    "customer_id": "C0015",
+    "order_date": "2024-06-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00264",
+    "customer_id": "C0029",
+    "order_date": "2024-06-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00265",
+    "customer_id": "C0031",
+    "order_date": "2024-06-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00266",
+    "customer_id": "C0046",
+    "order_date": "2024-06-11",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00267",
+    "customer_id": "C0007",
+    "order_date": "2024-06-27",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00268",
+    "customer_id": "C0022",
+    "order_date": "2024-06-20",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00269",
+    "customer_id": "C0005",
+    "order_date": "2024-06-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00270",
+    "customer_id": "C0023",
+    "order_date": "2024-06-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00271",
+    "customer_id": "C0051",
+    "order_date": "2024-06-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00272",
+    "customer_id": "C0010",
+    "order_date": "2024-06-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00273",
+    "customer_id": "C0015",
+    "order_date": "2024-06-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00274",
+    "customer_id": "C0010",
+    "order_date": "2024-06-17",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00275",
+    "customer_id": "C0055",
+    "order_date": "2024-06-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00276",
+    "customer_id": "C0009",
+    "order_date": "2024-06-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00277",
+    "customer_id": "C0023",
+    "order_date": "2024-06-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00278",
+    "customer_id": "C0026",
+    "order_date": "2024-06-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00279",
+    "customer_id": "C0056",
+    "order_date": "2024-06-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00280",
+    "customer_id": "C0027",
+    "order_date": "2024-06-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00281",
+    "customer_id": "C0051",
+    "order_date": "2024-06-14",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00282",
+    "customer_id": "C0055",
+    "order_date": "2024-06-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00283",
+    "customer_id": "C0036",
+    "order_date": "2024-06-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00284",
+    "customer_id": "C0054",
+    "order_date": "2024-06-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00285",
+    "customer_id": "C0053",
+    "order_date": "2024-06-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00286",
+    "customer_id": "C0040",
+    "order_date": "2024-06-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00287",
+    "customer_id": "C0002",
+    "order_date": "2024-06-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00288",
+    "customer_id": "C0013",
+    "order_date": "2024-06-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00289",
+    "customer_id": "C0005",
+    "order_date": "2024-06-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00290",
+    "customer_id": "C0008",
+    "order_date": "2024-06-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00291",
+    "customer_id": "C0001",
+    "order_date": "2024-06-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00292",
+    "customer_id": "C0011",
+    "order_date": "2024-06-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00293",
+    "customer_id": "C0024",
+    "order_date": "2024-06-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00294",
+    "customer_id": "C0026",
+    "order_date": "2024-06-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00295",
+    "customer_id": "C0057",
+    "order_date": "2024-06-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00296",
+    "customer_id": "C0029",
+    "order_date": "2024-06-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00297",
+    "customer_id": "C0017",
+    "order_date": "2024-06-16",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00298",
+    "customer_id": "C0053",
+    "order_date": "2024-06-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00299",
+    "customer_id": "C0004",
+    "order_date": "2024-06-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00300",
+    "customer_id": "C0012",
+    "order_date": "2024-06-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00301",
+    "customer_id": "C0013",
+    "order_date": "2024-06-16",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00302",
+    "customer_id": "C0051",
+    "order_date": "2024-06-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00303",
+    "customer_id": "C0003",
+    "order_date": "2024-06-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00304",
+    "customer_id": "C0056",
+    "order_date": "2024-06-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00305",
+    "customer_id": "C0024",
+    "order_date": "2024-06-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00306",
+    "customer_id": "C0037",
+    "order_date": "2024-07-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00307",
+    "customer_id": "C0047",
+    "order_date": "2024-07-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00308",
+    "customer_id": "C0028",
+    "order_date": "2024-07-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00309",
+    "customer_id": "C0043",
+    "order_date": "2024-07-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00310",
+    "customer_id": "C0053",
+    "order_date": "2024-07-04",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00311",
+    "customer_id": "C0053",
+    "order_date": "2024-07-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00312",
+    "customer_id": "C0008",
+    "order_date": "2024-07-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00313",
+    "customer_id": "C0012",
+    "order_date": "2024-07-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00314",
+    "customer_id": "C0006",
+    "order_date": "2024-07-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00315",
+    "customer_id": "C0056",
+    "order_date": "2024-07-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00316",
+    "customer_id": "C0019",
+    "order_date": "2024-07-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00317",
+    "customer_id": "C0052",
+    "order_date": "2024-07-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00318",
+    "customer_id": "C0019",
+    "order_date": "2024-07-11",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00319",
+    "customer_id": "C0033",
+    "order_date": "2024-07-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00320",
+    "customer_id": "C0012",
+    "order_date": "2024-07-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00321",
+    "customer_id": "C0011",
+    "order_date": "2024-07-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00322",
+    "customer_id": "C0008",
+    "order_date": "2024-07-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00323",
+    "customer_id": "C0002",
+    "order_date": "2024-07-31",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00324",
+    "customer_id": "C0005",
+    "order_date": "2024-07-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00325",
+    "customer_id": "C0054",
+    "order_date": "2024-07-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00326",
+    "customer_id": "C0039",
+    "order_date": "2024-07-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00327",
+    "customer_id": "C0041",
+    "order_date": "2024-07-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00328",
+    "customer_id": "C0030",
+    "order_date": "2024-07-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00329",
+    "customer_id": "C0032",
+    "order_date": "2024-07-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00330",
+    "customer_id": "C0031",
+    "order_date": "2024-07-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00331",
+    "customer_id": "C0037",
+    "order_date": "2024-07-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00332",
+    "customer_id": "C0016",
+    "order_date": "2024-07-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00333",
+    "customer_id": "C0057",
+    "order_date": "2024-07-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00334",
+    "customer_id": "C0019",
+    "order_date": "2024-07-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00335",
+    "customer_id": "C0023",
+    "order_date": "2024-07-30",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00336",
+    "customer_id": "C0015",
+    "order_date": "2024-07-07",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00337",
+    "customer_id": "C0027",
+    "order_date": "2024-07-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00338",
+    "customer_id": "C0018",
+    "order_date": "2024-07-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00339",
+    "customer_id": "C0002",
+    "order_date": "2024-07-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00340",
+    "customer_id": "C0026",
+    "order_date": "2024-07-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00341",
+    "customer_id": "C0059",
+    "order_date": "2024-07-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00342",
+    "customer_id": "C0006",
+    "order_date": "2024-07-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00343",
+    "customer_id": "C0025",
+    "order_date": "2024-07-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00344",
+    "customer_id": "C0029",
+    "order_date": "2024-07-11",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00345",
+    "customer_id": "C0026",
+    "order_date": "2024-07-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00346",
+    "customer_id": "C0003",
+    "order_date": "2024-07-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00347",
+    "customer_id": "C0053",
+    "order_date": "2024-07-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00348",
+    "customer_id": "C0032",
+    "order_date": "2024-07-08",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00349",
+    "customer_id": "C0040",
+    "order_date": "2024-07-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00350",
+    "customer_id": "C0014",
+    "order_date": "2024-07-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00351",
+    "customer_id": "C0058",
+    "order_date": "2024-07-11",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00352",
+    "customer_id": "C0042",
+    "order_date": "2024-07-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00353",
+    "customer_id": "C0024",
+    "order_date": "2024-07-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00354",
+    "customer_id": "C0023",
+    "order_date": "2024-07-20",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00355",
+    "customer_id": "C0055",
+    "order_date": "2024-07-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00356",
+    "customer_id": "C0058",
+    "order_date": "2024-08-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00357",
+    "customer_id": "C0020",
+    "order_date": "2024-08-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00358",
+    "customer_id": "C0035",
+    "order_date": "2024-08-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00359",
+    "customer_id": "C0028",
+    "order_date": "2024-08-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00360",
+    "customer_id": "C0029",
+    "order_date": "2024-08-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00361",
+    "customer_id": "C0043",
+    "order_date": "2024-08-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00362",
+    "customer_id": "C0019",
+    "order_date": "2024-08-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00363",
+    "customer_id": "C0016",
+    "order_date": "2024-08-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00364",
+    "customer_id": "C0021",
+    "order_date": "2024-08-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00365",
+    "customer_id": "C0015",
+    "order_date": "2024-08-06",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00366",
+    "customer_id": "C0055",
+    "order_date": "2024-08-12",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00367",
+    "customer_id": "C0028",
+    "order_date": "2024-08-25",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00368",
+    "customer_id": "C0051",
+    "order_date": "2024-08-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00369",
+    "customer_id": "C0013",
+    "order_date": "2024-08-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00370",
+    "customer_id": "C0049",
+    "order_date": "2024-08-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00371",
+    "customer_id": "C0023",
+    "order_date": "2024-08-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00372",
+    "customer_id": "C0050",
+    "order_date": "2024-08-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00373",
+    "customer_id": "C0007",
+    "order_date": "2024-08-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00374",
+    "customer_id": "C0054",
+    "order_date": "2024-08-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00375",
+    "customer_id": "C0044",
+    "order_date": "2024-08-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00376",
+    "customer_id": "C0039",
+    "order_date": "2024-08-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00377",
+    "customer_id": "C0017",
+    "order_date": "2024-08-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00378",
+    "customer_id": "C0030",
+    "order_date": "2024-08-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00379",
+    "customer_id": "C0047",
+    "order_date": "2024-08-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00380",
+    "customer_id": "C0029",
+    "order_date": "2024-08-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00381",
+    "customer_id": "C0014",
+    "order_date": "2024-08-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00382",
+    "customer_id": "C0027",
+    "order_date": "2024-08-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00383",
+    "customer_id": "C0021",
+    "order_date": "2024-08-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00384",
+    "customer_id": "C0040",
+    "order_date": "2024-08-10",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00385",
+    "customer_id": "C0014",
+    "order_date": "2024-08-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00386",
+    "customer_id": "C0016",
+    "order_date": "2024-08-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00387",
+    "customer_id": "C0012",
+    "order_date": "2024-08-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00388",
+    "customer_id": "C0002",
+    "order_date": "2024-08-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00389",
+    "customer_id": "C0037",
+    "order_date": "2024-08-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00390",
+    "customer_id": "C0037",
+    "order_date": "2024-08-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00391",
+    "customer_id": "C0018",
+    "order_date": "2024-08-22",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00392",
+    "customer_id": "C0044",
+    "order_date": "2024-08-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00393",
+    "customer_id": "C0021",
+    "order_date": "2024-08-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00394",
+    "customer_id": "C0032",
+    "order_date": "2024-08-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00395",
+    "customer_id": "C0011",
+    "order_date": "2024-08-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00396",
+    "customer_id": "C0030",
+    "order_date": "2024-08-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00397",
+    "customer_id": "C0008",
+    "order_date": "2024-08-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00398",
+    "customer_id": "C0044",
+    "order_date": "2024-08-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00399",
+    "customer_id": "C0019",
+    "order_date": "2024-08-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00400",
+    "customer_id": "C0007",
+    "order_date": "2024-08-16",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00401",
+    "customer_id": "C0015",
+    "order_date": "2024-08-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00402",
+    "customer_id": "C0034",
+    "order_date": "2024-08-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00403",
+    "customer_id": "C0024",
+    "order_date": "2024-08-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00404",
+    "customer_id": "C0039",
+    "order_date": "2024-08-10",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00405",
+    "customer_id": "C0004",
+    "order_date": "2024-08-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00406",
+    "customer_id": "C0042",
+    "order_date": "2024-08-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00407",
+    "customer_id": "C0012",
+    "order_date": "2024-08-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00408",
+    "customer_id": "C0021",
+    "order_date": "2024-08-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00409",
+    "customer_id": "C0006",
+    "order_date": "2024-09-30",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00410",
+    "customer_id": "C0037",
+    "order_date": "2024-09-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00411",
+    "customer_id": "C0035",
+    "order_date": "2024-09-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00412",
+    "customer_id": "C0007",
+    "order_date": "2024-09-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00413",
+    "customer_id": "C0049",
+    "order_date": "2024-09-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00414",
+    "customer_id": "C0013",
+    "order_date": "2024-09-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00415",
+    "customer_id": "C0054",
+    "order_date": "2024-09-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00416",
+    "customer_id": "C0032",
+    "order_date": "2024-09-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00417",
+    "customer_id": "C0057",
+    "order_date": "2024-09-27",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00418",
+    "customer_id": "C0001",
+    "order_date": "2024-09-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00419",
+    "customer_id": "C0016",
+    "order_date": "2024-09-19",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00420",
+    "customer_id": "C0004",
+    "order_date": "2024-09-05",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00421",
+    "customer_id": "C0035",
+    "order_date": "2024-09-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00422",
+    "customer_id": "C0015",
+    "order_date": "2024-09-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00423",
+    "customer_id": "C0036",
+    "order_date": "2024-09-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00424",
+    "customer_id": "C0037",
+    "order_date": "2024-09-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00425",
+    "customer_id": "C0027",
+    "order_date": "2024-09-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00426",
+    "customer_id": "C0050",
+    "order_date": "2024-09-12",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00427",
+    "customer_id": "C0036",
+    "order_date": "2024-09-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00428",
+    "customer_id": "C0054",
+    "order_date": "2024-09-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00429",
+    "customer_id": "C0027",
+    "order_date": "2024-09-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00430",
+    "customer_id": "C0017",
+    "order_date": "2024-09-25",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00431",
+    "customer_id": "C0006",
+    "order_date": "2024-09-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00432",
+    "customer_id": "C0044",
+    "order_date": "2024-09-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00433",
+    "customer_id": "C0024",
+    "order_date": "2024-09-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00434",
+    "customer_id": "C0001",
+    "order_date": "2024-09-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00435",
+    "customer_id": "C0031",
+    "order_date": "2024-09-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00436",
+    "customer_id": "C0037",
+    "order_date": "2024-09-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00437",
+    "customer_id": "C0047",
+    "order_date": "2024-09-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00438",
+    "customer_id": "C0021",
+    "order_date": "2024-09-10",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00439",
+    "customer_id": "C0004",
+    "order_date": "2024-09-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00440",
+    "customer_id": "C0051",
+    "order_date": "2024-09-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00441",
+    "customer_id": "C0055",
+    "order_date": "2024-09-09",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00442",
+    "customer_id": "C0032",
+    "order_date": "2024-09-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00443",
+    "customer_id": "C0010",
+    "order_date": "2024-09-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00444",
+    "customer_id": "C0049",
+    "order_date": "2024-09-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00445",
+    "customer_id": "C0056",
+    "order_date": "2024-09-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00446",
+    "customer_id": "C0008",
+    "order_date": "2024-09-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00447",
+    "customer_id": "C0004",
+    "order_date": "2024-09-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00448",
+    "customer_id": "C0038",
+    "order_date": "2024-09-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00449",
+    "customer_id": "C0011",
+    "order_date": "2024-09-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00450",
+    "customer_id": "C0011",
+    "order_date": "2024-09-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00451",
+    "customer_id": "C0015",
+    "order_date": "2024-09-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00452",
+    "customer_id": "C0056",
+    "order_date": "2024-09-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00453",
+    "customer_id": "C0006",
+    "order_date": "2024-09-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00454",
+    "customer_id": "C0034",
+    "order_date": "2024-09-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00455",
+    "customer_id": "C0058",
+    "order_date": "2024-09-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00456",
+    "customer_id": "C0049",
+    "order_date": "2024-09-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00457",
+    "customer_id": "C0019",
+    "order_date": "2024-09-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00458",
+    "customer_id": "C0032",
+    "order_date": "2024-09-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00459",
+    "customer_id": "C0040",
+    "order_date": "2024-09-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00460",
+    "customer_id": "C0020",
+    "order_date": "2024-09-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00461",
+    "customer_id": "C0015",
+    "order_date": "2024-09-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00462",
+    "customer_id": "C0046",
+    "order_date": "2024-09-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00463",
+    "customer_id": "C0036",
+    "order_date": "2024-09-29",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00464",
+    "customer_id": "C0033",
+    "order_date": "2024-09-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00465",
+    "customer_id": "C0052",
+    "order_date": "2024-09-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00466",
+    "customer_id": "C0056",
+    "order_date": "2024-09-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00467",
+    "customer_id": "C0047",
+    "order_date": "2024-09-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00468",
+    "customer_id": "C0039",
+    "order_date": "2024-09-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00469",
+    "customer_id": "C0049",
+    "order_date": "2024-10-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00470",
+    "customer_id": "C0051",
+    "order_date": "2024-10-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00471",
+    "customer_id": "C0040",
+    "order_date": "2024-10-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00472",
+    "customer_id": "C0048",
+    "order_date": "2024-10-27",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00473",
+    "customer_id": "C0004",
+    "order_date": "2024-10-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00474",
+    "customer_id": "C0047",
+    "order_date": "2024-10-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00475",
+    "customer_id": "C0024",
+    "order_date": "2024-10-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00476",
+    "customer_id": "C0032",
+    "order_date": "2024-10-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00477",
+    "customer_id": "C0025",
+    "order_date": "2024-10-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00478",
+    "customer_id": "C0005",
+    "order_date": "2024-10-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00479",
+    "customer_id": "C0053",
+    "order_date": "2024-10-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00480",
+    "customer_id": "C0030",
+    "order_date": "2024-10-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00481",
+    "customer_id": "C0049",
+    "order_date": "2024-10-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00482",
+    "customer_id": "C0041",
+    "order_date": "2024-10-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00483",
+    "customer_id": "C0019",
+    "order_date": "2024-10-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00484",
+    "customer_id": "C0029",
+    "order_date": "2024-10-23",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00485",
+    "customer_id": "C0027",
+    "order_date": "2024-10-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00486",
+    "customer_id": "C0004",
+    "order_date": "2024-10-26",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00487",
+    "customer_id": "C0024",
+    "order_date": "2024-10-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00488",
+    "customer_id": "C0020",
+    "order_date": "2024-10-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00489",
+    "customer_id": "C0001",
+    "order_date": "2024-10-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00490",
+    "customer_id": "C0028",
+    "order_date": "2024-10-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00491",
+    "customer_id": "C0027",
+    "order_date": "2024-10-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00492",
+    "customer_id": "C0052",
+    "order_date": "2024-10-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00493",
+    "customer_id": "C0059",
+    "order_date": "2024-10-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00494",
+    "customer_id": "C0060",
+    "order_date": "2024-10-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00495",
+    "customer_id": "C0023",
+    "order_date": "2024-10-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00496",
+    "customer_id": "C0022",
+    "order_date": "2024-10-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00497",
+    "customer_id": "C0037",
+    "order_date": "2024-10-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00498",
+    "customer_id": "C0054",
+    "order_date": "2024-10-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00499",
+    "customer_id": "C0051",
+    "order_date": "2024-10-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00500",
+    "customer_id": "C0016",
+    "order_date": "2024-10-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00501",
+    "customer_id": "C0049",
+    "order_date": "2024-10-23",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00502",
+    "customer_id": "C0030",
+    "order_date": "2024-10-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00503",
+    "customer_id": "C0034",
+    "order_date": "2024-10-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00504",
+    "customer_id": "C0054",
+    "order_date": "2024-10-06",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00505",
+    "customer_id": "C0013",
+    "order_date": "2024-10-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00506",
+    "customer_id": "C0013",
+    "order_date": "2024-10-24",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00507",
+    "customer_id": "C0035",
+    "order_date": "2024-10-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00508",
+    "customer_id": "C0023",
+    "order_date": "2024-10-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00509",
+    "customer_id": "C0006",
+    "order_date": "2024-10-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00510",
+    "customer_id": "C0027",
+    "order_date": "2024-10-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00511",
+    "customer_id": "C0049",
+    "order_date": "2024-10-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00512",
+    "customer_id": "C0040",
+    "order_date": "2024-10-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00513",
+    "customer_id": "C0024",
+    "order_date": "2024-10-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00514",
+    "customer_id": "C0049",
+    "order_date": "2024-10-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00515",
+    "customer_id": "C0004",
+    "order_date": "2024-10-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00516",
+    "customer_id": "C0035",
+    "order_date": "2024-10-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00517",
+    "customer_id": "C0040",
+    "order_date": "2024-10-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00518",
+    "customer_id": "C0029",
+    "order_date": "2024-10-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00519",
+    "customer_id": "C0059",
+    "order_date": "2024-10-29",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00520",
+    "customer_id": "C0025",
+    "order_date": "2024-11-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00521",
+    "customer_id": "C0051",
+    "order_date": "2024-11-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00522",
+    "customer_id": "C0030",
+    "order_date": "2024-11-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00523",
+    "customer_id": "C0034",
+    "order_date": "2024-11-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00524",
+    "customer_id": "C0040",
+    "order_date": "2024-11-10",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00525",
+    "customer_id": "C0018",
+    "order_date": "2024-11-04",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00526",
+    "customer_id": "C0024",
+    "order_date": "2024-11-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00527",
+    "customer_id": "C0052",
+    "order_date": "2024-11-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00528",
+    "customer_id": "C0039",
+    "order_date": "2024-11-04",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00529",
+    "customer_id": "C0049",
+    "order_date": "2024-11-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00530",
+    "customer_id": "C0052",
+    "order_date": "2024-11-27",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00531",
+    "customer_id": "C0035",
+    "order_date": "2024-11-30",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00532",
+    "customer_id": "C0006",
+    "order_date": "2024-11-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00533",
+    "customer_id": "C0059",
+    "order_date": "2024-11-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00534",
+    "customer_id": "C0049",
+    "order_date": "2024-11-13",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00535",
+    "customer_id": "C0009",
+    "order_date": "2024-11-09",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00536",
+    "customer_id": "C0017",
+    "order_date": "2024-11-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00537",
+    "customer_id": "C0045",
+    "order_date": "2024-11-13",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00538",
+    "customer_id": "C0011",
+    "order_date": "2024-11-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00539",
+    "customer_id": "C0045",
+    "order_date": "2024-11-02",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00540",
+    "customer_id": "C0027",
+    "order_date": "2024-11-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00541",
+    "customer_id": "C0049",
+    "order_date": "2024-11-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00542",
+    "customer_id": "C0056",
+    "order_date": "2024-11-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00543",
+    "customer_id": "C0022",
+    "order_date": "2024-11-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00544",
+    "customer_id": "C0001",
+    "order_date": "2024-11-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00545",
+    "customer_id": "C0038",
+    "order_date": "2024-11-23",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00546",
+    "customer_id": "C0033",
+    "order_date": "2024-11-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00547",
+    "customer_id": "C0050",
+    "order_date": "2024-11-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00548",
+    "customer_id": "C0007",
+    "order_date": "2024-11-28",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00549",
+    "customer_id": "C0005",
+    "order_date": "2024-11-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00550",
+    "customer_id": "C0046",
+    "order_date": "2024-11-14",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00551",
+    "customer_id": "C0003",
+    "order_date": "2024-11-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00552",
+    "customer_id": "C0023",
+    "order_date": "2024-11-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00553",
+    "customer_id": "C0005",
+    "order_date": "2024-11-15",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00554",
+    "customer_id": "C0054",
+    "order_date": "2024-11-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00555",
+    "customer_id": "C0013",
+    "order_date": "2024-11-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00556",
+    "customer_id": "C0022",
+    "order_date": "2024-11-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00557",
+    "customer_id": "C0025",
+    "order_date": "2024-11-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00558",
+    "customer_id": "C0024",
+    "order_date": "2024-11-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00559",
+    "customer_id": "C0009",
+    "order_date": "2024-11-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00560",
+    "customer_id": "C0041",
+    "order_date": "2024-11-10",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00561",
+    "customer_id": "C0033",
+    "order_date": "2024-11-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00562",
+    "customer_id": "C0009",
+    "order_date": "2024-11-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00563",
+    "customer_id": "C0031",
+    "order_date": "2024-11-07",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00564",
+    "customer_id": "C0012",
+    "order_date": "2024-11-20",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00565",
+    "customer_id": "C0022",
+    "order_date": "2024-11-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00566",
+    "customer_id": "C0042",
+    "order_date": "2024-11-08",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00567",
+    "customer_id": "C0013",
+    "order_date": "2024-11-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00568",
+    "customer_id": "C0031",
+    "order_date": "2024-11-06",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00569",
+    "customer_id": "C0023",
+    "order_date": "2024-11-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00570",
+    "customer_id": "C0020",
+    "order_date": "2024-11-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00571",
+    "customer_id": "C0055",
+    "order_date": "2024-11-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00572",
+    "customer_id": "C0056",
+    "order_date": "2024-11-02",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00573",
+    "customer_id": "C0028",
+    "order_date": "2024-11-28",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00574",
+    "customer_id": "C0058",
+    "order_date": "2024-11-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00575",
+    "customer_id": "C0047",
+    "order_date": "2024-11-16",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00576",
+    "customer_id": "C0008",
+    "order_date": "2024-11-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00577",
+    "customer_id": "C0050",
+    "order_date": "2024-11-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00578",
+    "customer_id": "C0010",
+    "order_date": "2024-11-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00579",
+    "customer_id": "C0051",
+    "order_date": "2024-12-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00580",
+    "customer_id": "C0010",
+    "order_date": "2024-12-05",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00581",
+    "customer_id": "C0056",
+    "order_date": "2024-12-22",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00582",
+    "customer_id": "C0023",
+    "order_date": "2024-12-01",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00583",
+    "customer_id": "C0057",
+    "order_date": "2024-12-15",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00584",
+    "customer_id": "C0005",
+    "order_date": "2024-12-26",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00585",
+    "customer_id": "C0026",
+    "order_date": "2024-12-12",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00586",
+    "customer_id": "C0028",
+    "order_date": "2024-12-29",
+    "status": "cancelled"
+  },
+  {
+    "order_id": "O00587",
+    "customer_id": "C0052",
+    "order_date": "2024-12-24",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00588",
+    "customer_id": "C0024",
+    "order_date": "2024-12-31",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00589",
+    "customer_id": "C0012",
+    "order_date": "2024-12-21",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00590",
+    "customer_id": "C0060",
+    "order_date": "2024-12-17",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00591",
+    "customer_id": "C0006",
+    "order_date": "2024-12-11",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00592",
+    "customer_id": "C0057",
+    "order_date": "2024-12-27",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00593",
+    "customer_id": "C0013",
+    "order_date": "2024-12-05",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00594",
+    "customer_id": "C0035",
+    "order_date": "2024-12-13",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00595",
+    "customer_id": "C0003",
+    "order_date": "2024-12-19",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00596",
+    "customer_id": "C0054",
+    "order_date": "2024-12-18",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00597",
+    "customer_id": "C0024",
+    "order_date": "2024-12-25",
+    "status": "returned"
+  },
+  {
+    "order_id": "O00598",
+    "customer_id": "C0042",
+    "order_date": "2024-12-30",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00599",
+    "customer_id": "C0025",
+    "order_date": "2024-12-03",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00600",
+    "customer_id": "C0039",
+    "order_date": "2024-12-14",
+    "status": "completed"
+  },
+  {
+    "order_id": "O00601",
+    "customer_id": "C0023",
+    "order_date": "2024-12-03",
+    "status": "completed"
+  }
+]

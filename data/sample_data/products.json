@@ -1,0 +1,52 @@
+[
+  {
+    "product_id": "P001",
+    "name": "Laptop Stand",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P002",
+    "name": "Wireless Mouse",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P003",
+    "name": "Mechanical Keyboard",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P004",
+    "name": "USB-C Hub",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P005",
+    "name": "Noise-Cancelling Headphones",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P006",
+    "name": "Webcam",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P007",
+    "name": "Notebook Set",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P008",
+    "name": "Desk Lamp",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P009",
+    "name": "Ergonomic Chair",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P010",
+    "name": "Standing Desk",
+    "category": "Furniture"
+  }
+]

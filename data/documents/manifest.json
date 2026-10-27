@@ -1,0 +1,32 @@
+[
+  {
+    "document_id": "returns-policy",
+    "file": "returns_policy.md",
+    "document_type": "policy",
+    "document_date": "2024-01-01"
+  },
+  {
+    "document_id": "management-report-2024-11",
+    "file": "management_report_2024-11.md",
+    "document_type": "management_report",
+    "document_date": "2024-12-05"
+  },
+  {
+    "document_id": "management-report-2024-12",
+    "file": "management_report_2024-12.md",
+    "document_type": "management_report",
+    "document_date": "2025-01-08"
+  },
+  {
+    "document_id": "meeting-notes-2024-12-18",
+    "file": "meeting_notes_2024-12-18.md",
+    "document_type": "meeting_notes",
+    "document_date": "2024-12-18"
+  },
+  {
+    "document_id": "security-test-note",
+    "file": "security_test_note.md",
+    "document_type": "security_test",
+    "document_date": "2025-01-15"
+  }
+]

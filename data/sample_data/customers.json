@@ -1,0 +1,362 @@
+[
+  {
+    "customer_id": "C0001",
+    "name": "Customer 001",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0002",
+    "name": "Customer 002",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0003",
+    "name": "Customer 003",
+    "region": "North",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0004",
+    "name": "Customer 004",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0005",
+    "name": "Customer 005",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0006",
+    "name": "Customer 006",
+    "region": "East",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0007",
+    "name": "Customer 007",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0008",
+    "name": "Customer 008",
+    "region": "South",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0009",
+    "name": "Customer 009",
+    "region": "South",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0010",
+    "name": "Customer 010",
+    "region": "East",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0011",
+    "name": "Customer 011",
+    "region": "South",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0012",
+    "name": "Customer 012",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0013",
+    "name": "Customer 013",
+    "region": "South",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0014",
+    "name": "Customer 014",
+    "region": "South",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0015",
+    "name": "Customer 015",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0016",
+    "name": "Customer 016",
+    "region": "East",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0017",
+    "name": "Customer 017",
+    "region": "North",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0018",
+    "name": "Customer 018",
+    "region": "South",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0019",
+    "name": "Customer 019",
+    "region": "South",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0020",
+    "name": "Customer 020",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0021",
+    "name": "Customer 021",
+    "region": "West",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0022",
+    "name": "Customer 022",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0023",
+    "name": "Customer 023",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0024",
+    "name": "Customer 024",
+    "region": "North",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0025",
+    "name": "Customer 025",
+    "region": "East",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0026",
+    "name": "Customer 026",
+    "region": "South",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0027",
+    "name": "Customer 027",
+    "region": "East",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0028",
+    "name": "Customer 028",
+    "region": "East",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0029",
+    "name": "Customer 029",
+    "region": "East",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0030",
+    "name": "Customer 030",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0031",
+    "name": "Customer 031",
+    "region": "East",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0032",
+    "name": "Customer 032",
+    "region": "West",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0033",
+    "name": "Customer 033",
+    "region": "East",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0034",
+    "name": "Customer 034",
+    "region": "West",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0035",
+    "name": "Customer 035",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0036",
+    "name": "Customer 036",
+    "region": "West",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0037",
+    "name": "Customer 037",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0038",
+    "name": "Customer 038",
+    "region": "West",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0039",
+    "name": "Customer 039",
+    "region": "South",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0040",
+    "name": "Customer 040",
+    "region": "West",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0041",
+    "name": "Customer 041",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0042",
+    "name": "Customer 042",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0043",
+    "name": "Customer 043",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0044",
+    "name": "Customer 044",
+    "region": "West",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0045",
+    "name": "Customer 045",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0046",
+    "name": "Customer 046",
+    "region": "North",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0047",
+    "name": "Customer 047",
+    "region": "South",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0048",
+    "name": "Customer 048",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0049",
+    "name": "Customer 049",
+    "region": "East",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0050",
+    "name": "Customer 050",
+    "region": "North",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0051",
+    "name": "Customer 051",
+    "region": "South",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0052",
+    "name": "Customer 052",
+    "region": "South",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0053",
+    "name": "Customer 053",
+    "region": "West",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0054",
+    "name": "Customer 054",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0055",
+    "name": "Customer 055",
+    "region": "North",
+    "segment": "Small Business"
+  },
+  {
+    "customer_id": "C0056",
+    "name": "Customer 056",
+    "region": "North",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0057",
+    "name": "Customer 057",
+    "region": "East",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0058",
+    "name": "Customer 058",
+    "region": "East",
+    "segment": "Enterprise"
+  },
+  {
+    "customer_id": "C0059",
+    "name": "Customer 059",
+    "region": "East",
+    "segment": "Mid-Market"
+  },
+  {
+    "customer_id": "C0060",
+    "name": "Customer 060",
+    "region": "North",
+    "segment": "Mid-Market"
+  }
+]

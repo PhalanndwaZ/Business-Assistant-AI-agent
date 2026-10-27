@@ -1,0 +1,38 @@
+# Environment / secrets
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Local generated data / DBs
+data/vector_store/
+data/conversations.sqlite3
+data/conversations.sqlite3-shm
+data/conversations.sqlite3-wal
+reports/
+evaluation/reports/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+reports/
