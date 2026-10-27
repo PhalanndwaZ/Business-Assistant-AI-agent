@@ -33,7 +33,7 @@ flowchart LR
     U --> API[FastAPI POST /ask]
     CLI --> G[LangGraph workflow]
     API --> G
-    G <--> LLM[Groq-hosted chat model]
+    G <--> LLM[Inception primary / Groq fallback]
     G <--> MCPC[MCP client]
 
     MCPC <--> DMCP[Business-data MCP server]
@@ -52,9 +52,10 @@ flowchart LR
 ```
 
 The app uses local JSON files rather than a database. The business-data and
-document-search MCP servers run as local stdio subprocesses. The Groq model
-selects among discovered tools; it does not receive arbitrary code, file
-paths, or unrestricted queries to run.
+document-search MCP servers run as local stdio subprocesses. The Inception
+model selects among discovered tools first; Groq is tried when Inception is
+unavailable. Neither model receives arbitrary code, file paths, or unrestricted
+queries to run.
 
 ## LangGraph workflow
 
@@ -81,10 +82,11 @@ results and relevant caveats remain available to the CLI/API response.
 
 ## Setup and run
 
-Requirements: Python, Git, network access, and Groq and Mistral API keys for
-live questions. Groq powers question answering; Mistral creates embeddings for
-document search. The commands below use PowerShell on Windows and should be
-run from the project root.
+Requirements: Python, Git, network access, one of the Inception or Groq API
+keys, and a Mistral API key for live questions. Inception is the primary chat
+provider; Groq is the fallback and can run alone when the Inception key is not
+configured. Mistral creates embeddings for document search. The commands below
+use PowerShell on Windows and should be run from the project root.
 
 ```powershell
 git clone <repository-url>
@@ -96,16 +98,24 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `.env` and supply `GROQ_API_KEY` and `MISTRAL_API_KEY`. Keep `.env`
-private; do not commit keys. The checked-in `.env.example` contains blank
-credentials and default settings:
+Edit `.env` and supply `INCEPTION_API_KEY` or `GROQ_API_KEY`, plus
+`MISTRAL_API_KEY`. Inception is used first when its key is present; if not, the
+app logs a warning and uses Groq only. Keep `.env` private; do not commit keys.
+The checked-in `.env.example` contains blank credentials and default settings:
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `GROQ_API_KEY` | Yes, for answering questions | — | Authenticates chat completions. |
+| `INCEPTION_API_KEY` | No, if Groq is configured | — | Authenticates the primary Inception chat model. |
+| `GROQ_API_KEY` | No, if Inception is configured | — | Authenticates the fallback Groq model; enables Groq-only mode when Inception is absent. |
 | `MISTRAL_API_KEY` | Yes, for document search and ingestion | — | Authenticates document embeddings. |
-| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Groq chat model; GPT-OSS models use parsed reasoning output. |
-| `GROQ_MAX_TOKENS` | No | `1024` | Maximum generated tokens per Groq response; lower values can help with TPM limits. |
+| `INCEPTION_BASE_URL` | No | `https://api.inceptionlabs.ai/v1` | OpenAI-compatible Inception API endpoint. |
+| `INCEPTION_MODEL` | No | `mercury-3` | Primary chat model. |
+| `INCEPTION_MAX_RETRIES` | No | `2` | Retries for transient primary-provider errors before fallback. |
+| `INCEPTION_BACKOFF_BASE_SECONDS` | No | `1` | Exponential retry backoff base; jitter is applied. |
+| `INCEPTION_BACKOFF_MAX_SECONDS` | No | `8` | Maximum primary retry backoff. |
+| `LLM_CALL_TIMEOUT_SECONDS` | No | `20` | Primary retry budget and per-provider request timeout. |
+| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Fallback chat model; GPT-OSS models use parsed reasoning output. |
+| `GROQ_MAX_TOKENS` | No | `1024` | Maximum generated tokens per chat response; lower values can help with TPM limits. |
 | `MISTRAL_EMBEDDING_MODEL` | No | `mistral-embed` | Embedding model used for document search. |
 | `AS_OF_DATE` | No | `2025-01-15` | Date anchor for relative-date questions; ISO `YYYY-MM-DD`. |
 | `MIN_SIMILARITY` | No | `0.84` | Minimum document-search similarity from `0` to `1`. |
@@ -217,7 +227,8 @@ causes; the report does not quantify their contribution.
   groups. This verifies benchmark contracts and independent expected data;
   it is **not** a live answer-accuracy score.
 - **Live check:** one API question about November-to-December revenue was
-  verified against the configured Groq model and MCP tools. The full
+  verified against Groq and MCP tools before Inception became the primary
+  provider. The full
   31-question live benchmark and DeepEval metrics have not been run.
 - **Failure and lesson:** an earlier live answer described a negative
   revenue change as a positive “decrease by” magnitude. The original
@@ -269,7 +280,8 @@ above provide a repeatable live demo.
 ## CV-ready summary
 
 - Built a Python business-analysis assistant using LangGraph, MCP, Pandas,
-  Groq, Mistral embeddings, and FastAPI over synthetic JSON data and documents.
+  Inception with Groq fallback, Mistral embeddings, and FastAPI over synthetic
+  JSON data and documents.
 - Added constrained data tools, thresholded document retrieval, and
   deterministic evidence checks; the current deterministic suite passes
   **148 tests**.
@@ -366,14 +378,15 @@ Phase 10 pytest cases. It writes
 `evaluation/reports/phase10-evaluation.md`. Its per-group rates are explicitly
 labelled **readiness**, not model answer accuracy.
 
-To ask the complete question bank to the configured Groq model through both
-MCP servers, use `--live`:
+To ask the complete question bank through both MCP servers, use `--live`.
+Each LLM call tries the configured Inception model first and falls back to
+Groq on configured provider failures:
 
 ```powershell
 .\.venv\Scripts\python.exe -m evaluation.evaluate --live
 ```
 
-This makes live Groq and Mistral requests and checks the actual tool names,
+This makes live Inception/Groq and Mistral requests and checks the actual tool names,
 arguments, result values against the independent Pandas truth, document
 retrieval/citations, refusals, and causal wording. To additionally run
 DeepEval faithfulness, answer relevancy, context precision, and context recall
@@ -452,9 +465,11 @@ The response JSON has this shape:
 `answer` contains the final evidence-checked response. For report requests it
 states whether a report file was generated and includes its path only after a
 successful `generate_report` call. Files are written under the project
-`reports/` directory. `figures` contains successful analysis/query results;
-`sources` lists tool and document names; `caveats` contains assumptions,
-evidence limitations, and workflow errors.
+`reports/` directory. `figures` contains successful analysis/query results
+from the current request only; prior-turn evidence remains available internally
+for follow-up questions but is not repeated in each response. `sources` lists
+current-turn tool and document names; `caveats` contains current-turn
+assumptions, evidence limitations, and workflow errors.
 
 Completed user/assistant turns are persisted in the SQLite database at
 `CONVERSATION_DB_PATH`. The default location is
@@ -474,7 +489,7 @@ authentication or per-user access controls.
 |---|---|
 | `200` | Question processed; inspect `answer` and `caveats` for workflow/report limitations. |
 | `422` | Missing, empty, or whitespace-only `question`. |
-| `502` | Groq/model API request failed. Check server logs for the upstream error; a 400 tool-validation error is not a rate-limit error. |
+| `502` | Both configured model providers were unavailable, or a model request was rejected. Check the provider/status logs; 400 errors are not retried on another provider. |
 | `503` | Required configuration or an MCP/service dependency failed. |
 
 To stop the development server, press `Ctrl+C` in its terminal. The `--reload`

@@ -28,6 +28,7 @@ class AnalystState(TypedDict, total=False):
     retrieved_chunks: Annotated[list[dict[str, Any]], operator.add]
     errors: Annotated[list[str], operator.add]
     workflow_trace: Annotated[list[dict[str, Any]], operator.add]
+    llm_responses: Annotated[list[dict[str, str]], operator.add]
     step_count: int
     retry_count: int
     draft_answer: str

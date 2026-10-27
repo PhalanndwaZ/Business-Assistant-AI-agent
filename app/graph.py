@@ -101,6 +101,8 @@ class AsyncToolClient(Protocol):
 class AsyncChatModel(Protocol):
     """Minimal chat model interface used by workflow nodes."""
 
+    def bind_tools(self, tools: list[dict[str, Any]]) -> AsyncChatModel: ...
+
     async def ainvoke(self, messages: list[Any]) -> AIMessage: ...
 
 
@@ -808,16 +810,29 @@ def build_graph(
             messages,
             max_retries,
         )
+        response_metadata = response.response_metadata
+        provider = response_metadata.get("llm_provider")
+        model_name = response_metadata.get("llm_model")
+        response_trace: dict[str, Any] = {
+            "event": "model_response",
+            "content": str(response.content),
+            "tool_calls": getattr(response, "tool_calls", []),
+        }
+        llm_responses: list[dict[str, str]] = []
+        if isinstance(provider, str) and isinstance(model_name, str):
+            provider_record = {"provider": provider, "model": model_name}
+            response_trace.update(provider_record)
+            llm_responses.append(provider_record)
+            LOGGER.info(
+                "LLM response provider=%s model=%s",
+                provider,
+                model_name,
+            )
         updates: dict[str, Any] = {
             "messages": [response],
             "draft_answer": str(response.content),
-            "workflow_trace": [
-                {
-                    "event": "model_response",
-                    "content": str(response.content),
-                    "tool_calls": getattr(response, "tool_calls", []),
-                }
-            ],
+            "llm_responses": llm_responses,
+            "workflow_trace": [response_trace],
         }
         if (
             state.get("step_count", 0) >= max_steps
@@ -1323,6 +1338,7 @@ async def answer_question(
         ],
         "tool_results": historical_results,
         "workflow_trace": [],
+        "llm_responses": [],
         "retrieved_chunks": historical_chunks,
         "errors": [],
         "step_count": 0,

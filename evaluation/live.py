@@ -8,13 +8,14 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from groq import APIError
-from langchain_core.messages import AIMessage
+from groq import APIError as GroqAPIError
 from mcp.shared.exceptions import McpError
-from pydantic import SecretStr
+from openai import APIError as OpenAIAPIError
 
 from app.config import Settings
 from app.graph import answer_question
+from app.llm_factory import build_chat_model
+from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
 from evaluation.deepeval_judge import score_rag_case
 from evaluation.expected_answers import compute_expected_answers
@@ -25,22 +26,6 @@ from evaluation.questions import (
     SAFETY,
     EvaluationCase,
 )
-
-
-class _ChatModelAdapter:
-    """Constrain ChatGroq to the graph's narrow async model protocol."""
-
-    def __init__(self, model: Any) -> None:
-        self._model = model
-
-    def bind_tools(self, tools: list[dict[str, Any]]) -> _ChatModelAdapter:
-        return _ChatModelAdapter(self._model.bind_tools(tools))
-
-    async def ainvoke(self, messages: list[Any]) -> AIMessage:
-        response = await self._model.ainvoke(messages)
-        if not isinstance(response, AIMessage):
-            raise TypeError("The configured chat model returned a non-AI message.")
-        return response
 
 
 REFUSAL_PATTERN = re.compile(
@@ -345,21 +330,8 @@ async def run_live_evaluation(
     use_deepeval: bool = False,
 ) -> list[dict[str, Any]]:
     """Call the actual agent for every case and score tools, answers, and RAG."""
-    from langchain_groq import ChatGroq
-
     expected_answers = compute_expected_answers(settings.data_dir)
-    model = ChatGroq(
-        model=settings.groq_model,
-        api_key=SecretStr(settings.groq_api_key),
-        temperature=0,
-        max_retries=0,
-        max_tokens=settings.groq_max_tokens,
-        reasoning_format=(
-            "parsed"
-            if settings.groq_model.startswith("openai/gpt-oss-")
-            else None
-        ),
-    )
+    model = build_chat_model(settings)
     results: list[dict[str, Any]] = []
     async with AnalystMCPClient(settings) as mcp_client:
         tools = await mcp_client.list_tools()
@@ -367,21 +339,29 @@ async def run_live_evaluation(
             try:
                 state = await answer_question(
                     case.question,
-                    _ChatModelAdapter(model),
+                    model,
                     tools,
                     mcp_client,
                     settings.max_steps,
                     settings.max_retries,
                 )
             except (
-                APIError,
+                GroqAPIError,
+                OpenAIAPIError,
+                ProviderUnavailableError,
                 McpError,
                 OSError,
                 RuntimeError,
                 TimeoutError,
                 ValueError,
             ) as exc:
-                error = f"{type(exc).__name__}: {exc}"
+                if isinstance(exc, (GroqAPIError, OpenAIAPIError)):
+                    error = (
+                        f"{type(exc).__name__} "
+                        f"status={getattr(exc, 'status_code', None)}"
+                    )
+                else:
+                    error = f"{type(exc).__name__}: {exc}"
                 results.append(
                     {
                         "case_id": case.case_id,
@@ -419,6 +399,7 @@ async def run_live_evaluation(
                 "completed": True,
                 "failures": failures,
                 "answer": state.get("final_answer", ""),
+                "llm_responses": state.get("llm_responses", []),
                 "tools": [
                     {
                         "tool_name": call.get("tool_name"),
@@ -450,7 +431,7 @@ async def run_live_evaluation(
                         for name in case.document_names
                     )
                     expected_output += "\n\nReference passages:\n" + source_text
-                result["deepeval"] = score_rag_case(
+                result["deepeval"] = await score_rag_case(
                     settings,
                     question=case.question,
                     answer=str(state.get("final_answer", "")),

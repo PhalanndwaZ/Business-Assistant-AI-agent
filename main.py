@@ -9,48 +9,19 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException
-from groq import APIError
-from langchain_core.messages import AIMessage
-from langchain_groq import ChatGroq
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from groq import APIError as GroqAPIError
+from openai import APIError as OpenAIAPIError
+from pydantic import BaseModel, Field, field_validator
 from mcp.shared.exceptions import McpError
 
 from app.config import ConfigurationError, Settings, load_settings
 from app.conversation_store import ConversationStore
 from app.graph import answer_question
+from app.llm_factory import build_chat_model
+from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _chat_model_options(settings: Settings) -> dict[str, Any]:
-    """Configure reasoning output explicitly for Groq's GPT-OSS models."""
-    options: dict[str, Any] = {
-        "model": settings.groq_model,
-        "api_key": SecretStr(settings.groq_api_key),
-        "temperature": 0,
-        "max_retries": 0,
-        "max_tokens": settings.groq_max_tokens,
-    }
-    if settings.groq_model.startswith("openai/gpt-oss-"):
-        options["reasoning_format"] = "parsed"
-    return options
-
-
-class _ChatModelAdapter:
-    """Adapt the chat model's broad LangChain types to the graph protocol."""
-
-    def __init__(self, model: Any) -> None:
-        self._model = model
-
-    def bind_tools(self, tools: list[dict[str, Any]]) -> _ChatModelAdapter:
-        return _ChatModelAdapter(self._model.bind_tools(tools))
-
-    async def ainvoke(self, messages: list[Any]) -> AIMessage:
-        response = await self._model.ainvoke(messages)
-        if not isinstance(response, AIMessage):
-            raise TypeError("The configured chat model returned a non-AI message.")
-        return response
 
 
 class AskRequest(BaseModel):
@@ -182,12 +153,12 @@ async def _run_question(
             settings.max_history_turns,
         )
 
-    model = ChatGroq(**_chat_model_options(settings))
+    model = build_chat_model(settings)
     async with AnalystMCPClient(settings) as mcp_client:
         tools = await mcp_client.list_tools()
         state = await answer_question(
             question,
-            _ChatModelAdapter(model),
+            model,
             tools,
             mcp_client,
             settings.max_steps,
@@ -196,7 +167,14 @@ async def _run_question(
             prior_tool_results=prior_tool_results,
             prior_retrieved_chunks=prior_retrieved_chunks,
         )
-    response = _response_fields(state, str(active_conversation_id))
+    current_turn_state = dict(state)
+    current_turn_state["tool_results"] = state.get("tool_results", [])[
+        len(prior_tool_results) :
+    ]
+    current_turn_state["retrieved_chunks"] = state.get("retrieved_chunks", [])[
+        len(prior_retrieved_chunks) :
+    ]
+    response = _response_fields(current_turn_state, str(active_conversation_id))
     store.append_turn(
         active_conversation_id,
         question.strip(),
@@ -239,8 +217,18 @@ def create_app() -> FastAPI:
                 status_code=503,
                 detail="The question-answering service is not configured.",
             ) from exc
-        except APIError as exc:
-            LOGGER.warning("Model API request failed: %s", exc)
+        except ProviderUnavailableError as exc:
+            LOGGER.error("Model providers are unavailable.")
+            raise HTTPException(
+                status_code=502,
+                detail=str(exc),
+            ) from exc
+        except (GroqAPIError, OpenAIAPIError) as exc:
+            LOGGER.warning(
+                "Model API request failed type=%s status=%s",
+                type(exc).__name__,
+                getattr(exc, "status_code", None),
+            )
             raise HTTPException(
                 status_code=502,
                 detail="The answer model is temporarily unavailable.",

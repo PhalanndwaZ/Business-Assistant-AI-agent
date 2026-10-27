@@ -13,6 +13,8 @@ from pydantic import SecretStr
 
 import main
 from app.config import ConfigurationError, Settings
+from app.llm_factory import groq_client_options
+from app.llm_fallback import ProviderUnavailableError
 from app.state import AnalystState
 
 
@@ -34,11 +36,12 @@ def test_gpt_oss_uses_parsed_reasoning_format() -> None:
         vector_store_path=Path("data/vector_store/chunks.json"),
     )
 
-    assert main._chat_model_options(settings) == {
+    assert groq_client_options(settings) == {
         "model": "openai/gpt-oss-120b",
         "api_key": SecretStr("test"),
         "temperature": 0,
         "max_retries": 0,
+        "timeout": 20,
         "max_tokens": 1024,
         "reasoning_format": "parsed",
     }
@@ -67,10 +70,6 @@ def test_run_question_uses_the_same_graph_answer_as_the_cli(
     )
     observed: dict[str, Any] = {}
 
-    class FakeModel:
-        def __init__(self, **kwargs: Any) -> None:
-            observed["model_options"] = kwargs
-
     class FakeClient:
         def __init__(self, actual_settings: Settings) -> None:
             observed["settings"] = actual_settings
@@ -98,7 +97,7 @@ def test_run_question_uses_the_same_graph_answer_as_the_cli(
         prior_retrieved_chunks: list[dict[str, object]],
     ) -> AnalystState:
         assert observed["settings"] is settings
-        assert isinstance(_model, main._ChatModelAdapter)
+        assert _model is fake_model
         assert _tools == []
         assert isinstance(_client, FakeClient)
         observed.update(
@@ -117,8 +116,16 @@ def test_run_question_uses_the_same_graph_answer_as_the_cli(
             "errors": [],
         }
 
+    fake_model = object()
+
+    def fake_build_chat_model(actual_settings: Settings) -> object:
+        """Return a sentinel model and record the settings passed by the API."""
+        observed["settings"] = actual_settings
+        observed["model_built"] = True
+        return fake_model
+
     monkeypatch.setattr(main, "load_settings", lambda: settings)
-    monkeypatch.setattr(main, "ChatGroq", FakeModel)
+    monkeypatch.setattr(main, "build_chat_model", fake_build_chat_model)
     monkeypatch.setattr(
         main, "AnalystMCPClient", lambda actual_settings: FakeClient(actual_settings)
     )
@@ -134,18 +141,119 @@ def test_run_question_uses_the_same_graph_answer_as_the_cli(
         "history": [],
         "prior_tool_results": [],
         "prior_retrieved_chunks": [],
-        "model_options": {
-            "model": "test-model",
-            "api_key": SecretStr("test"),
-            "temperature": 0,
-            "max_retries": 0,
-            "max_tokens": 1024,
-        },
+        "model_built": True,
         "client_closed": True,
         "client_exit": (None, None, None),
     }
     assert response.answer == "The CLI-compatible graph answer."
     assert isinstance(UUID(response.conversation_id), UUID)
+
+
+def test_run_question_returns_current_turn_figures_not_historical_evidence(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Keep prior evidence for follow-ups without echoing it in the API response."""
+    settings = Settings(
+        groq_api_key="test",
+        mistral_api_key="test",
+        groq_model="test-model",
+        mistral_embedding_model="test-embedding",
+        as_of_date=date(2025, 1, 15),
+        min_similarity=0.84,
+        top_k=4,
+        max_rows=100,
+        max_steps=8,
+        max_retries=2,
+        data_dir=Path("data/sample_data"),
+        documents_dir=Path("data/documents"),
+        vector_store_path=Path("data/vector_store/chunks.json"),
+        conversation_db_path=tmp_path / "conversations.sqlite3",
+    )
+    conversation_id = UUID("00000000-0000-0000-0000-000000000004")
+    historical_result = {
+        "call_id": "historical-analysis",
+        "tool_name": "run_analysis",
+        "arguments": {},
+        "result": {
+            "analysis": "revenue_by_product",
+            "data": [{"product_name": "Standing Desk", "revenue_cents": 16645713}],
+        },
+        "success": True,
+    }
+    historical_chunk = {"document_name": "old_report.md", "text": "old evidence"}
+    store = main.ConversationStore(settings.conversation_db_path)
+    store.append_turn(
+        conversation_id,
+        "Which product led?",
+        "Standing Desk led.",
+        [historical_result],
+        [historical_chunk],
+    )
+    observed: dict[str, Any] = {}
+
+    class FakeClient:
+        async def __aenter__(self) -> FakeClient:
+            return self
+
+        async def __aexit__(self, _exc_type: Any, _exc: Any, _traceback: Any) -> None:
+            return None
+
+        async def list_tools(self) -> list[object]:
+            return []
+
+    current_result = {
+        "call_id": "current-query",
+        "tool_name": "query_business_data",
+        "arguments": {},
+        "result": {
+            "dataset": "orders",
+            "total_matches": 514,
+            "rows": [],
+        },
+        "success": True,
+    }
+
+    async def fake_answer_question(
+        _question: str,
+        _model: Any,
+        _tools: list[object],
+        _client: Any,
+        _max_steps: int,
+        _max_retries: int,
+        history: list[tuple[str, str]],
+        prior_tool_results: list[dict[str, Any]],
+        prior_retrieved_chunks: list[dict[str, object]],
+    ) -> AnalystState:
+        observed["history"] = history
+        observed["prior_tool_results"] = prior_tool_results
+        observed["prior_retrieved_chunks"] = prior_retrieved_chunks
+        return {
+            "final_answer": "There are 514 completed orders.",
+            "tool_results": [*prior_tool_results, current_result],
+            "retrieved_chunks": prior_retrieved_chunks,
+            "evidence_errors": [],
+            "errors": [],
+        }
+
+    monkeypatch.setattr(main, "load_settings", lambda: settings)
+    monkeypatch.setattr(main, "build_chat_model", lambda _settings: object())
+    monkeypatch.setattr(main, "AnalystMCPClient", lambda _settings: FakeClient())
+    monkeypatch.setattr(main, "answer_question", fake_answer_question)
+
+    response = asyncio.run(
+        main._run_question("How many orders have been completed?", conversation_id)
+    )
+
+    assert observed["prior_tool_results"] == [historical_result]
+    assert observed["prior_retrieved_chunks"] == [historical_chunk]
+    assert response.answer == "There are 514 completed orders."
+    assert response.figures == [
+        {"dataset": "orders", "total_matches": 514, "rows": []}
+    ]
+    assert response.sources == ["query_business_data:orders"]
+    assert "revenue_by_product" not in str(response.model_dump())
+    assert "old_report.md" not in str(response.model_dump())
 
 
 def test_ask_returns_same_answer_and_supporting_workflow_data(
@@ -329,6 +437,30 @@ def test_ask_reports_configuration_failure_without_exposing_details(
         "detail": "The question-answering service is not configured."
     }
     assert "GROQ_API_KEY" not in response.text
+
+
+def test_provider_unavailable_returns_safe_existing_error(
+    monkeypatch: Any,
+) -> None:
+    """Unavailable provider errors return a generic model-service response."""
+    async def fail_to_run(
+        _question: str,
+        _conversation_id: UUID | None = None,
+    ) -> main.AskResponse:
+        raise ProviderUnavailableError(
+            "The answer model is temporarily unavailable."
+        )
+
+    monkeypatch.setattr(main, "_run_question", fail_to_run)
+
+    response = TestClient(main.create_app()).post(
+        "/ask", json={"question": "Revenue?"}
+    )
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "The answer model is temporarily unavailable."
+    }
 
 
 def test_api_response_has_no_figures_for_unanswerable_graph_state() -> None:

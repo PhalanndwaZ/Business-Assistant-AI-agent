@@ -22,7 +22,8 @@ Run only one area with `python scripts\run_tests.py --suite data`,
 pytest case while it runs. The report files are generated output and are
 ignored by git.
 
-To ask a live question after configuring the Groq key in `.env`, run:
+To ask a live question after configuring either `INCEPTION_API_KEY` or
+`GROQ_API_KEY` in `.env` (and the Mistral key used by document search), run:
 
 ```powershell
 .\.venv\Scripts\python.exe -m app.cli "Which product generated the highest sales last month?"
@@ -34,8 +35,8 @@ To run the five-question Phase 5 CLI acceptance check, run:
 .\.venv\Scripts\python.exe scripts\phase5_cli_smoke.py
 ```
 
-This makes five live Groq-backed CLI requests, spaces them by 65 seconds to
-reduce token-per-minute rate-limit failures, and writes the answers and
+This makes five live CLI requests through Inception first, with Groq fallback,
+spaces them by 65 seconds to reduce token-per-minute rate-limit failures, and writes the answers and
 pass/fail checks to `evaluation/reports/phase5-cli-smoke.md`. It also writes
 one JSONL trace record per question to
 `evaluation/reports/phase5-cli-trace.jsonl`, including model drafts, tool
@@ -74,12 +75,12 @@ cutoff and observed scores are recorded in the root `README.md`.
 These cases verify the implemented configuration, JSON, Pandas, MCP tool
 functions, ingestion helpers, vector store, retriever, and LangGraph graph.
 Workflow tests use a deterministic fake model and actual local MCP stdio
-servers; they do not require paid API calls. A live Groq-backed CLI run and
-real Mistral ingestion/threshold calibration still require credentials.
+servers; they do not require paid API calls. A live Inception/Groq-backed CLI
+run and real Mistral ingestion/threshold calibration still require credentials.
 
 | ID | Area | Scenario and input | Expected result | Design decision being protected | Test |
 |---|---|---|---|---|---|
-| CFG-01 | Configuration | Load settings without either API key | A clear `ConfigurationError` names missing keys | Secrets come from environment variables and startup fails clearly | `test_load_settings_requires_both_api_keys` |
+| CFG-01 | Configuration | Load settings without an LLM provider key | A clear `ConfigurationError` identifies the missing provider key | Secrets come from environment variables and startup fails clearly | `test_load_settings_requires_both_api_keys` |
 | CFG-02 | Configuration | Load settings with keys but no optional overrides | Stable defaults and absolute project paths | Centralized config and fixed as-of date | `test_load_settings_resolves_defaults_and_paths` |
 | CFG-03 | Configuration | Set similarity threshold above 1 | Reject invalid value | Similarity is a bounded cosine score | `test_load_settings_rejects_invalid_similarity` |
 | DATA-01 | Generation | Generate records twice with the same seed | Identical records | Seeded fixture data is reproducible | `test_generate_records_is_reproducible` |
@@ -162,7 +163,8 @@ real Mistral ingestion/threshold calibration still require credentials.
 
 - Unit tests use fixed vectors and synthetic records; they do not claim that a
   particular similarity threshold is empirically calibrated.
-- The complete five-question live CLI sequence requires Groq credentials and
+- The complete five-question live CLI sequence requires an Inception or Groq
+  key and a Mistral key for the document-search process, and
   has not been run as a single paced sequence. Cases 3, 4, and 5 have each been
   run individually; deterministic workflow tests cover graph routing, tool
   selection, retries, and numeric evidence handling.
@@ -171,7 +173,8 @@ real Mistral ingestion/threshold calibration still require credentials.
   question contracts and produce `evaluation/reports/phase10-evaluation.md`.
   This offline readiness report does not score live agent answers.
 - Run `.\.venv\Scripts\python.exe -m evaluation.evaluate --live` to exercise
-  the whole bank against Groq and both MCP servers. Add `--deep-eval` for
+  the whole bank against Inception (with Groq fallback) and both MCP servers.
+  Add `--deep-eval` for
   DeepEval faithfulness, answer relevancy, context precision, and context
   recall signals. These modes make API requests and have not been run as part
   of offline validation.

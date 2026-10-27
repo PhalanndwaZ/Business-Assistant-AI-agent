@@ -52,6 +52,43 @@ class FakeModel:
         return self.responses.pop(0)
 
 
+def test_answer_question_records_llm_provider_in_state_and_logs(
+        caplog: pytest.LogCaptureFixture,
+) -> None:
+        """Each provider-tagged model response is recorded and logged."""
+        response = AIMessage(
+            content="I cannot answer from available sources.",
+            response_metadata={
+                "llm_provider": "inception",
+                "llm_model": "mercury-3",
+            },
+        )
+        model = FakeModel([response])
+        client = FakeToolClient([])
+        caplog.set_level("INFO", logger="app.graph")
+
+        result = asyncio.run(
+            answer_question(
+                "What changed?",
+                model,
+                [],
+                client,
+            )
+        )
+
+        assert result["llm_responses"] == [
+            {"provider": "inception", "model": "mercury-3"}
+        ]
+        response_event = next(
+            event
+            for event in result["workflow_trace"]
+            if event["event"] == "model_response"
+        )
+        assert response_event["provider"] == "inception"
+        assert response_event["model"] == "mercury-3"
+        assert "LLM response provider=inception model=mercury-3" in caplog.text
+
+
 class FakeToolClient:
     """Record tool calls and return prepared MCP results or failures."""
 

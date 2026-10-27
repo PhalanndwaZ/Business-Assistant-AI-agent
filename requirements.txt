@@ -3,6 +3,7 @@ deepeval>=2,<4
 groq>=0.13,<1
 langchain-core>=0.3,<2
 langchain-groq>=0.3,<1
+langchain-openai>=0.3,<1
 langgraph>=0.2,<2
 matplotlib>=3.9,<4
 mcp>=1.9,<2

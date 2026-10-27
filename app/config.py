@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import date
@@ -10,6 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LOGGER = logging.getLogger(__name__)
 DEFAULT_AS_OF_DATE = date(2025, 1, 15)
 EMBEDDING_DIMENSIONS = 1024
 DEFAULT_MIN_SIMILARITY = 0.84
@@ -19,6 +21,12 @@ DEFAULT_MAX_STEPS = 8
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_GROQ_MAX_TOKENS = 1024
 DEFAULT_MAX_HISTORY_TURNS = 10
+DEFAULT_INCEPTION_BASE_URL = "https://api.inceptionlabs.ai/v1"
+DEFAULT_INCEPTION_MODEL = "mercury-3"
+DEFAULT_INCEPTION_MAX_RETRIES = 2
+DEFAULT_INCEPTION_BACKOFF_BASE_SECONDS = 1.0
+DEFAULT_INCEPTION_BACKOFF_MAX_SECONDS = 8.0
+DEFAULT_LLM_CALL_TIMEOUT_SECONDS = 20.0
 
 
 class ConfigurationError(ValueError):
@@ -45,6 +53,15 @@ class Settings:
     groq_max_tokens: int = DEFAULT_GROQ_MAX_TOKENS
     conversation_db_path: Path = PROJECT_ROOT / "data" / "conversations.sqlite3"
     max_history_turns: int = DEFAULT_MAX_HISTORY_TURNS
+    inception_api_key: str = ""
+    inception_base_url: str = DEFAULT_INCEPTION_BASE_URL
+    inception_model: str = DEFAULT_INCEPTION_MODEL
+    inception_max_retries: int = DEFAULT_INCEPTION_MAX_RETRIES
+    inception_backoff_base_seconds: float = (
+        DEFAULT_INCEPTION_BACKOFF_BASE_SECONDS
+    )
+    inception_backoff_max_seconds: float = DEFAULT_INCEPTION_BACKOFF_MAX_SECONDS
+    llm_call_timeout_seconds: float = DEFAULT_LLM_CALL_TIMEOUT_SECONDS
 
 
 def _path_from_environment(name: str, default: str) -> Path:
@@ -56,22 +73,26 @@ def _path_from_environment(name: str, default: str) -> Path:
 
 
 def load_settings(*, require_groq_api_key: bool = True) -> Settings:
-    """Load settings and fail with a clear error when API keys are absent."""
+    """Load settings and require an LLM key for application workflows."""
     load_dotenv(PROJECT_ROOT / ".env")
+    groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
+    inception_api_key = os.getenv("INCEPTION_API_KEY", "").strip()
     missing_keys = [
         key_name
-        for key_name in (
-            ("GROQ_API_KEY", "MISTRAL_API_KEY")
-            if require_groq_api_key
-            else ("MISTRAL_API_KEY",)
-        )
+        for key_name in ("MISTRAL_API_KEY",)
         if not os.getenv(key_name, "").strip()
     ]
+    if require_groq_api_key and not (groq_api_key or inception_api_key):
+        missing_keys.append("INCEPTION_API_KEY or GROQ_API_KEY")
     if missing_keys:
         raise ConfigurationError(
             "Missing required environment variable(s): "
             f"{', '.join(missing_keys)}. Copy .env.example to .env and add "
             "your keys."
+        )
+    if require_groq_api_key and not inception_api_key:
+        LOGGER.warning(
+            "INCEPTION_API_KEY is not configured; using Groq-only mode."
         )
 
     try:
@@ -85,6 +106,30 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         max_rows = int(os.getenv("MAX_ROWS", str(DEFAULT_MAX_ROWS)))
         max_steps = int(os.getenv("MAX_STEPS", str(DEFAULT_MAX_STEPS)))
         max_retries = int(os.getenv("MAX_RETRIES", str(DEFAULT_MAX_RETRIES)))
+        inception_max_retries = int(
+            os.getenv(
+                "INCEPTION_MAX_RETRIES",
+                str(DEFAULT_INCEPTION_MAX_RETRIES),
+            )
+        )
+        inception_backoff_base_seconds = float(
+            os.getenv(
+                "INCEPTION_BACKOFF_BASE_SECONDS",
+                str(DEFAULT_INCEPTION_BACKOFF_BASE_SECONDS),
+            )
+        )
+        inception_backoff_max_seconds = float(
+            os.getenv(
+                "INCEPTION_BACKOFF_MAX_SECONDS",
+                str(DEFAULT_INCEPTION_BACKOFF_MAX_SECONDS),
+            )
+        )
+        llm_call_timeout_seconds = float(
+            os.getenv(
+                "LLM_CALL_TIMEOUT_SECONDS",
+                str(DEFAULT_LLM_CALL_TIMEOUT_SECONDS),
+            )
+        )
         groq_max_tokens = int(
             os.getenv("GROQ_MAX_TOKENS", str(DEFAULT_GROQ_MAX_TOKENS))
         )
@@ -105,13 +150,27 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
             raise ConfigurationError(f"{name} must be at least 1.")
     if max_retries < 0:
         raise ConfigurationError("MAX_RETRIES cannot be negative.")
+    if inception_max_retries < 0:
+        raise ConfigurationError("INCEPTION_MAX_RETRIES cannot be negative.")
+    for name, value in (
+        ("INCEPTION_BACKOFF_BASE_SECONDS", inception_backoff_base_seconds),
+        ("INCEPTION_BACKOFF_MAX_SECONDS", inception_backoff_max_seconds),
+        ("LLM_CALL_TIMEOUT_SECONDS", llm_call_timeout_seconds),
+    ):
+        if value <= 0:
+            raise ConfigurationError(f"{name} must be greater than 0.")
+    if inception_backoff_max_seconds < inception_backoff_base_seconds:
+        raise ConfigurationError(
+            "INCEPTION_BACKOFF_MAX_SECONDS must be at least "
+            "INCEPTION_BACKOFF_BASE_SECONDS."
+        )
     if groq_max_tokens < 1:
         raise ConfigurationError("GROQ_MAX_TOKENS must be at least 1.")
     if max_history_turns < 1:
         raise ConfigurationError("MAX_HISTORY_TURNS must be at least 1.")
 
     return Settings(
-        groq_api_key=os.getenv("GROQ_API_KEY", ""),
+        groq_api_key=groq_api_key,
         mistral_api_key=os.environ["MISTRAL_API_KEY"],
         groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
         mistral_embedding_model=os.getenv(
@@ -133,4 +192,17 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
             "CONVERSATION_DB_PATH", "data/conversations.sqlite3"
         ),
         max_history_turns=max_history_turns,
+        inception_api_key=inception_api_key,
+        inception_base_url=os.getenv(
+            "INCEPTION_BASE_URL",
+            DEFAULT_INCEPTION_BASE_URL,
+        ),
+        inception_model=os.getenv(
+            "INCEPTION_MODEL",
+            DEFAULT_INCEPTION_MODEL,
+        ),
+        inception_max_retries=inception_max_retries,
+        inception_backoff_base_seconds=inception_backoff_base_seconds,
+        inception_backoff_max_seconds=inception_backoff_max_seconds,
+        llm_call_timeout_seconds=llm_call_timeout_seconds,
     )
