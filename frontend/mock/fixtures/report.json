@@ -1,0 +1,258 @@
+{
+  "answer": "I could not verify the draft's factual claims against the successful tool results, so I cannot present them as factual.\n\nReport file: reports/revenue-comparison-november-2024-vs-october-2024-november-2024-vs-october-2024-27fc883fc0224178b1f0e738ce689d6b.docx\n\nSources: generate_report, get_data_schema, run_analysis.",
+  "conversation_id": null,
+  "figures": [
+    {
+      "analysis": "revenue_by_period",
+      "period": {
+        "start": "2024-11-01",
+        "end": "2024-11-30"
+      },
+      "data": [
+        {
+          "period": "2024-11-01",
+          "revenue_cents": 166488,
+          "units": 12
+        },
+        {
+          "period": "2024-11-02",
+          "revenue_cents": 19594,
+          "units": 6
+        },
+        {
+          "period": "2024-11-03",
+          "revenue_cents": 62598,
+          "units": 2
+        },
+        {
+          "period": "2024-11-04",
+          "revenue_cents": 9198,
+          "units": 2
+        },
+        {
+          "period": "2024-11-05",
+          "revenue_cents": 101992,
+          "units": 8
+        },
+        {
+          "period": "2024-11-06",
+          "revenue_cents": 383777,
+          "units": 23
+        },
+        {
+          "period": "2024-11-07",
+          "revenue_cents": 57590,
+          "units": 10
+        },
+        {
+          "period": "2024-11-08",
+          "revenue_cents": 65998,
+          "units": 2
+        },
+        {
+          "period": "2024-11-09",
+          "revenue_cents": 428981,
+          "units": 19
+        },
+        {
+          "period": "2024-11-10",
+          "revenue_cents": 35996,
+          "units": 4
+        },
+        {
+          "period": "2024-11-11",
+          "revenue_cents": 57999,
+          "units": 1
+        },
+        {
+          "period": "2024-11-12",
+          "revenue_cents": 146283,
+          "units": 17
+        },
+        {
+          "period": "2024-11-13",
+          "revenue_cents": 187489,
+          "units": 11
+        },
+        {
+          "period": "2024-11-14",
+          "revenue_cents": 213593,
+          "units": 7
+        },
+        {
+          "period": "2024-11-15",
+          "revenue_cents": 245793,
+          "units": 7
+        },
+        {
+          "period": "2024-11-16",
+          "revenue_cents": 151691,
+          "units": 9
+        },
+        {
+          "period": "2024-11-17",
+          "revenue_cents": 62190,
+          "units": 10
+        },
+        {
+          "period": "2024-11-20",
+          "revenue_cents": 146384,
+          "units": 16
+        },
+        {
+          "period": "2024-11-21",
+          "revenue_cents": 689173,
+          "units": 27
+        },
+        {
+          "period": "2024-11-22",
+          "revenue_cents": 469479,
+          "units": 21
+        },
+        {
+          "period": "2024-11-23",
+          "revenue_cents": 46392,
+          "units": 8
+        },
+        {
+          "period": "2024-11-26",
+          "revenue_cents": 123689,
+          "units": 11
+        },
+        {
+          "period": "2024-11-28",
+          "revenue_cents": 19794,
+          "units": 6
+        },
+        {
+          "period": "2024-11-30",
+          "revenue_cents": 125788,
+          "units": 12
+        }
+      ]
+    },
+    {
+      "analysis": "revenue_by_category",
+      "period": {
+        "start": "2024-11-01",
+        "end": "2024-11-30"
+      },
+      "data": [
+        {
+          "category": "Furniture",
+          "revenue_cents": 2565948,
+          "units": 52
+        },
+        {
+          "category": "Electronics",
+          "revenue_cents": 814931,
+          "units": 69
+        },
+        {
+          "category": "Accessories",
+          "revenue_cents": 429522,
+          "units": 78
+        },
+        {
+          "category": "Office Supplies",
+          "revenue_cents": 207548,
+          "units": 52
+        }
+      ]
+    },
+    {
+      "analysis": "top_customers",
+      "period": {
+        "start": "2024-11-01",
+        "end": "2024-11-30"
+      },
+      "data": [
+        {
+          "customer_id": "C0023",
+          "customer_name": "Customer 023",
+          "region": "North",
+          "segment": "Small Business",
+          "revenue_cents": 419790,
+          "order_count": 2
+        },
+        {
+          "customer_id": "C0058",
+          "customer_name": "Customer 058",
+          "region": "East",
+          "segment": "Enterprise",
+          "revenue_cents": 389988,
+          "order_count": 1
+        },
+        {
+          "customer_id": "C0059",
+          "customer_name": "Customer 059",
+          "region": "East",
+          "segment": "Mid-Market",
+          "revenue_cents": 251994,
+          "order_count": 1
+        },
+        {
+          "customer_id": "C0052",
+          "customer_name": "Customer 052",
+          "region": "South",
+          "segment": "Enterprise",
+          "revenue_cents": 238495,
+          "order_count": 1
+        },
+        {
+          "customer_id": "C0055",
+          "customer_name": "Customer 055",
+          "region": "North",
+          "segment": "Small Business",
+          "revenue_cents": 234594,
+          "order_count": 1
+        }
+      ]
+    },
+    {
+      "analysis": "period_change",
+      "period": {
+        "current": {
+          "start": "2024-11-01",
+          "end": "2024-11-30"
+        },
+        "previous": {
+          "start": "2024-10-01",
+          "end": "2024-10-31"
+        }
+      },
+      "data": [
+        {
+          "metric": "revenue",
+          "current_value": 4017949,
+          "previous_value": 3220670,
+          "absolute_change": 797279,
+          "percent_change": 24.75506649237581
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "run_analysis:revenue_by_period",
+    "run_analysis:revenue_by_category",
+    "run_analysis:top_customers",
+    "run_analysis:period_change"
+  ],
+  "caveats": [
+    "Only completed orders are included.",
+    "Revenue is quantity multiplied by unit price in integer cents.",
+    "A zero previous value has no defined percentage change.",
+    "Revenue is returned in integer cents.",
+    "Evidence check: Number '2,565,948' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '52' (metric='revenue', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '419,790' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '389,988' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '251,994' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '238,495' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '234,594' (metric='count', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '1' (metric='revenue', unit=None) does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '63.9%' (metric='percentage', unit='percentage') does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: Number '5.2%' (metric='percentage', unit='percentage') does not appear in successful tool results. Compared against: -2024 (general/general), -2024 (revenue/revenue), 1 (count/count), 1 (date/date), 2 (count/count), 2 (date/date), 3 (date/date), 4 (count/count), 4 (date/date), 5 (date/date), 5 (general/general), 6 (count/count), 6 (date/date), 7 (count/count), 7 (date/date), 8 (count/count), 8 (date/date), 9 (count/count), 9 (date/date), 10 (count/count), ... and 115 more.",
+    "Evidence check: A document-attributed claim has no retrieved document evidence."
+  ]
+}

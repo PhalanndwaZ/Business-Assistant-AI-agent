@@ -1407,6 +1407,9 @@ def test_document_evidence_feedback_retries_the_original_question() -> None:
     assert "do not acknowledge this feedback" in str(
         model.invocations[-1][-1].content
     )
+    assert "exact contiguous quote" in str(
+        model.invocations[-1][-1].content
+    )
 
 
 def test_invalid_document_draft_falls_back_to_exact_retrieved_excerpt() -> None:

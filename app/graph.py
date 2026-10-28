@@ -788,10 +788,13 @@ def build_graph(
             )
             if document_names:
                 feedback += (
-                    " For every document-based claim, include the exact "
-                    "retrieved filename in square brackets and an exact "
-                    "supporting quote in that same sentence. Available "
-                    "filenames: "
+                    " Correct every document-evidence issue. For each "
+                    "management-reported factor, write one sentence in this "
+                    "form: Management reported that <paraphrase> "
+                    "[exact_filename], “<exact contiguous quote from that "
+                    "retrieved passage>”. Keep the measured analysis in a "
+                    "separate sentence. Do not describe a reported factor as "
+                    "a proven cause. Available filenames: "
                     + ", ".join(document_names)
                     + "."
                 )

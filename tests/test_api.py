@@ -6,6 +6,7 @@ import asyncio
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi.testclient import TestClient
@@ -278,7 +279,13 @@ def test_ask_returns_same_answer_and_supporting_workflow_data(
                                 "current": {"start": "2024-12-01"},
                                 "previous": {"start": "2024-11-01"},
                             },
-                            "data": [{"current_value": 100, "previous_value": 200}],
+                            "data": [
+                                {
+                                    "current_value": 100,
+                                    "previous_value": 200,
+                                    "optional_value": None,
+                                }
+                            ],
                             "assumptions": ["Only completed orders are included."],
                         },
                     },
@@ -314,7 +321,13 @@ def test_ask_returns_same_answer_and_supporting_workflow_data(
                     "current": {"start": "2024-12-01"},
                     "previous": {"start": "2024-11-01"},
                 },
-                "data": [{"current_value": 100, "previous_value": 200}],
+                "data": [
+                    {
+                        "current_value": 100,
+                        "previous_value": 200,
+                        "optional_value": None,
+                    }
+                ],
             }
         ],
         "sources": ["run_analysis:period_change", "search_documents", "management_report_2024-12.md"],
@@ -324,6 +337,123 @@ def test_ask_returns_same_answer_and_supporting_workflow_data(
             "Reported explanations are not proof that a factor caused a measured business change.",
         ],
     }
+
+
+def test_response_fields_includes_generated_report_filename(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Expose the filename only for a valid generated file inside reports."""
+    reports_directory = tmp_path / "reports"
+    reports_directory.mkdir()
+    filename = "revenue-report-2024-2025-0123456789abcdef.docx"
+    report_path = reports_directory / filename
+    report_path.write_bytes(b"docx")
+    monkeypatch.setattr(main, "REPORTS_DIR", reports_directory)
+
+    response = main._response_fields(
+        {
+            "final_answer": f"Report file: {report_path}",
+            "tool_results": [
+                {
+                    "tool_name": "generate_report",
+                    "success": True,
+                    "result": {"path": str(report_path)},
+                }
+            ],
+        }
+    )
+
+    assert response.report_filename == filename
+
+    outside_path = tmp_path / filename
+    outside_path.write_bytes(b"outside")
+    response = main._response_fields(
+        {
+            "tool_results": [
+                {
+                    "tool_name": "generate_report",
+                    "success": True,
+                    "result": {"path": str(outside_path)},
+                }
+            ]
+        }
+    )
+    assert response.report_filename is None
+
+
+def test_ask_includes_report_filename_when_present(
+    monkeypatch: Any,
+) -> None:
+    """Serialize the optional report filename in the API response."""
+    async def fake_run_question(
+        _question: str,
+        _conversation_id: UUID | None = None,
+    ) -> main.AskResponse:
+        return main.AskResponse(
+            answer="Report created.",
+            conversation_id="00000000-0000-0000-0000-000000000011",
+            figures=[],
+            sources=[],
+            caveats=[],
+            report_filename="revenue-report.docx",
+        )
+
+    monkeypatch.setattr(main, "_run_question", fake_run_question)
+
+    response = TestClient(main.create_app()).post(
+        "/ask",
+        json={"question": "Create a report"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["report_filename"] == "revenue-report.docx"
+
+
+def test_download_report_serves_only_docx_files_inside_reports(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Reject invalid names and files that resolve outside the reports folder."""
+    reports_directory = tmp_path / "reports"
+    reports_directory.mkdir()
+    filename = "revenue-report-0123456789abcdef.docx"
+    report_path = reports_directory / filename
+    report_path.write_bytes(b"docx test content")
+    outside_report = tmp_path / "outside.docx"
+    outside_report.write_bytes(b"private content")
+    monkeypatch.setattr(main, "REPORTS_DIR", reports_directory)
+    client = TestClient(main.create_app())
+
+    response = client.get(f"/reports/{filename}")
+
+    assert response.status_code == 200
+    assert response.content == b"docx test content"
+    assert response.headers["content-type"] == main.DOCX_MEDIA_TYPE
+    assert response.headers["content-disposition"] == (
+        f'attachment; filename="{filename}"'
+    )
+
+    invalid_names = (
+        "missing.docx",
+        "report.pdf",
+        "../outside.docx",
+        r"..\outside.docx",
+        str(outside_report),
+    )
+    for invalid_name in invalid_names:
+        encoded_name = quote(invalid_name, safe="")
+        invalid_response = client.get(f"/reports/{encoded_name}")
+        assert invalid_response.status_code == 404
+        assert b"private content" not in invalid_response.content
+
+    external_link = reports_directory / "external.docx"
+    try:
+        external_link.symlink_to(outside_report)
+    except (OSError, NotImplementedError):
+        pass
+    else:
+        assert client.get("/reports/external.docx").status_code == 404
 
 
 def test_ask_rejects_missing_or_blank_question() -> None:

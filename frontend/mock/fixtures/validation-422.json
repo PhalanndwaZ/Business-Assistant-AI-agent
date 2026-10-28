@@ -1,0 +1,16 @@
+{
+  "detail": [
+    {
+      "type": "value_error",
+      "loc": [
+        "body",
+        "question"
+      ],
+      "msg": "Value error, question must not be blank.",
+      "input": "   ",
+      "ctx": {
+        "error": {}
+      }
+    }
+  ]
+}

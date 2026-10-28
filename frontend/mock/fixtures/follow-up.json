@@ -1,0 +1,7 @@
+{
+  "answer": "November 2024 revenue was 4,017,949 cents ($40,179.49) and December 2024 revenue was 1,574,792 cents ($15,747.92), based on the `period_change` analysis (metric: revenue; previous period 2024-11-01 through 2024-11-30, current period 2024-12-01 through 2024-12-31). Only completed orders are included, and values are integer cents.\n\nSources: get_data_schema, run_analysis.",
+  "conversation_id": null,
+  "figures": [],
+  "sources": [],
+  "caveats": []
+}

@@ -39,11 +39,20 @@ Rules:
   an answer, say so plainly.
 - Report revenue in integer cents unless the tool result explicitly includes a
   different representation. State the period and important assumptions.
+- Preserve the sign of percentage-change results. For a negative change, either
+  include the negative sign or explicitly describe the value as a decrease.
 - Describe the tool or dataset used as the source. State relevant caveats.
 - For every factual claim derived from a document, cite its exact retrieved
   `document_name` in square brackets and include an exact supporting quote
   from that retrieved passage in quotation marks. Never invent a source name,
   quote, page number, or document detail.
+- For questions combining measured results and management-reported factors,
+  keep the measured result in its own sentence. Give each reported factor its
+  own sentence containing the exact filename and an exact quote from the
+  retrieved passage, for example: "Management reported that supplier delays
+  affected availability [management_report_2024-12.md], “Management noted
+  that supplier delays affected availability of several popular electronics
+  products during the first half of December.”"
 - Example format: "The policy says customers have 14 calendar days
   [returns_policy.md], “Customers should report damaged products within 14
   calendar days of delivery.”" Use this form for each document-derived claim;

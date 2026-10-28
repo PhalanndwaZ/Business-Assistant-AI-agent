@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from groq import APIError as GroqAPIError
 from openai import APIError as OpenAIAPIError
 from pydantic import BaseModel, Field, field_validator
 from mcp.shared.exceptions import McpError
 
-from app.config import ConfigurationError, Settings, load_settings
+from app.config import ConfigurationError, PROJECT_ROOT, Settings, load_settings
 from app.conversation_store import ConversationStore
 from app.graph import answer_question
 from app.llm_factory import build_chat_model
@@ -22,6 +25,14 @@ from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
 
 LOGGER = logging.getLogger(__name__)
+REPORTS_DIR = PROJECT_ROOT / "reports"
+REPORT_FILENAME_PATTERN = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9._-]*\.docx",
+    re.IGNORECASE,
+)
+DOCX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
 
 
 class AskRequest(BaseModel):
@@ -48,6 +59,24 @@ class AskResponse(BaseModel):
     figures: list[dict[str, Any]]
     sources: list[str]
     caveats: list[str]
+    report_filename: str | None = None
+
+
+def _resolve_report_file(path: Path) -> Path | None:
+    """Resolve an existing DOCX only when it remains inside the reports folder."""
+    try:
+        reports_directory = REPORTS_DIR.resolve()
+        report_path = path.resolve(strict=True)
+        report_path.relative_to(reports_directory)
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+    if (
+        not REPORT_FILENAME_PATTERN.fullmatch(report_path.name)
+        or not report_path.is_file()
+    ):
+        return None
+    return report_path
 
 
 def _response_fields(
@@ -59,6 +88,7 @@ def _response_fields(
     sources: list[str] = []
     caveats: list[str] = []
     document_sources: set[str] = set()
+    report_filename: str | None = None
 
     for tool_result in state.get("tool_results", []):
         if not tool_result.get("success"):
@@ -97,6 +127,12 @@ def _response_fields(
             )
         elif tool_name == "search_documents":
             sources.append("search_documents")
+        elif tool_name == "generate_report" and report_filename is None:
+            report_path = result.get("path")
+            if isinstance(report_path, str):
+                resolved_report = _resolve_report_file(Path(report_path))
+                if resolved_report is not None:
+                    report_filename = resolved_report.name
 
     for chunk in state.get("retrieved_chunks", []):
         if isinstance(chunk, dict):
@@ -121,12 +157,18 @@ def _response_fields(
         if isinstance(error, str):
             caveats.append(error)
 
+    response_fields: dict[str, Any] = {
+        "answer": str(state.get("final_answer", "")),
+        "conversation_id": conversation_id,
+        "figures": figures,
+        "sources": list(dict.fromkeys(sources)),
+        "caveats": list(dict.fromkeys(caveats)),
+    }
+    if report_filename is not None:
+        response_fields["report_filename"] = report_filename
+
     return AskResponse(
-        answer=str(state.get("final_answer", "")),
-        conversation_id=conversation_id,
-        figures=figures,
-        sources=list(dict.fromkeys(sources)),
-        caveats=list(dict.fromkeys(caveats)),
+        **response_fields,
     )
 
 
@@ -197,7 +239,11 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
-    @application.post("/ask", response_model=AskResponse)
+    @application.post(
+        "/ask",
+        response_model=AskResponse,
+        response_model_exclude_unset=True,
+    )
     async def ask(request: AskRequest) -> AskResponse:
         """Answer a question with evidence-backed figures, sources, and caveats."""
         try:
@@ -243,6 +289,22 @@ def create_app() -> FastAPI:
                 status_code=503,
                 detail="The question could not be completed because a required service failed.",
             ) from exc
+
+    @application.get("/reports/{filename}", response_class=FileResponse)
+    def download_report(filename: str) -> FileResponse:
+        """Serve only generated DOCX files contained in the reports directory."""
+        if not REPORT_FILENAME_PATTERN.fullmatch(filename):
+            raise HTTPException(status_code=404, detail="Report not found.")
+
+        report_path = _resolve_report_file(REPORTS_DIR / filename)
+        if report_path is None:
+            raise HTTPException(status_code=404, detail="Report not found.")
+
+        return FileResponse(
+            path=report_path,
+            media_type=DOCX_MEDIA_TYPE,
+            filename=filename,
+        )
 
     return application
 

@@ -13,6 +13,7 @@ from app.state import ToolResult
 NUMBER_PATTERN = re.compile(
     r"(?:(?<![\w.])|(?<=[Rr]))[−‑+-]?\d+(?:,\d{3})*(?:\.\d+)?%?"
 )
+SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<!\d)[.!?](?!\d)|\n")
 MONEY_CENT_KEYS = frozenset({"revenue_cents", "unit_price_cents"})
 METRIC_TERMS = (
     ("revenue", re.compile(r"\b(revenue|sales)\b", re.IGNORECASE)),
@@ -236,17 +237,31 @@ def _claim_category(
         return "date", None
     day_token = match.group().replace(",", "")
     if day_token.isdigit() and 1 <= int(day_token) <= 31:
+        context_start = max(0, match.start() - 40)
         month_context = draft_answer[
-            max(0, match.start() - 12) : min(len(draft_answer), match.end() + 12)
+            context_start : min(len(draft_answer), match.end() + 40)
         ]
-        month_match = MONTH_PATTERN.search(month_context)
-        if month_match is not None:
-            month_position = max(0, match.start() - 12) + month_match.start()
+        for month_match in MONTH_PATTERN.finditer(month_context):
+            month_start = context_start + month_match.start()
+            month_end = context_start + month_match.end()
             distance = min(
-                abs(month_position - match.end()),
-                abs(match.start() - (month_position + len(month_match.group()))),
+                abs(month_start - match.end()),
+                abs(match.start() - month_end),
             )
             if distance <= 2:
+                return "date", None
+            month_to_day = draft_answer[month_end : match.start()]
+            day_to_month = draft_answer[match.end() : month_start]
+            if re.fullmatch(
+                r"\s*,?\s*(?:(?:which\s+)?"
+                r"(?:has|had|contains|contained)\s+)?",
+                month_to_day,
+                re.IGNORECASE,
+            ) or re.fullmatch(
+                r"\s+(?:calendar\s+)?days?\s+(?:in|for|during)\s+",
+                day_to_month,
+                re.IGNORECASE,
+            ):
                 return "date", None
     unit = None
     if match.group().endswith("%") or re.match(
@@ -268,9 +283,17 @@ def _claim_category(
         unit = "cents"
     if unit == "percentage":
         return "percentage", unit
+    sentence_start = 0
+    sentence_end = len(draft_answer)
+    for boundary in SENTENCE_BOUNDARY_PATTERN.finditer(draft_answer):
+        if boundary.end() <= match.start():
+            sentence_start = boundary.end()
+        elif boundary.start() >= match.end():
+            sentence_end = boundary.start()
+            break
     nearest_metric: tuple[int, str] | None = None
-    context_start = max(0, match.start() - 40)
-    context_end = min(len(draft_answer), match.end() + 40)
+    context_start = sentence_start
+    context_end = sentence_end
     for category, pattern in METRIC_TERMS:
         if unit in {"cents", "dollars"} and category not in {
             "revenue",
@@ -356,7 +379,7 @@ def check_numeric_evidence(
             if is_percent_conversion or is_cents_conversion:
                 continue
         claim_category, claim_unit = _claim_category(draft_answer, match)
-        if not any(
+        has_matching_evidence = any(
             _claim_matches_number(claimed_number, match, draft_answer, evidence)
             and _claim_matches_evidence(
                 claim_category,
@@ -364,7 +387,35 @@ def check_numeric_evidence(
                 evidence,
             )
             for evidence in supported_numbers
+        )
+        if has_matching_evidence:
+            continue
+
+        if (
+            claim_category == "percentage"
+            and claim_unit == "percentage"
+            and claimed_number > 0
+            and any(
+                evidence.category == "percentage"
+                and evidence.field_name == "percent_change"
+                and evidence.value < 0
+                and math.isclose(
+                    claimed_number,
+                    abs(evidence.value),
+                    rel_tol=1e-4,
+                    abs_tol=0.005,
+                )
+                for evidence in supported_numbers
+            )
         ):
+            issues.append(
+                f"Percentage {match.group()!r} matches the magnitude of a "
+                "negative percentage change, but omits its direction. State "
+                "the signed value or explicitly describe it as a decrease."
+            )
+            continue
+
+        if not has_matching_evidence:
             issues.append(
                 f"Number {match.group()!r} (metric={claim_category!r}, "
                 f"unit={claim_unit!r}) does not appear in successful tool "
@@ -404,7 +455,8 @@ def _claim_matches_number(
     preceding_text = preceding_text.rstrip().rstrip("$€£Rr").rstrip()
     describes_decrease = re.search(
         r"(?:\b(?:decreased|declined|dropped|fell|reduced)\s*(?:(?:by|of)\s*)?|"
-        r"\b(?:decrease|decline|drop|reduction)\s+of|\bdown(?:\s+by)?)$",
+        r"\b(?:decrease|decline|drop|reduction)\s+(?:of|was|is)\s*|"
+        r"\bdown(?:\s+by)?)$",
         preceding_text,
         re.IGNORECASE,
     )

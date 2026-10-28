@@ -458,9 +458,16 @@ The response JSON has this shape:
   "conversation_id": "server-generated UUID",
   "figures": [],
   "sources": [],
-  "caveats": []
+  "caveats": [],
+  "report_filename": "sales-report-november-2024-a1b2c3d4.docx"
 }
 ```
+
+`report_filename` is optional and appears only when a report was successfully
+created inside the project `reports/` directory. Download it with
+`GET /reports/{filename}`. The endpoint accepts only a single `.docx` filename
+and serves it only when the resolved file remains inside `reports/`; invalid,
+missing, or out-of-directory files return `404`.
 
 `answer` contains the final evidence-checked response. For report requests it
 states whether a report file was generated and includes its path only after a

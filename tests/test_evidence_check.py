@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from app.services.evidence_check import check_numeric_evidence
+from app.services.evidence_check import (
+    check_document_evidence,
+    check_numeric_evidence,
+)
 from app.state import ToolResult
 
 
@@ -76,6 +79,59 @@ def test_metric_context_is_scoped_to_each_number() -> None:
     assert len(issues) == 1
 
 
+def test_revenue_context_applies_to_change_later_in_same_sentence() -> None:
+    """A same-sentence revenue topic grounds a later dollar decrease."""
+    result: list[ToolResult] = [
+        {
+            "tool_name": "run_analysis",
+            "arguments": {},
+            "result": {
+                "period": {
+                    "current": {
+                        "start": "2024-12-01",
+                        "end": "2024-12-31",
+                    },
+                    "previous": {
+                        "start": "2024-11-01",
+                        "end": "2024-11-30",
+                    },
+                },
+                "data": [
+                    {
+                        "metric": "revenue",
+                        "current_value": 1574792,
+                        "previous_value": 4017949,
+                        "absolute_change": -2443157,
+                        "percent_change": -60.80607294915888,
+                    }
+                ]
+            },
+            "success": True,
+        }
+    ]
+
+    is_valid, issues = check_numeric_evidence(
+        "Revenue fell 60.8% from November to December 2024, from "
+        "$40,179.49 to $15,747.92; the decrease was $24,431.57.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_metric_context_does_not_cross_sentence_boundaries() -> None:
+    """A metric in a previous sentence cannot classify a later currency claim."""
+    is_valid, issues = check_numeric_evidence(
+        "Revenue was $50.00. Cost was $50.00.",
+        _result({"revenue_cents": 5000}),
+    )
+
+    assert is_valid is False
+    assert len(issues) == 1
+    assert "50.00" in issues[0]
+
+
 def test_count_cannot_support_percentage_claim() -> None:
     """A percentage claim requires evidence from a percentage field."""
     is_valid, issues = check_numeric_evidence(
@@ -135,6 +191,24 @@ def test_document_text_supports_a_number_with_its_local_unit() -> None:
     assert issues == []
 
 
+def test_management_factor_citation_and_verbatim_quote_are_supported() -> None:
+    """A same-sentence management claim, source, and exact quote validate."""
+    source = "management_report_2024-12.md"
+    quote = (
+        "Management noted that supplier delays affected availability of "
+        "several popular electronics products during the first half of December."
+    )
+
+    is_valid, issues = check_document_evidence(
+        "Management reported that supplier delays affected availability "
+        f"[{source}], \u201c{quote}\u201d",
+        [{"document_name": source, "text": quote}],
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
 def test_total_matches_supports_dataset_count_claim() -> None:
     """Exact match counts from record queries ground dataset-size answers."""
     is_valid, issues = check_numeric_evidence(
@@ -166,6 +240,39 @@ def test_reported_year_is_supported_by_analysis_period() -> None:
     is_valid, issues = check_numeric_evidence(
         "Furniture generated the most revenue in 2024, at $245,324.74 "
         "(period ending Dec 31).",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_calendar_days_in_periods_match_date_evidence() -> None:
+    """Period lengths written beside month names are checked as dates."""
+    result: list[ToolResult] = [
+        {
+            "tool_name": "run_analysis",
+            "arguments": {},
+            "result": {
+                "period": {
+                    "current": {
+                        "start": "2024-12-01",
+                        "end": "2024-12-31",
+                    },
+                    "previous": {
+                        "start": "2024-11-01",
+                        "end": "2024-11-30",
+                    },
+                },
+                "data": [{"metric": "revenue", "absolute_change": -1}],
+            },
+            "success": True,
+        }
+    ]
+
+    is_valid, issues = check_numeric_evidence(
+        "Revenue changed in November, which has 30 days, and December, "
+        "which has 31 days.",
         result,
     )
 
@@ -371,6 +478,30 @@ def test_currency_claim_is_not_misclassified_by_nearby_unit_count() -> None:
     is_valid, issues = check_numeric_evidence(
         "Furniture revenue was $245,324.74 from 526 units.",
         result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_rounded_negative_percentage_requires_explicit_direction() -> None:
+    """An unsigned negative-change magnitude gets actionable evidence feedback."""
+    is_valid, issues = check_numeric_evidence(
+        "The percentage change was 60.81%.",
+        _result({"percent_change": -60.80607294915888}),
+    )
+
+    assert is_valid is False
+    assert len(issues) == 1
+    assert "omits its direction" in issues[0]
+    assert "explicitly describe it as a decrease" in issues[0]
+
+
+def test_rounded_negative_percentage_is_valid_when_described_as_decrease() -> None:
+    """A rounded positive magnitude is valid when explicitly called a decrease."""
+    is_valid, issues = check_numeric_evidence(
+        "Revenue decreased by 60.81%.",
+        _result({"percent_change": -60.80607294915888}),
     )
 
     assert is_valid is True
