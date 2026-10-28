@@ -22,3 +22,4 @@ Open the Vite URL shown in the frontend terminal (normally
 The interface uses a warm-white, black, and orange palette with a subtle grid.
 Recent chats are stored locally in the browser, ordered by latest activity, and
 limited to the 15 most recent conversations.
+Generated Word reports appear as downloadable document cards in the chat.
