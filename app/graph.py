@@ -151,6 +151,30 @@ def _content_from_mcp(result: CallToolResult) -> Any:
         return {"text": combined_text}
 
 
+def _mcp_error_detail(tool_output: Any) -> str | None:
+    """Extract a useful error string from structured or text MCP failures."""
+    if isinstance(tool_output, str):
+        detail = tool_output
+    elif isinstance(tool_output, dict):
+        detail = next(
+            (
+                tool_output[key]
+                for key in ("error", "message", "text", "content")
+                if isinstance(tool_output.get(key), str)
+            ),
+            None,
+        )
+    else:
+        detail = None
+
+    if not detail:
+        return None
+    cleaned = detail.strip()
+    if cleaned.casefold().startswith("error:"):
+        cleaned = cleaned[6:].strip()
+    return cleaned or None
+
+
 def _retrieved_document_excerpts(
     question: str,
     retrieved_chunks: list[dict[str, Any]],
@@ -933,6 +957,10 @@ def build_graph(
             try:
                 result = await tool_client.call_tool(tool_name, arguments)
                 tool_output = _content_from_mcp(result)
+                if result.isError:
+                    error_detail = _mcp_error_detail(tool_output)
+                    if error_detail is not None:
+                        tool_output = {"error": error_detail}
                 report_error = (
                     tool_output.get("error")
                     if tool_name == "generate_report"
@@ -943,8 +971,13 @@ def build_graph(
                 success = not result.isError and report_error is None
                 raw_result = result.model_dump(mode="json")
                 if not success:
-                    if report_error is not None:
-                        errors.append(f"{tool_name} failed: {report_error}")
+                    error_detail = (
+                        report_error
+                        if report_error is not None
+                        else _mcp_error_detail(tool_output)
+                    )
+                    if error_detail is not None:
+                        errors.append(f"{tool_name} failed: {error_detail}")
                     else:
                         errors.append(f"{tool_name} returned an MCP tool error.")
                     retry_count += 1

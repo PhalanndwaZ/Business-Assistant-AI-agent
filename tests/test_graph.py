@@ -1021,6 +1021,50 @@ def test_failed_tool_call_can_be_corrected_by_agent() -> None:
     assert "321 cents" in result["final_answer"]
 
 
+def test_text_mcp_error_is_preserved_for_agent_retry() -> None:
+    """Plain-text MCP errors become useful feedback instead of a generic error."""
+    model = FakeModel(
+        [
+            _tool_call("run_analysis", {"analysis_name": "bad_name"}, "bad-call"),
+            _tool_call(
+                "run_analysis",
+                {"analysis_name": "revenue_by_category"},
+                "good-call",
+            ),
+            AIMessage(content="Revenue was 321 cents."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Unknown analysis name: bad_name.",
+                    )
+                ],
+                isError=True,
+            ),
+            _tool_response({"data": [{"revenue_cents": 321}]}),
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Revenue by category?",
+            model,
+            [_tool("run_analysis")],
+            client,
+        )
+    )
+
+    assert result["tool_results"][0]["result"] == {
+        "error": "Unknown analysis name: bad_name."
+    }
+    assert "run_analysis failed: Unknown analysis name: bad_name." in result["errors"]
+    assert "321 cents" in result["final_answer"]
+
+
 def test_clarification_action_ends_without_calling_data_tools() -> None:
     """Ambiguous requests produce one short clarification and no tool calls."""
     model = FakeModel(

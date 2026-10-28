@@ -516,11 +516,12 @@
   display: grid;
   gap: 0.35rem;
   margin: 0;
+  padding: 0;
 }
 
 .figure-field {
   display: grid;
-  grid-template-columns: minmax(7rem, 0.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(6.5rem, 0.35fr) minmax(0, 1fr);
   gap: 0.5rem;
   border-top: 1px solid var(--color-border);
   padding-top: 0.35rem;
@@ -548,14 +549,79 @@
   padding-left: 1.2rem;
 }
 
-.figure-fallback {
+.figure-summary {
+  margin: 0.25rem 0 0.6rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.figure-period {
+  margin-bottom: 0.75rem;
+  border-radius: 0.55rem;
+  background: var(--color-surface-muted);
+  padding: 0.65rem;
+}
+
+.figure-period .figure-fields {
+  gap: 0.55rem;
+}
+
+.figure-preview {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.65rem;
+}
+
+.figure-preview summary {
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.figure-table-wrap {
   max-width: 100%;
   overflow-x: auto;
-  border-radius: 0.6rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.figure-table {
+  width: 100%;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.figure-table caption {
+  padding: 0.35rem 0;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.figure-table th,
+.figure-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.45rem 0.55rem;
+  vertical-align: top;
+}
+
+.figure-table th {
   background: var(--color-surface-muted);
-  padding: 0.75rem;
-  white-space: pre-wrap;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.figure-table td {
   overflow-wrap: anywhere;
+}
+
+.figure-empty {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .report-card {
