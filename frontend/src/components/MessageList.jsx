@@ -9,6 +9,7 @@ export function MessageList({
   messages,
   loading,
   error,
+  retryAfterSeconds,
   onCancel,
   onRetry,
 }) {
@@ -52,6 +53,7 @@ export function MessageList({
         <ErrorBanner
           message={error.message}
           onRetry={error.question ? onRetry : null}
+          retryAfterSeconds={retryAfterSeconds}
         />
       ) : null}
     </section>

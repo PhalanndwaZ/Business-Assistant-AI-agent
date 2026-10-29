@@ -53,6 +53,7 @@ export function QuestionInput({
           autoComplete="off"
           aria-describedby={describedBy}
           id="question-input"
+          disabled={disabled}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder="Ask a question about your business data..."

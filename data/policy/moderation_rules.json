@@ -1,0 +1,110 @@
+{
+  "input": {
+    "checks": [
+      {
+        "category": "M1",
+        "action": "refuse",
+        "response": "I use your account's access level and can't change it.",
+        "patterns": [
+          "\\b(?:i am|i'm|im)\\s+(?:the\\s+)?(?:hr|human resources|sales|system)\\s+(?:director|manager|admin(?:istrator)?)\\b",
+          "\\b(?:i am|i'm|im)\\s+(?:an?\\s+)?(?:admin|administrator)\\b",
+          "\\bact as\\s+(?:an?\\s+)?(?:admin(?:istrator)?|hr director|human resources director)\\b",
+          "\\b(?:give|grant) me\\s+(?:admin|hr|administrator)\\s+(?:access|permissions?)\\b"
+        ]
+      },
+      {
+        "category": "M2",
+        "action": "refuse",
+        "response": "I can't help bypass safeguards or reveal internal instructions.",
+        "patterns": [
+          "\\bignore\\s+(?:all\\s+)?(?:previous|prior|above|system|developer)\\s+(?:instructions?|rules?|messages?)\\b",
+          "\\b(?:reveal|print|show|repeat|disclose)\\s+(?:your\\s+)?(?:system|developer|hidden)\\s+(?:prompt|instructions?)\\b",
+          "\\b(?:print|show|reveal|repeat|disclose)\\s+(?:(?:me|us)\\s+)?(?:(?:your|the)\\s+)?(?:full\\s+)?(?:system\\s+)?prompt\\b",
+          "\\b(?:system prompt|developer prompt|jailbreak)\\b"
+        ]
+      },
+      {
+        "category": "M4",
+        "action": "refuse",
+        "response": "I can't help with bulk record extraction; please ask an administrator for an approved aggregate.",
+        "patterns": [
+          "\\b(?:dump|export|extract|download)\\b.{0,60}\\b(?:all|every)\\b.{0,40}\\b(?:records?|rows?|customers?|employees?|orders?|transactions?)\\b",
+          "\\b(?:list|show|give me|return)\\b.{0,30}\\b(?:all|every)\\s+(?:customers?|employees?|orders?|transactions?)\\b"
+        ]
+      },
+      {
+        "category": "M7",
+        "action": "refuse",
+        "response": "I can't make employment decisions about individuals; please consult HR and use human review.",
+        "patterns": [
+          "\\bwho\\s+should\\s+(?:we\\s+)?(?:fire|terminate|promote|discipline)\\b",
+          "\\b(?:which|who)\\s+(?:employee|staff member)\\s+should\\s+(?:we\\s+)?(?:fire|terminate|promote|discipline)\\b",
+          "\\bwhich\\s+(?:employees?|staff|people)\\s+(?:are\\s+)?(?:underperforming|should\\s+be\\s+(?:fired|terminated|promoted))\\b",
+          "\\b(?:rank|identify|select)\\s+(?:individual\\s+)?(?:employees?|staff)\\s+(?:by|for)\\s+(?:performance|termination|promotion)\\b"
+        ]
+      }
+    ],
+    "role_checks": {
+      "sales": {
+        "category": "M3",
+        "action": "refuse",
+        "response": "I can't help with that request using your account; please ask the data owner or an administrator.",
+        "patterns": [
+          "\\b(?:salary|salaries|compensation|employee pay|performance rating|work email|phone number)\\b",
+          "\\b(?:employee|employees|staff)\\b"
+        ]
+      },
+      "hr": {
+        "category": "M3",
+        "action": "refuse",
+        "response": "I can't help with that request using your account; please ask the data owner or an administrator.",
+        "patterns": [
+          "\\b(?:revenue|orders?|customers?|products?|sales report|top customers)\\b"
+        ]
+      },
+      "manager": {
+        "category": "M3",
+        "action": "refuse",
+        "response": "I can't help with that request using your account; please ask the data owner or an administrator.",
+        "patterns": [
+          "\\b(?:salary|salaries|compensation|employee pay|performance rating|work email|phone number)\\b",
+          "\\b(?:named|individual)\\s+(?:employee|staff member)\\b"
+        ]
+      },
+      "admin": {
+        "category": "M3",
+        "action": "refuse",
+        "response": "I can't help with that request using your account; please ask the data owner or an administrator.",
+        "patterns": [
+          "\\b(?:revenue|orders?|customers?|products?|employees?|salary|salaries|sales report)\\b"
+        ]
+      }
+    }
+  },
+  "retrieved_text": {
+    "category": "M9",
+    "action": "drop",
+    "patterns": [
+      "\\bignore\\s+(?:all\\s+)?(?:previous|prior|above|system|developer)\\s+(?:instructions?|rules?|messages?)\\b",
+      "\\b(?:reveal|disclose|print|show)\\b.{0,50}\\b(?:confidential|secret|system prompt|credentials|personal data)\\b",
+      "\\b(?:you are now|act as)\\b.{0,40}\\b(?:unrestricted|admin|system|developer)\\b"
+    ]
+  },
+  "output": {
+    "notice": "Some content was withheld because of your access level.",
+    "system_prompt_min_words": 10,
+    "restricted_quote_min_chars": 20,
+    "checks": [
+      {
+        "category": "M5",
+        "action": "redact",
+        "patterns": [
+          "\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b",
+          "\\b(?:\\+?1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}\\b",
+          "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+          "\\bE\\d{3,}\\b"
+        ]
+      }
+    ]
+  }
+}

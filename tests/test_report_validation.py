@@ -164,6 +164,29 @@ def test_valid_report_numbers_match_cited_tool_results() -> None:
     assert validate_report_evidence(_report(), _sources()) == []
 
 
+def test_grouped_currency_key_figure_is_not_treated_as_a_year() -> None:
+    """Whole-rand report formatting preserves support for four-digit values."""
+    report = _report()
+    report.key_figures[0].label = "Lowest Category Revenue (Office Supplies)"
+    report.key_figures[0].value = 207548
+    report.key_figures[0].source_ref = "call_5"
+    sources = _sources()
+    sources["call_5"] = _tool_result(
+        "run_analysis",
+        {
+            "analysis": "revenue_by_category",
+            "data": [
+                {
+                    "category": "Office Supplies",
+                    "revenue_cents": 207548,
+                }
+            ],
+        },
+    )
+
+    assert validate_report_evidence(report, sources) == []
+
+
 def test_altered_key_figure_is_rejected_and_names_the_claim() -> None:
     """A changed figure cannot pass merely because similar evidence exists."""
     report = _report()
@@ -203,5 +226,17 @@ def test_report_years_and_table_row_numbers_are_ignored() -> None:
     """Report labels and display row indices are not treated as data claims."""
     report = _report()
     report.tables[0].rows[0][0] = 99
+
+    assert validate_report_evidence(report, _sources()) == []
+
+
+def test_year_month_period_is_not_misread_as_a_negative_number() -> None:
+    """A year-month report label must not become an unsupported negative month."""
+    report = _report()
+    report.key_figures[2].label = "Period"
+    report.key_figures[2].value = "2024-11"
+    report.key_figures[2].source_ref = "call_1"
+    report.findings[0].finding += " The period was 2024-11."
+    report.findings[0].source_refs.append("call_1")
 
     assert validate_report_evidence(report, _sources()) == []

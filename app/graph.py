@@ -7,6 +7,7 @@ import copy
 import json
 import logging
 import re
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any, Protocol
@@ -22,11 +23,13 @@ from langgraph.graph import END, START, StateGraph
 from mcp.shared.exceptions import McpError
 from mcp.types import CallToolResult, TextContent, Tool
 
+from app.chart_specs import build_chart_specs
 from app.config import DEFAULT_MAX_RETRIES, DEFAULT_MAX_STEPS, PROJECT_ROOT
 from app.services.evidence_check import (
     check_document_evidence,
     check_numeric_evidence,
 )
+from app.moderation.moderator import ModerationError, filter_retrieved_chunks
 from app.state import AnalystState, ToolResult
 
 LOGGER = logging.getLogger(__name__)
@@ -265,6 +268,15 @@ def _report_requested(question: str) -> bool:
     ) is not None
 
 
+def _chart_requested(question: str) -> bool:
+    """Identify explicit requests for charts, graphs, plots, or visualizations."""
+    return re.search(
+        r"\b(?:charts?|graphs?|plots?|visuali[sz](?:e|ation|ations))\b",
+        question,
+        flags=re.IGNORECASE,
+    ) is not None
+
+
 def _resolve_report_source_refs(
     report_data: Any,
     tool_results: list[ToolResult],
@@ -327,6 +339,28 @@ def _resolve_report_source_refs(
                     resolve(reference)
                     for reference in finding["source_refs"]
                 ]
+    return normalized
+
+
+def _omit_malformed_optional_report_chart(report_data: Any) -> Any:
+    """Keep an invalid optional chart from blocking an otherwise valid report."""
+    if not isinstance(report_data, dict):
+        return report_data
+    chart = report_data.get("chart")
+    if chart is None:
+        return report_data
+    if (
+        isinstance(chart, dict)
+        and isinstance(chart.get("x"), list)
+        and isinstance(chart.get("y"), list)
+    ):
+        return report_data
+
+    normalized = copy.deepcopy(report_data)
+    normalized.pop("chart", None)
+    LOGGER.warning(
+        "Malformed optional report chart omitted; chart axes must be lists"
+    )
     return normalized
 
 
@@ -832,6 +866,28 @@ def build_graph(
                     )
                 )
             )
+        if (
+            _chart_requested(state.get("question", ""))
+            and not build_chart_specs(state.get("tool_results", []))
+        ):
+            messages.append(
+                HumanMessage(
+                    content=(
+                        "The user explicitly requested a chart, not a report. "
+                        "Use an analysis result that produces a ranking, "
+                        "comparison, or at least two periods. A single monthly "
+                        "total is not enough for a useful chart; for a one-month "
+                        "sales request, run revenue_by_category for the exact "
+                        "same dates unless the user requested a different "
+                        "breakdown. Do not call generate_report unless the "
+                        "user explicitly asks for a report or document. The "
+                        "application builds the chart from successful analysis "
+                        "results and renders it in the chat; do not say you "
+                        "cannot render a chart or image, and do not invent "
+                        "chart values."
+                    )
+                )
+            )
         response = await _invoke_with_backoff(
             bound_model,
             messages,
@@ -948,12 +1004,16 @@ def build_graph(
                     arguments.get("report"),
                     evidence_results,
                 )
+                arguments["report"] = _omit_malformed_optional_report_chart(
+                    arguments["report"]
+                )
                 arguments["tool_results_by_ref"] = {
                     source_call_id: result
                     for result in evidence_results
                     if (source_call_id := result.get("call_id"))
                 }
             step_count += 1
+            tool_started_at = time.perf_counter()
             try:
                 result = await tool_client.call_tool(tool_name, arguments)
                 tool_output = _content_from_mcp(result)
@@ -983,14 +1043,33 @@ def build_graph(
                     retry_count += 1
                 elif tool_name == "search_documents":
                     passages = tool_output.get("results", [])
-                    if isinstance(passages, list):
-                        retrieved_chunks.extend(
-                            passage
-                            for passage in passages
-                            if isinstance(passage, dict)
-                            and isinstance(passage.get("document_name"), str)
-                            and isinstance(passage.get("text"), str)
+                    if not isinstance(passages, list):
+                        raise ModerationError(
+                            "Retrieved document results have an invalid shape."
                         )
+                    safe_passages, dropped_count = filter_retrieved_chunks(
+                        passages
+                    )
+                    if dropped_count:
+                        tool_output = dict(tool_output)
+                        tool_output["results"] = safe_passages
+                        if not safe_passages:
+                            tool_output["message"] = (
+                                "No relevant passages found."
+                            )
+                        raw_result = {
+                            "moderation_filtered": True,
+                            "dropped_chunks": dropped_count,
+                            "result": tool_output,
+                        }
+                        LOGGER.warning(
+                            "moderation event=retrieved_text_filter "
+                            "reason=M9 dropped_chunks=%d",
+                            dropped_count,
+                        )
+                    retrieved_chunks.extend(safe_passages)
+            except ModerationError:
+                raise
             except (
                 McpError,
                 ValueError,
@@ -1012,11 +1091,16 @@ def build_graph(
                     type(exc).__name__,
                 )
 
+            duration_ms = round(
+                (time.perf_counter() - tool_started_at) * 1000,
+                2,
+            )
             workflow_trace.append(
                 {
                     "event": "tool_call",
                     "call_id": call_id,
                     "tool_name": tool_name,
+                    "duration_ms": duration_ms,
                     "arguments": arguments,
                     "raw_result": raw_result,
                     "parsed_result": tool_output,
@@ -1063,6 +1147,15 @@ def build_graph(
         )
         issues = numeric_issues + document_issues
         is_valid = numeric_valid and document_valid
+        chart_requested = _chart_requested(state.get("question", ""))
+        if chart_requested and not build_chart_specs(
+            state.get("tool_results", [])
+        ):
+            issues.append(
+                "The requested chart has not been generated; retrieve a "
+                "ranking, comparison, or multi-period analysis."
+            )
+            is_valid = False
         report_requested = _report_requested(state.get("question", ""))
         report_generated = any(
             result.get("success")
@@ -1167,6 +1260,16 @@ def build_graph(
                 "retry limit. Last report error: "
                 + failed_report_errors[-1]
             )
+        elif _chart_requested(state.get("question", "")):
+            charts = build_chart_specs(state.get("tool_results", []))
+            if charts:
+                answer = f"Here is the requested **{charts[0]['title']}** chart."
+            else:
+                answer = (
+                    "I could not create a chart because the available results "
+                    "do not contain a ranking, comparison, or multiple periods. "
+                    "Request a product/category breakdown or a longer date range."
+                )
         elif not successful_results:
             answer = (
                 "I cannot answer this question from the available business data "
@@ -1326,15 +1429,76 @@ async def answer_question(
     """Run a single question with a fresh state and no conversational memory."""
     if not question.strip():
         raise ValueError("Question cannot be empty.")
-    graph = build_graph(model, tools, tool_client, max_steps, max_retries)
+    available_tools = [
+        tool
+        for tool in tools
+        if tool.name != "generate_report" or _report_requested(question)
+    ]
+    graph = build_graph(
+        model,
+        available_tools,
+        tool_client,
+        max_steps,
+        max_retries,
+    )
     history_messages = [
         HumanMessage(content=content)
         if role == "user"
         else AIMessage(content=content)
         for role, content in (history or [])
     ]
-    historical_results = prior_tool_results or []
-    historical_chunks = prior_retrieved_chunks or []
+    historical_results: list[ToolResult] = []
+    dropped_historical_results = 0
+    for tool_result in prior_tool_results or []:
+        if tool_result.get("tool_name") != "search_documents":
+            historical_results.append(tool_result)
+            continue
+        result = tool_result.get("result")
+        if not isinstance(result, dict):
+            raise ModerationError(
+                "A historical document-search result has an invalid shape."
+            )
+        passages = result.get("results", [])
+        if not isinstance(passages, list):
+            raise ModerationError(
+                "A historical document-search result has an invalid shape."
+            )
+        safe_passages, dropped_count = filter_retrieved_chunks(passages)
+        if dropped_count:
+            dropped_historical_results += dropped_count
+            safe_result = dict(result)
+            safe_result["results"] = safe_passages
+            if not safe_passages:
+                safe_result["message"] = "No relevant passages found."
+            tool_result = {**tool_result, "result": safe_result}
+        historical_results.append(tool_result)
+    if dropped_historical_results:
+        LOGGER.warning(
+            "moderation event=retrieved_text_filter reason=M9 "
+            "dropped_chunks=%d",
+            dropped_historical_results,
+        )
+    historical_chunks, dropped_count = filter_retrieved_chunks(
+        prior_retrieved_chunks or []
+    )
+    if dropped_count:
+        LOGGER.warning(
+            "moderation event=retrieved_text_filter reason=M9 dropped_chunks=%d",
+            dropped_count,
+        )
+    initial_workflow_trace = (
+        [
+            {
+                "event": "moderation",
+                "category": "M9",
+                "dropped_chunks": (
+                    dropped_historical_results + dropped_count
+                ),
+            }
+        ]
+        if dropped_historical_results or dropped_count
+        else []
+    )
     evidence_context = (
         [
             HumanMessage(
@@ -1373,7 +1537,7 @@ async def answer_question(
             HumanMessage(content=question.strip()),
         ],
         "tool_results": historical_results,
-        "workflow_trace": [],
+        "workflow_trace": initial_workflow_trace,
         "llm_responses": [],
         "retrieved_chunks": historical_chunks,
         "errors": [],

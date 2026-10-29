@@ -1,5 +1,8 @@
 const STATUS_MESSAGES = {
+  401: "Your session has expired. Please log in again.",
+  404: "That conversation is no longer available, so a new one was started.",
   422: "Please enter a question.",
+  429: "You're sending requests too quickly.",
   502: "The AI model providers are unavailable right now. Try again in a moment.",
   503: "A required service isn't available. Check that the backend is running and configured.",
 };
@@ -11,11 +14,12 @@ const TIMEOUT_MESSAGE = "The request took too long. Please try again.";
 /** Create a safe error object for API failures without exposing response text. */
 export class ApiRequestError extends Error {
   /** Store the user-facing message and the failure category for later handling. */
-  constructor(message, { kind, status = null } = {}) {
+  constructor(message, { kind, status = null, retryAfter = null } = {}) {
     super(message);
     this.name = "ApiRequestError";
     this.kind = kind;
     this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -48,9 +52,16 @@ export function normalizeApiError({
   timedOut = false,
   networkFailure = false,
   invalidResponse = false,
+  retryAfter = null,
 } = {}) {
   let kind = "http";
   let message = STATUS_MESSAGES[status] || GENERIC_MESSAGE;
+  const detail =
+    body !== null &&
+    typeof body === "object" &&
+    typeof body.detail === "string"
+      ? body.detail
+      : null;
 
   if (cancelled) {
     kind = "cancelled";
@@ -66,6 +77,12 @@ export function normalizeApiError({
   } else if (!Number.isInteger(status)) {
     kind = "network";
     message = NETWORK_MESSAGE;
+  } else if (
+    status === 503 &&
+    detail === "The question-answering service is not configured."
+  ) {
+    message =
+      "The AI service is not configured. Add MISTRAL_API_KEY and either GROQ_API_KEY or INCEPTION_API_KEY to the project root .env file, then restart the backend.";
   }
 
   if (import.meta.env?.DEV) {
@@ -77,5 +94,5 @@ export function normalizeApiError({
     });
   }
 
-  return new ApiRequestError(message, { kind, status });
+  return new ApiRequestError(message, { kind, status, retryAfter });
 }

@@ -1,11 +1,82 @@
-const ACTIVE_CONVERSATION_KEY = "business-analyst-ai:active-conversation";
-const CONVERSATION_KEY_PREFIX = "business-analyst-ai:conversation:";
-const RECENT_CONVERSATIONS_KEY = "business-analyst-ai:recent-conversations";
+const ACTIVE_CONVERSATION_KEY_PREFIX = "business-analyst-ai:user-active:";
+const CONVERSATION_KEY_PREFIX = "business-analyst-ai:user-conversation:";
+const RECENT_CONVERSATIONS_KEY_PREFIX = "business-analyst-ai:user-recent:";
+const LEGACY_ACTIVE_CONVERSATION_KEY =
+  "business-analyst-ai:active-conversation";
+const LEGACY_CONVERSATION_KEY_PREFIX = "business-analyst-ai:conversation:";
+const LEGACY_RECENT_CONVERSATIONS_KEY =
+  "business-analyst-ai:recent-conversations";
 const MAX_RECENT_CONVERSATIONS = 15;
+const memoryStorage = new Map();
 
-/** Build the storage key for one private conversation identifier. */
-function getConversationKey(conversationId) {
-  return `${CONVERSATION_KEY_PREFIX}${encodeURIComponent(conversationId)}`;
+/** Build the active-conversation key scoped to a user ID. */
+function getActiveConversationKey(userId) {
+  return `${ACTIVE_CONVERSATION_KEY_PREFIX}${encodeURIComponent(userId)}`;
+}
+
+/** Build a stored-conversation key scoped to its owner and conversation ID. */
+function getConversationKey(userId, conversationId) {
+  return `${CONVERSATION_KEY_PREFIX}${encodeURIComponent(userId)}:${encodeURIComponent(conversationId)}`;
+}
+
+/** Build the recent-conversations key scoped to a user ID. */
+function getRecentConversationsKey(userId) {
+  return `${RECENT_CONVERSATIONS_KEY_PREFIX}${encodeURIComponent(userId)}`;
+}
+
+/** Read a value from localStorage and fall back to the in-memory copy. */
+function readStorageValue(key) {
+  try {
+    const stored = window.localStorage.getItem(key);
+    if (stored !== null) {
+      memoryStorage.set(key, stored);
+      return stored;
+    }
+  } catch (error) {
+    logStorageFailure("read", error);
+  }
+  return memoryStorage.get(key) || null;
+}
+
+/** Save a value in memory and best-effort localStorage. */
+function writeStorageValue(key, value) {
+  memoryStorage.set(key, value);
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    logStorageFailure("write", error);
+    return false;
+  }
+}
+
+/** Remove a value from memory and best-effort localStorage. */
+function removeStorageValue(key) {
+  memoryStorage.delete(key);
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    logStorageFailure("remove", error);
+    return false;
+  }
+}
+
+/** List browser and in-memory storage keys without leaking stored values. */
+function listStorageKeys() {
+  const keys = new Set(memoryStorage.keys());
+  try {
+    const storage = window.localStorage;
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key) {
+        keys.add(key);
+      }
+    }
+  } catch (error) {
+    logStorageFailure("list-keys", error);
+  }
+  return [...keys];
 }
 
 /** Check that a stored message has the fields used by the chat components. */
@@ -42,15 +113,9 @@ function logStorageFailure(operation, error) {
   }
 }
 
-/** Read saved conversation summaries, returning null when storage is blocked. */
-function readRecentConversationsFromStorage() {
-  let serialized;
-  try {
-    serialized = window.localStorage.getItem(RECENT_CONVERSATIONS_KEY);
-  } catch (error) {
-    logStorageFailure("read-recents", error);
-    return null;
-  }
+/** Read a user's saved conversation summaries from scoped storage. */
+function readRecentConversationsFromStorage(userId) {
+  const serialized = readStorageValue(getRecentConversationsKey(userId));
   if (!serialized) {
     return [];
   }
@@ -71,9 +136,12 @@ function readRecentConversationsFromStorage() {
 }
 
 /** Return the newest saved conversation summaries for the sidebar. */
-export function loadRecentConversations() {
+export function loadRecentConversations(userId) {
+  if (typeof userId !== "string" || !userId) {
+    return [];
+  }
   return (
-    readRecentConversationsFromStorage()?.slice(
+    readRecentConversationsFromStorage(userId).slice(
       0,
       MAX_RECENT_CONVERSATIONS,
     ) || []
@@ -137,16 +205,10 @@ function parseStoredConversation(conversationId, serialized) {
 }
 
 /** Read and validate a conversation without changing which one is active. */
-function readStoredConversation(conversationId) {
-  let serialized;
-  try {
-    serialized = window.localStorage.getItem(
-      getConversationKey(conversationId),
-    );
-  } catch (error) {
-    logStorageFailure("read-messages", error);
-    return null;
-  }
+function readStoredConversation(userId, conversationId) {
+  const serialized = readStorageValue(
+    getConversationKey(userId, conversationId),
+  );
   if (!serialized) {
     return null;
   }
@@ -154,137 +216,164 @@ function readStoredConversation(conversationId) {
 }
 
 /** Load the active conversation and its displayed messages from local storage. */
-export function loadConversation() {
-  let conversationId;
-  try {
-    conversationId = window.localStorage.getItem(
-      ACTIVE_CONVERSATION_KEY,
-    );
-  } catch (error) {
-    logStorageFailure("read", error);
+export function loadConversation(userId) {
+  if (typeof userId !== "string" || !userId) {
     return null;
   }
+  const conversationId = readStorageValue(getActiveConversationKey(userId));
   if (!conversationId) {
     return null;
   }
 
-  const conversation = readStoredConversation(conversationId);
+  const conversation = readStoredConversation(userId, conversationId);
   if (!conversation) {
     return { conversationId, messages: [] };
   }
 
-  const recents = loadRecentConversations();
+  const recents = loadRecentConversations(userId);
   if (
     conversation.messages.some((message) => message.role === "user") &&
     !recents.some((item) => item.conversationId === conversationId)
   ) {
-    saveConversation(conversationId, conversation.messages);
+    saveConversation(userId, conversationId, conversation.messages);
   }
   return conversation;
 }
 
 /** Load a saved conversation and make it active for follow-up questions. */
-export function loadConversationById(conversationId) {
-  if (typeof conversationId !== "string" || !conversationId) {
+export function loadConversationById(userId, conversationId) {
+  if (
+    typeof userId !== "string" ||
+    !userId ||
+    typeof conversationId !== "string" ||
+    !conversationId
+  ) {
     return null;
   }
 
-  const conversation = readStoredConversation(conversationId);
+  const conversation = readStoredConversation(userId, conversationId);
   if (!conversation) {
     return null;
   }
-  try {
-    window.localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversationId);
-  } catch (error) {
-    logStorageFailure("activate", error);
-  }
+  writeStorageValue(getActiveConversationKey(userId), conversationId);
   return conversation;
 }
 
 /** Persist the active conversation ID and its displayed messages locally. */
-export function saveConversation(conversationId, messages) {
-  if (!conversationId || !Array.isArray(messages)) {
+export function saveConversation(userId, conversationId, messages) {
+  if (
+    typeof userId !== "string" ||
+    !userId ||
+    !conversationId ||
+    !Array.isArray(messages)
+  ) {
     return false;
   }
 
-  const existingRecents = readRecentConversationsFromStorage();
-  try {
-    window.localStorage.setItem(ACTIVE_CONVERSATION_KEY, conversationId);
-    window.localStorage.setItem(
-      getConversationKey(conversationId),
-      JSON.stringify({ conversationId, messages }),
-    );
-    if (existingRecents === null) {
-      return false;
-    }
+  const existingRecents = readRecentConversationsFromStorage(userId);
+  writeStorageValue(getActiveConversationKey(userId), conversationId);
+  writeStorageValue(
+    getConversationKey(userId, conversationId),
+    JSON.stringify({ conversationId, messages }),
+  );
 
-    const nextRecents = upsertRecentConversation(
-      existingRecents,
-      conversationId,
-      messages,
+  const nextRecents = upsertRecentConversation(
+    existingRecents,
+    conversationId,
+    messages,
+  );
+  writeStorageValue(
+    getRecentConversationsKey(userId),
+    JSON.stringify(nextRecents),
+  );
+  const retainedIds = new Set(
+    nextRecents.map((conversation) => conversation.conversationId),
+  );
+  for (const conversation of existingRecents) {
+    if (!retainedIds.has(conversation.conversationId)) {
+      removeStorageValue(
+        getConversationKey(userId, conversation.conversationId),
+      );
+    }
+  }
+  return true;
+}
+
+/** Clear only the active selection so saved chats remain available in Recents. */
+export function clearActiveConversation(userId) {
+  if (typeof userId !== "string" || !userId) {
+    return false;
+  }
+  return removeStorageValue(getActiveConversationKey(userId));
+}
+
+/** Delete a saved conversation and its sidebar entry from local storage. */
+export function clearConversation(userId, conversationId = null) {
+  if (typeof userId !== "string" || !userId) {
+    return false;
+  }
+  const existingRecents = readRecentConversationsFromStorage(userId);
+  const activeKey = getActiveConversationKey(userId);
+  const activeConversationId = readStorageValue(activeKey);
+  const conversationToClear = conversationId || activeConversationId;
+  if (conversationToClear) {
+    removeStorageValue(getConversationKey(userId, conversationToClear));
+  }
+  if (!conversationId || activeConversationId === conversationId) {
+    removeStorageValue(activeKey);
+  }
+  if (conversationToClear) {
+    const nextRecents = existingRecents.filter(
+      (conversation) => conversation.conversationId !== conversationToClear,
     );
-    window.localStorage.setItem(
-      RECENT_CONVERSATIONS_KEY,
+    writeStorageValue(
+      getRecentConversationsKey(userId),
       JSON.stringify(nextRecents),
     );
-    const retainedIds = new Set(
-      nextRecents.map((conversation) => conversation.conversationId),
-    );
-    for (const conversation of existingRecents) {
-      if (!retainedIds.has(conversation.conversationId)) {
-        window.localStorage.removeItem(
-          getConversationKey(conversation.conversationId),
-        );
+  }
+  return true;
+}
+
+/** Remove saved messages, recents, and active selection for one user. */
+export function clearUserConversations(userId) {
+  if (typeof userId !== "string" || !userId) {
+    return false;
+  }
+  const userIdPrefix = `${CONVERSATION_KEY_PREFIX}${encodeURIComponent(userId)}:`;
+  const activeKey = getActiveConversationKey(userId);
+  const recentKey = getRecentConversationsKey(userId);
+  try {
+    for (const key of listStorageKeys()) {
+      if (
+        key === activeKey ||
+        key === recentKey ||
+        key.startsWith(userIdPrefix)
+      ) {
+        removeStorageValue(key);
       }
     }
     return true;
   } catch (error) {
-    logStorageFailure("write", error);
+    logStorageFailure("clear-user", error);
     return false;
   }
 }
 
-/** Clear only the active selection so saved chats remain available in Recents. */
-export function clearActiveConversation() {
+/** Delete pre-auth conversation keys so they cannot cross user sessions. */
+export function clearLegacyConversationData() {
   try {
-    window.localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
-    return true;
-  } catch (error) {
-    logStorageFailure("clear-active", error);
-    return false;
-  }
-}
-
-/** Delete a saved conversation and its sidebar entry from local storage. */
-export function clearConversation(conversationId = null) {
-  const existingRecents = readRecentConversationsFromStorage();
-  try {
-    const activeConversationId = window.localStorage.getItem(
-      ACTIVE_CONVERSATION_KEY,
-    );
-    const conversationToClear = conversationId || activeConversationId;
-    if (conversationToClear) {
-      window.localStorage.removeItem(getConversationKey(conversationToClear));
-    }
-    if (
-      !conversationId ||
-      activeConversationId === conversationId
-    ) {
-      window.localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
-    }
-    if (conversationToClear && existingRecents !== null) {
-      const nextRecents = existingRecents.filter(
-        (conversation) =>
-          conversation.conversationId !== conversationToClear,
-      );
-      window.localStorage.setItem(
-        RECENT_CONVERSATIONS_KEY,
-        JSON.stringify(nextRecents),
-      );
+    for (const key of listStorageKeys()) {
+      if (
+        key === LEGACY_ACTIVE_CONVERSATION_KEY ||
+        key === LEGACY_RECENT_CONVERSATIONS_KEY ||
+        key.startsWith(LEGACY_CONVERSATION_KEY_PREFIX)
+      ) {
+        removeStorageValue(key);
+      }
     }
     return true;
   } catch (error) {
-    logStorageFailure("clear", error);
+    logStorageFailure("clear-legacy", error);
     return false;
   }
 }

@@ -35,6 +35,17 @@ def test_revenue_cents_can_be_formatted_as_dollars() -> None:
     assert issues == []
 
 
+def test_grouped_four_digit_rand_amount_is_not_mistaken_for_a_year() -> None:
+    """A formatted money amount such as R2,075 is classified as revenue."""
+    is_valid, issues = check_numeric_evidence(
+        "Lowest category revenue was R2,075.",
+        _result({"revenue_cents": 207548}),
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
 def test_order_count_cannot_support_revenue_in_cents() -> None:
     """A matching count value cannot be misrepresented as a money amount."""
     is_valid, issues = check_numeric_evidence(

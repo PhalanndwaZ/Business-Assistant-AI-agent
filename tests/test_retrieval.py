@@ -8,6 +8,7 @@ from typing import Sequence
 import pytest
 
 from app.config import DEFAULT_MIN_SIMILARITY, EMBEDDING_DIMENSIONS
+from app.policy.policy import AccessPolicy
 from app.rag.retriever import DocumentRetriever
 from app.rag.vector_store import JsonVectorStore
 
@@ -146,6 +147,32 @@ def test_search_filters_by_document_date(tmp_path: Path) -> None:
 
     assert [item["document_name"] for item in result["results"]] == [
         "november.md"
+    ]
+
+
+def test_role_filter_is_applied_before_document_ranking(tmp_path: Path) -> None:
+    """An inaccessible best match cannot crowd out a role-visible passage."""
+    query = [1.0] + [0.0] * (EMBEDDING_DIMENSIONS - 1)
+    lower_score = [0.8, 0.6] + [0.0] * (EMBEDDING_DIMENSIONS - 2)
+    restricted = _chunk("salary-notes", "policy", query)
+    restricted.update(department="hr", classification="restricted")
+    visible = _chunk("sales-policy", "policy", lower_score)
+    visible.update(department="general", classification="internal")
+    retriever = _retriever(
+        tmp_path,
+        [restricted, visible],
+        query,
+        0.5,
+    )
+
+    result = retriever.search(
+        "leave policy",
+        access_policy=AccessPolicy(),
+        role="sales",
+    )
+
+    assert [item["document_name"] for item in result["results"]] == [
+        "sales-policy.md"
     ]
 
 

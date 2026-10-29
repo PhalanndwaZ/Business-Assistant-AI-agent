@@ -4,12 +4,17 @@ import { ExampleQuestions } from "./ExampleQuestions.jsx";
 import { MessageList } from "./MessageList.jsx";
 import { QuestionInput } from "./QuestionInput.jsx";
 import { RecentConversations } from "./RecentConversations.jsx";
+import { SessionNotice } from "./SessionNotice.jsx";
+import { UserMenu } from "./UserMenu.jsx";
+import { STARTER_QUESTIONS_BY_ROLE } from "../config.js";
 
 /** Compose the conversation sidebar, message area, and question input. */
 export function ChatWindow({
   messages,
   loading,
   error,
+  sessionNotice,
+  retryAfterSeconds,
   conversationId,
   recentConversations,
   send,
@@ -17,6 +22,10 @@ export function ChatWindow({
   retry,
   reset,
   selectConversation,
+  user,
+  onLogout,
+  pendingQuestion,
+  onClearPendingQuestion,
 }) {
   const questionInputRef = useRef(null);
   const recentSidebarRef = useRef(null);
@@ -25,10 +34,8 @@ export function ChatWindow({
   const recentSidebarWasOpenRef = useRef(false);
   const focusInputAfterCloseRef = useRef(false);
   const [recentSidebarOpen, setRecentSidebarOpen] = useState(false);
-  const activeConversationTitle =
-    recentConversations.find(
-      (conversation) => conversation.conversationId === conversationId,
-    )?.title || "New chat";
+  const starterQuestions = STARTER_QUESTIONS_BY_ROLE[user.role] || [];
+  const isAdminWithoutAuditView = user.role === "admin";
 
   useEffect(
     /** Return focus to the input after the current response finishes. */
@@ -98,6 +105,15 @@ export function ChatWindow({
     }
   }
 
+  /** Resend a question kept when this user's session expired. */
+  function handleResendPendingQuestion() {
+    if (!pendingQuestion) {
+      return;
+    }
+    send(pendingQuestion);
+    onClearPendingQuestion?.();
+  }
+
   /** Keep keyboard focus inside the modal drawer while it is open. */
   function handleRecentSidebarKeyDown(event) {
     if (event.key === "Escape") {
@@ -157,42 +173,73 @@ export function ChatWindow({
       <div className="app-workspace">
         <header className="app-header">
           <div className="app-header__inner">
-            <div className="app-header__title">
-              <h1>{activeConversationTitle}</h1>
+            <div className="app-header__actions">
+              <UserMenu user={user} onLogout={onLogout} />
             </div>
-            <button
-              aria-controls="recent-conversations"
-              aria-expanded={recentSidebarOpen}
-              className="button button--secondary mobile-history-toggle"
-              onClick={() => {
-                focusInputAfterCloseRef.current = false;
-                setRecentSidebarOpen((isOpen) => !isOpen);
-              }}
-              ref={recentToggleRef}
-              type="button"
-            >
-              Chats
-            </button>
           </div>
         </header>
+
+        <div className="mobile-history-toolbar">
+          <button
+            aria-controls="recent-conversations"
+            aria-expanded={recentSidebarOpen}
+            className="button button--secondary mobile-history-toggle"
+            onClick={() => {
+              focusInputAfterCloseRef.current = false;
+              setRecentSidebarOpen((isOpen) => !isOpen);
+            }}
+            ref={recentToggleRef}
+            type="button"
+          >
+            Chats
+          </button>
+        </div>
 
         <main className="chat-main">
           <div className="chat-content">
             {messages.length === 0 && !loading ? (
               <section className="empty-state" aria-labelledby="welcome-title">
-                <p className="empty-state__eyebrow">Ask a business question</p>
-                <h2 id="welcome-title">Answers grounded in your data</h2>
-                <p>
-                  Ask about business results or supporting documents. Answers
-                  are checked against the available evidence.
+                <p className="empty-state__eyebrow">
+                  {isAdminWithoutAuditView
+                    ? "Administrator account"
+                    : "Ask a business question"}
                 </p>
-                <ExampleQuestions onSelect={send} disabled={loading} />
+                <h2 id="welcome-title">
+                  {isAdminWithoutAuditView
+                    ? "No business data available"
+                    : "Answers grounded in your data"}
+                </h2>
+                <p>
+                  {isAdminWithoutAuditView
+                    ? "This account has no business data."
+                    : "Ask about business results or supporting documents. Answers are checked against the available evidence."}
+                </p>
+                {starterQuestions.length > 0 ? (
+                  <ExampleQuestions
+                    questions={starterQuestions}
+                    onSelect={send}
+                    disabled={loading}
+                  />
+                ) : null}
               </section>
+            ) : null}
+            {sessionNotice ? <SessionNotice message={sessionNotice} /> : null}
+            {pendingQuestion ? (
+              <SessionNotice
+                message="Your unsent question was saved when your session expired."
+                detail={pendingQuestion}
+                actionLabel="Resend question"
+                onAction={handleResendPendingQuestion}
+                actionDisabled={loading || retryAfterSeconds > 0}
+                dismissLabel="Discard"
+                onDismiss={onClearPendingQuestion}
+              />
             ) : null}
             <MessageList
               messages={messages}
               loading={loading}
               error={error}
+              retryAfterSeconds={retryAfterSeconds}
               onCancel={cancel}
               onRetry={retry}
             />
@@ -201,7 +248,7 @@ export function ChatWindow({
 
         <div className="input-dock">
           <QuestionInput
-            disabled={loading}
+            disabled={loading || retryAfterSeconds > 0}
             inputRef={questionInputRef}
             onSend={send}
           />

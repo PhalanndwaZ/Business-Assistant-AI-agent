@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Literal, Protocol
 
 from groq import APIConnectionError as GroqAPIConnectionError
@@ -30,6 +32,30 @@ class AsyncChatModel(Protocol):
 
 class ProviderUnavailableError(RuntimeError):
     """Safe error raised when neither configured LLM provider can answer."""
+
+
+def _retry_after_seconds(error: Exception) -> float | None:
+    """Read a bounded Retry-After delay from a provider response, if present."""
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    retry_after = headers.get("retry-after")
+    if not isinstance(retry_after, str):
+        return None
+    try:
+        delay = float(retry_after)
+    except ValueError:
+        try:
+            retry_at = parsedate_to_datetime(retry_after)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        delay = (retry_at - datetime.now(timezone.utc)).total_seconds()
+    if delay < 0:
+        return 0.0
+    return min(delay, 120.0)
 
 
 def classify_provider_error(
@@ -154,20 +180,35 @@ class FallbackChatModel:
         raise RuntimeError("Primary LLM retry loop exited unexpectedly.")
 
     async def _invoke_fallback(self, messages: list[Any]) -> AIMessage:
-        """Invoke Groq or raise a safe error when it cannot answer."""
+        """Retry transient Groq failures before raising a safe error."""
         if self._fallback is None:
             raise ProviderUnavailableError(SAFE_PROVIDER_ERROR) from None
-        try:
-            return await asyncio.wait_for(
-                self._fallback.ainvoke(messages),
-                timeout=self._call_timeout_seconds,
-            )
-        except Exception as exc:
-            error_kind = classify_provider_error(exc)
-            if error_kind is None:
-                raise
-            self._log_provider_failure("groq", exc, error_kind)
-            raise ProviderUnavailableError(SAFE_PROVIDER_ERROR) from None
+        for attempt in range(self._max_retries + 1):
+            try:
+                return await asyncio.wait_for(
+                    self._fallback.ainvoke(messages),
+                    timeout=self._call_timeout_seconds,
+                )
+            except Exception as exc:
+                error_kind = classify_provider_error(exc)
+                if error_kind is None:
+                    raise
+                if error_kind == "retryable" and attempt < self._max_retries:
+                    delay_seconds = max(
+                        8.0 * (2**attempt),
+                        _retry_after_seconds(exc) or 0.0,
+                    )
+                    LOGGER.warning(
+                        "Transient fallback LLM failure provider=groq "
+                        "error_type=%s; retrying in %.2fs",
+                        type(exc).__name__,
+                        delay_seconds,
+                    )
+                    await asyncio.sleep(delay_seconds)
+                    continue
+                self._log_provider_failure("groq", exc, error_kind)
+                raise ProviderUnavailableError(SAFE_PROVIDER_ERROR) from None
+        raise RuntimeError("Fallback LLM retry loop exited unexpectedly.")
 
     @staticmethod
     def _tag_response(

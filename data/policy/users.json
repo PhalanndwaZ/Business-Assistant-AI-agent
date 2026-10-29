@@ -1,0 +1,37 @@
+[
+  {
+    "user_id": "user-sales-demo",
+    "username": "sales.demo",
+    "name": "Sales Demo",
+    "role": "sales",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$/FBwls8QIYiKeAtgfJYaSA$VBAyfkSX7ozmg6ABH98fb59HpHVsRKbOHhaooTJIMVY"
+  },
+  {
+    "user_id": "user-hr-demo",
+    "username": "hr.demo",
+    "name": "HR Demo",
+    "role": "hr",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$gPdGCWP/F1ZMXYS+cO9HlQ$OWy6WxHflxRAU+BX7QztPVCrz24uLLSYF2zN/Qg4ZhQ"
+  },
+  {
+    "user_id": "user-manager-demo",
+    "username": "manager.demo",
+    "name": "Manager Demo",
+    "role": "manager",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$1sZ+W4r7RzAGzve3eLKhYA$RcpclTVG2WCmY9zGCkiGNPqCWWUawFWTXxF0cN1vpiI"
+  },
+  {
+    "user_id": "user-admin-demo",
+    "username": "admin.demo",
+    "name": "Admin Demo",
+    "role": "admin",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$I9A9+QUOkPmKt1n1B/v9RQ$XZ+vxtu4wB9AQv1yMtK3VnO9xif9wMici6p4LfppgDg"
+  },
+  {
+    "user_id": "user-newuser-demo",
+    "username": "newuser.demo",
+    "name": "New User Demo",
+    "role": "sales",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$BG+8mgvW7UGrBisv2VNTkw$ql8slLyJDCewHXpkdM6OLCganjVFrzza6nPvfhcs8m4"
+  }
+]
