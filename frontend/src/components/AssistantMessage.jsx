@@ -2,11 +2,14 @@ import { AnswerText } from "./AnswerText.jsx";
 import { ChartGrid } from "./ChartGrid.jsx";
 import { EvidencePanel } from "./EvidencePanel.jsx";
 import {
-<<<<<<< HEAD
   getReportFilename,
   removeReportPathFromAnswer,
   ReportNotice,
 } from "./ReportNotice.jsx";
+import {
+  getRedactionNotice,
+  ModerationNotice,
+} from "./ModerationNotice.jsx";
 
 /** Render an assistant answer followed by its current-turn evidence. */
 export function AssistantMessage({ content, response }) {
@@ -18,29 +21,12 @@ export function AssistantMessage({ content, response }) {
     content,
     response?.report_filename,
   );
-
-  return (
-    <article className="message-bubble message-bubble--assistant">
-      <AnswerText content={visibleAnswer} />
-      <ReportNotice
-        answer={content}
-        reportFilename={reportFilename}
-      />
-      <EvidencePanel response={response} />
-=======
-  getRedactionNotice,
-  ModerationNotice,
-} from "./ModerationNotice.jsx";
-import { ReportNotice } from "./ReportNotice.jsx";
-
-/** Render an assistant answer followed by its current-turn evidence. */
-export function AssistantMessage({ content, response }) {
   const isRefused = response?.moderation?.status === "refused";
   const redactionNotice = getRedactionNotice(response?.moderation);
   const answerRepeatsNotice =
     redactionNotice &&
-    typeof content === "string" &&
-    content.trim() === redactionNotice.trim();
+    typeof visibleAnswer === "string" &&
+    visibleAnswer.trim() === redactionNotice.trim();
   const evidenceResponse =
     redactionNotice && Array.isArray(response?.caveats)
       ? {
@@ -61,12 +47,14 @@ export function AssistantMessage({ content, response }) {
           : "message-bubble message-bubble--assistant"
       }
     >
-      {answerRepeatsNotice ? null : <AnswerText content={content} />}
+      {answerRepeatsNotice ? null : <AnswerText content={visibleAnswer} />}
       <ModerationNotice moderation={response?.moderation} />
       <ChartGrid charts={response?.charts} />
-      <ReportNotice reportFilename={response?.report_filename} />
+      <ReportNotice
+        answer={content}
+        reportFilename={reportFilename}
+      />
       <EvidencePanel response={evidenceResponse} />
->>>>>>> dev
     </article>
   );
 }
