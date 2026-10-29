@@ -18,6 +18,9 @@ LOGGER = logging.getLogger(__name__)
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 SUPPORTED_EXTENSIONS = frozenset({".pdf", ".txt", ".md"})
+VALID_CLASSIFICATIONS = frozenset(
+    {"public", "internal", "confidential", "restricted"}
+)
 
 
 def _read_manifest(documents_dir: Path) -> list[dict[str, str]]:
@@ -31,14 +34,29 @@ def _read_manifest(documents_dir: Path) -> list[dict[str, str]]:
         raise ValueError("Document manifest must be a JSON array.")
     document_ids: set[str] = set()
     for entry in manifest:
-        required = {"document_id", "file", "document_type", "document_date"}
+        required = {
+            "document_id",
+            "file",
+            "document_type",
+            "document_date",
+            "department",
+            "classification",
+        }
         if not isinstance(entry, dict) or set(entry) != required:
             raise ValueError(
                 "Each manifest entry must contain document_id, file, "
-                "document_type, and document_date."
+                "document_type, document_date, department, and classification."
             )
         if not all(isinstance(entry[key], str) for key in required):
             raise ValueError("All document manifest values must be strings.")
+        if not entry["department"] or not entry["classification"]:
+            raise ValueError(
+                "Document department and classification must not be empty."
+            )
+        if entry["classification"] not in VALID_CLASSIFICATIONS:
+            raise ValueError(
+                f"Invalid classification for {entry['document_id']!r}."
+            )
         if not entry["document_id"] or entry["document_id"] in document_ids:
             raise ValueError("Document IDs must be non-empty and unique.")
         document_ids.add(entry["document_id"])
@@ -109,6 +127,8 @@ def _document_chunks(
                     "document_name": path.name,
                     "document_type": entry["document_type"],
                     "document_date": entry["document_date"],
+                    "department": entry["department"],
+                    "classification": entry["classification"],
                     "chunk_id": f"{entry['document_id']}-chunk-{position:04d}",
                     "text": text,
                     "page_number": page_number,

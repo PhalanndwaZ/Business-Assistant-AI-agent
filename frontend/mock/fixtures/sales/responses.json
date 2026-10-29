@@ -1,0 +1,268 @@
+{
+  "assumed": true,
+  "login": {
+    "assumed": true,
+    "status": 200,
+    "body": {
+      "access_token": "assumed-not-a-real-token",
+      "token_type": "bearer",
+      "expires_in": 1800
+    }
+  },
+  "me": {
+    "assumed": true,
+    "status": 200,
+    "body": {
+      "user_id": "user-sales-demo",
+      "username": "sales.demo",
+      "name": "Sales Demo",
+      "role": "sales"
+    }
+  },
+  "ask": {
+    "ranking": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: top customers ranked by revenue.",
+        "conversation_id": "assumed-sales-ranking",
+        "figures": [],
+        "sources": ["run_analysis:revenue_by_customer"],
+        "caveats": [],
+        "moderation": { "status": "ok", "notice": null },
+        "charts": [
+          {
+            "id": "assumed-ranking",
+            "type": "ranking_bars",
+            "title": "Top customers by revenue",
+            "subtitle": "2024 · USD",
+            "unit": "money_cents",
+            "series": [
+              { "label": "Customer A", "value": 420000 },
+              { "label": "Customer B", "value": 310000 },
+              { "label": "Other", "value": 150000 }
+            ],
+            "highlight": "Customer A",
+            "annotations": [],
+            "source": {
+              "analysis": "revenue_by_customer",
+              "result_id": "assumed-ranking",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed horizontal ranking bars for customer revenue."
+          }
+        ]
+      }
+    },
+    "trend": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: monthly revenue trend.",
+        "conversation_id": "assumed-sales-trend",
+        "figures": [],
+        "sources": ["run_analysis:revenue_over_time"],
+        "caveats": [],
+        "moderation": { "status": "ok", "notice": null },
+        "charts": [
+          {
+            "id": "assumed-trend",
+            "type": "line",
+            "title": "Revenue over time",
+            "subtitle": "November–December 2024 · USD",
+            "unit": "money_cents",
+            "series": [
+              { "label": "2024-11", "value": 4017949 },
+              { "label": "2024-12", "value": 1574792 }
+            ],
+            "highlight": "2024-12",
+            "annotations": [],
+            "source": {
+              "analysis": "revenue_over_time",
+              "result_id": "assumed-trend",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed line chart of November and December revenue."
+          }
+        ]
+      }
+    },
+    "period_change": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: revenue decreased between November and December 2024.",
+        "conversation_id": "assumed-sales-period-change",
+        "figures": [],
+        "sources": ["run_analysis:period_change"],
+        "caveats": [],
+        "moderation": { "status": "ok", "notice": null },
+        "charts": [
+          {
+            "id": "assumed-compare",
+            "type": "compare_bars",
+            "title": "November vs December revenue",
+            "subtitle": "Completed orders · USD",
+            "unit": "money_cents",
+            "series": [
+              { "label": "November", "value": 4017949 },
+              { "label": "December", "value": 1574792 }
+            ],
+            "highlight": "December",
+            "annotations": [{ "label": "Change", "value": -2443157 }],
+            "source": {
+              "analysis": "period_change",
+              "result_id": "assumed-compare",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed comparison of November and December revenue."
+          }
+        ]
+      }
+    },
+    "decline_risk_report": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture only: a December 2024 decline-risk report. The backend risk analysis and explanation status are not implemented yet.",
+        "conversation_id": "assumed-sales-risk-report",
+        "figures": [],
+        "sources": ["run_analysis:decline_risk"],
+        "caveats": ["Assumed fixture; not a verified risk assessment."],
+        "report_filename": "assumed-decline-risk-report.docx",
+        "moderation": { "status": "ok", "notice": null },
+        "charts": [
+          {
+            "id": "assumed-waterfall",
+            "type": "waterfall",
+            "title": "Revenue change",
+            "subtitle": "November to December 2024 · USD",
+            "unit": "money_cents",
+            "series": [
+              { "label": "November", "value": 4017949, "kind": "total" },
+              { "label": "Change", "value": -2443157, "kind": "delta" },
+              { "label": "December", "value": 1574792, "kind": "total" }
+            ],
+            "highlight": "Change",
+            "annotations": [],
+            "source": {
+              "analysis": "period_change",
+              "result_id": "assumed-waterfall",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed waterfall from November to December revenue."
+          },
+          {
+            "id": "assumed-band",
+            "type": "line_with_expected_range",
+            "title": "Revenue and expected range",
+            "subtitle": "Illustrative only · money in cents",
+            "unit": "money_cents",
+            "series": [
+              {
+                "label": "2024-11",
+                "value": 4017949,
+                "lower": 3000000,
+                "upper": 5000000,
+                "flagged": false
+              },
+              {
+                "label": "2024-12",
+                "value": 1574792,
+                "lower": 2800000,
+                "upper": 4800000,
+                "flagged": true
+              }
+            ],
+            "highlight": "2024-12",
+            "annotations": [{ "label": "Illustrative flag", "value": "assumed" }],
+            "source": {
+              "analysis": "decline_risk",
+              "result_id": "assumed-band",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed revenue line with an illustrative expected range."
+          },
+          {
+            "id": "assumed-pair",
+            "type": "side_by_side_pair",
+            "title": "Orders and average order value",
+            "subtitle": "Illustrative only · November–December 2024",
+            "unit": "count",
+            "series": [
+              {
+                "label": "Orders",
+                "unit": "count",
+                "points": [
+                  { "label": "November", "value": 230 },
+                  { "label": "December", "value": 108 }
+                ]
+              },
+              {
+                "label": "Average order value",
+                "unit": "money_cents",
+                "points": [
+                  { "label": "November", "value": 17469 },
+                  { "label": "December", "value": 14581 }
+                ]
+              }
+            ],
+            "highlight": "December",
+            "annotations": [],
+            "source": {
+              "analysis": "decline_risk",
+              "result_id": "assumed-pair",
+              "as_of": "2025-01-15"
+            },
+            "alt_text": "Assumed pair of order-count and average-order-value charts."
+          }
+        ]
+      }
+    },
+    "refused": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "I can't help with that request using your account; please ask the data owner or an administrator.",
+        "conversation_id": "assumed-sales-refused",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null }
+      }
+    },
+    "redacted": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Some content was withheld because of your access level.",
+        "conversation_id": "assumed-sales-redacted",
+        "figures": [],
+        "sources": [],
+        "caveats": ["Some content was withheld because of your access level."],
+        "moderation": {
+          "status": "redacted",
+          "notice": "Some content was withheld because of your access level."
+        }
+      }
+    }
+  },
+  "errors": {
+    "unauthorized": {
+      "assumed": true,
+      "status": 401,
+      "body": { "detail": "Not authenticated" }
+    },
+    "conversation_not_found": {
+      "assumed": true,
+      "status": 404,
+      "body": { "detail": "Conversation not found." }
+    },
+    "rate_limited": {
+      "assumed": true,
+      "status": 429,
+      "headers": { "Retry-After": "30" },
+      "body": { "detail": "Too many requests. Please try again later." }
+    }
+  }
+}

@@ -1,72 +1,56 @@
 import { useState } from "react";
+import {
+  downloadReport,
+  isSafeReportFilename,
+} from "../api/reportsApi.js";
 
-const REPORT_PATH_PATTERN =
-  /(?:[A-Za-z]:[\\/]|\/|(?:\.{1,2}|reports)[\\/])[^\r\n"'<>]*?\.docx\b/i;
-const SAFE_REPORT_FILENAME_PATTERN =
-  /^[A-Za-z0-9][A-Za-z0-9._-]*\.docx$/i;
-
-/** Find a report file path in an answer without interpreting other text. */
-function findReportPath(answer) {
-  if (typeof answer !== "string") {
-    return null;
-  }
-  return answer.match(REPORT_PATH_PATTERN)?.[0]?.trim() || null;
-}
-
-/** Prefer the structured filename and retain answer parsing for older fixtures. */
-function getReportPath(answer, reportFilename) {
-  if (
-    typeof reportFilename === "string" &&
-    SAFE_REPORT_FILENAME_PATTERN.test(reportFilename)
-  ) {
-    return `reports/${reportFilename}`;
-  }
-  return findReportPath(answer);
-}
-
-/** Show only the report filename and a button to copy its path. */
-export function ReportNotice({ answer, reportFilename }) {
-  const [copyStatus, setCopyStatus] = useState("idle");
-  const reportPath = getReportPath(answer, reportFilename);
-  if (!reportPath) {
+/** Show a structured generated report with an authenticated download action. */
+export function ReportNotice({ reportFilename }) {
+  const [downloadStatus, setDownloadStatus] = useState("idle");
+  const [downloadError, setDownloadError] = useState("");
+  if (!isSafeReportFilename(reportFilename)) {
     return null;
   }
 
-  const pathParts = reportPath.split(/[\\/]/);
-  const filename = pathParts[pathParts.length - 1];
-
-  /** Copy the detected path and report clipboard failures on the button. */
-  async function handleCopyPath() {
+  async function handleDownload() {
+    setDownloadStatus("downloading");
+    setDownloadError("");
     try {
-      if (!navigator.clipboard?.writeText) {
-        setCopyStatus("failed");
-        return;
-      }
-      await navigator.clipboard.writeText(reportPath);
-      setCopyStatus("copied");
-    } catch {
-      setCopyStatus("failed");
+      await downloadReport(reportFilename);
+      setDownloadStatus("complete");
+    } catch (error) {
+      setDownloadStatus("failed");
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The report could not be downloaded.",
+      );
     }
   }
 
   const buttonLabel =
-    copyStatus === "copied"
-      ? "Copied"
-      : copyStatus === "failed"
-        ? "Copy failed"
-        : "Copy path";
+    downloadStatus === "downloading"
+      ? "Downloading..."
+      : downloadStatus === "complete"
+        ? "Download again"
+        : "Download report";
 
   return (
     <section className="report-notice" aria-label="Generated report">
-      <span className="report-notice__filename">{filename}</span>
+      <span className="report-notice__filename">{reportFilename}</span>
       <button
         className="button button--secondary"
-        onClick={handleCopyPath}
+        onClick={handleDownload}
         type="button"
-        aria-live="polite"
+        disabled={downloadStatus === "downloading"}
       >
         {buttonLabel}
       </button>
+      {downloadError ? (
+        <p className="report-notice__error" role="alert">
+          {downloadError}
+        </p>
+      ) : null}
     </section>
   );
 }

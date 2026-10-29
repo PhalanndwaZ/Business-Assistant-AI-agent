@@ -1,7 +1,9 @@
-import { EXAMPLE_QUESTIONS } from "../config.js";
-
 /** Show suggested questions that can be submitted with one click. */
-export function ExampleQuestions({ onSelect, disabled = false }) {
+export function ExampleQuestions({
+  questions,
+  onSelect,
+  disabled = false,
+}) {
   /** Create a click handler that submits the selected example question. */
   function createQuestionHandler(question) {
     /** Submit this example question to the conversation. */
@@ -13,7 +15,7 @@ export function ExampleQuestions({ onSelect, disabled = false }) {
   }
 
   const questionItems = [];
-  for (const question of EXAMPLE_QUESTIONS) {
+  for (const question of questions) {
     questionItems.push(
       <li key={question}>
         <button

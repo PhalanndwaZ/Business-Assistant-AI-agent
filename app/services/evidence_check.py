@@ -230,7 +230,8 @@ def _claim_category(
             return "date", None
     year = _number_value(match.group())
     if (
-        match.group().replace(",", "").isdigit()
+        "," not in match.group()
+        and match.group().isdigit()
         and year is not None
         and 1900 <= year <= 2100
     ):

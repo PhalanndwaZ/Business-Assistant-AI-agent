@@ -9,7 +9,8 @@ from typing import Any
 
 import pandas as pd
 
-from app.data_access.schema import DATASETS
+from app.data_access.employee_loader import load_employee_records
+from app.data_access.schema import DATASETS, RELATIONSHIPS
 
 
 class DataValidationError(ValueError):
@@ -30,7 +31,11 @@ class JsonDataStore:
         for dataset_name, schema in DATASETS.items():
             file_path = self._data_dir / f"{dataset_name}.json"
             try:
-                records = json.loads(file_path.read_text(encoding="utf-8"))
+                records = (
+                    load_employee_records(self._data_dir)
+                    if dataset_name == "employees"
+                    else json.loads(file_path.read_text(encoding="utf-8"))
+                )
             except (OSError, json.JSONDecodeError) as exc:
                 raise DataValidationError(
                     f"Could not read approved dataset '{dataset_name}' "
@@ -90,7 +95,7 @@ class JsonDataStore:
                 ):
                     raise DataValidationError(
                         f"Dataset '{dataset_name}' row {row_number} field "
-                        f"'{field_name}' must be {expected_type.__name__}."
+                        f"'{field_name}' must be {expected_type}."
                     )
             key_value = record[primary_key]
             if key_value in seen_keys and dataset_name != "order_items":
@@ -103,13 +108,14 @@ class JsonDataStore:
     @staticmethod
     def _validate_relationships(frames: dict[str, pd.DataFrame]) -> None:
         """Reject rows whose foreign keys do not point to approved records."""
-        relationships = (
-            ("orders", "customer_id", "customers", "customer_id"),
-            ("order_items", "order_id", "orders", "order_id"),
-            ("order_items", "product_id", "products", "product_id"),
-        )
-        for source, source_field, target, target_field in relationships:
-            source_values = set(frames[source][source_field])
+        for source_ref, target_ref in RELATIONSHIPS:
+            source, source_field = source_ref.split(".", 1)
+            target, target_field = target_ref.split(".", 1)
+            source_values = {
+                value
+                for value in frames[source][source_field]
+                if pd.notna(value)
+            }
             target_values = set(frames[target][target_field])
             missing_values = source_values - target_values
             if missing_values:

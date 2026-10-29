@@ -1,0 +1,237 @@
+{
+  "classification_levels": {
+    "public": 0,
+    "internal": 1,
+    "confidential": 2,
+    "restricted": 3
+  },
+  "field_classifications": {
+    "customers": {
+      "customer_id": "internal",
+      "name": "confidential",
+      "region": "internal",
+      "segment": "internal"
+    },
+    "products": {
+      "product_id": "internal",
+      "name": "internal",
+      "category": "internal"
+    },
+    "orders": {
+      "order_id": "internal",
+      "customer_id": "confidential",
+      "order_date": "internal",
+      "status": "internal"
+    },
+    "order_items": {
+      "order_id": "internal",
+      "product_id": "internal",
+      "quantity": "internal",
+      "unit_price_cents": "internal"
+    },
+    "employees": {
+      "employee_id": "confidential",
+      "department": "internal",
+      "job_title": "internal",
+      "hire_date": "internal",
+      "manager_id": "confidential",
+      "salary_cents": "restricted",
+      "performance_rating": "restricted",
+      "work_email": "restricted",
+      "phone": "restricted"
+    }
+  },
+  "roles": {
+    "sales": {
+      "permissions": [
+        "tool:get_data_schema:use",
+        "tool:query_business_data:use",
+        "tool:run_analysis:use",
+        "tool:generate_report:use",
+        "tool:search_documents:use",
+        "dataset:customers:read",
+        "dataset:products:read",
+        "dataset:orders:read",
+        "dataset:order_items:read",
+        "analysis:revenue_by_product:run",
+        "analysis:revenue_by_category:run",
+        "analysis:revenue_by_period:run",
+        "analysis:period_change:run",
+        "analysis:top_customers:run",
+        "analysis:trend:run",
+        "analysis:outliers:run",
+        "analysis:decline_risk:run",
+        "documents:sales:read",
+        "documents:general:read",
+        "report:sales:generate",
+        "report:risk:generate",
+        "chart:sales:generate"
+      ],
+      "max_classification": {
+        "sales": "restricted",
+        "general": "internal"
+      },
+      "datasets": {
+        "customers": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "products": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "orders": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "order_items": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        }
+      },
+      "analyses": [
+        "revenue_by_product",
+        "revenue_by_category",
+        "revenue_by_period",
+        "period_change",
+        "top_customers",
+        "trend",
+        "outliers",
+        "decline_risk"
+      ],
+      "documents": {
+        "departments": ["sales", "general"],
+        "max_classification": "internal"
+      }
+    },
+    "hr": {
+      "permissions": [
+        "tool:get_data_schema:use",
+        "tool:query_business_data:use",
+        "tool:search_documents:use",
+        "dataset:employees:read",
+        "analysis:headcount:run",
+        "documents:hr:read",
+        "documents:general:read",
+        "chart:hr:generate"
+      ],
+      "max_classification": {
+        "hr": "restricted",
+        "general": "internal"
+      },
+      "datasets": {
+        "employees": {
+          "department": "hr",
+          "classification": "confidential",
+          "fields": "*",
+          "mode": "read"
+        }
+      },
+      "analyses": ["headcount"],
+      "documents": {
+        "departments": ["hr", "general"],
+        "max_classification": "restricted"
+      }
+    },
+    "manager": {
+      "permissions": [
+        "tool:get_data_schema:use",
+        "tool:query_business_data:use",
+        "tool:run_analysis:use",
+        "tool:generate_report:use",
+        "tool:search_documents:use",
+        "dataset:customers:read",
+        "dataset:products:read",
+        "dataset:orders:read",
+        "dataset:order_items:read",
+        "dataset:employees:read",
+        "analysis:revenue_by_product:run",
+        "analysis:revenue_by_category:run",
+        "analysis:revenue_by_period:run",
+        "analysis:period_change:run",
+        "analysis:top_customers:run",
+        "analysis:trend:run",
+        "analysis:outliers:run",
+        "analysis:decline_risk:run",
+        "analysis:headcount:run",
+        "documents:sales:read",
+        "documents:general:read",
+        "report:sales:generate",
+        "report:risk:generate",
+        "chart:sales:generate",
+        "chart:hr:generate"
+      ],
+      "max_classification": {
+        "sales": "restricted",
+        "hr": "confidential",
+        "general": "internal"
+      },
+      "datasets": {
+        "customers": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "products": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "orders": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "order_items": {
+          "department": "sales",
+          "classification": "internal",
+          "fields": "*",
+          "mode": "read"
+        },
+        "employees": {
+          "department": "hr",
+          "classification": "confidential",
+          "fields": ["department", "hire_date"],
+          "mode": "aggregate_only",
+          "min_group_size": 5
+        }
+      },
+      "analyses": [
+        "revenue_by_product",
+        "revenue_by_category",
+        "revenue_by_period",
+        "period_change",
+        "top_customers",
+        "trend",
+        "outliers",
+        "decline_risk",
+        "headcount"
+      ],
+      "documents": {
+        "departments": ["sales", "general"],
+        "max_classification": "internal"
+      }
+    },
+    "admin": {
+      "permissions": ["users:admin", "audit:read"],
+      "max_classification": {},
+      "datasets": {},
+      "analyses": [],
+      "documents": {
+        "departments": [],
+        "max_classification": "public"
+      }
+    }
+  }
+}

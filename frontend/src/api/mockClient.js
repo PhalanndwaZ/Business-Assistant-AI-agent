@@ -13,6 +13,9 @@ import reportFixture from "../../mock/fixtures/report.json" with {
 import structuredFixture from "../../mock/fixtures/structured.json" with {
   type: "json",
 };
+import salesResponsesFixture from "../../mock/fixtures/sales/responses.json" with {
+  type: "json",
+};
 import unanswerableFixture from "../../mock/fixtures/unanswerable.json" with {
   type: "json",
 };
@@ -31,6 +34,8 @@ const FIXTURES = {
   unanswerable: unanswerableFixture,
   "validation-422": validationFixture,
 };
+
+const ERROR_FIXTURES = salesResponsesFixture.errors;
 
 /** Match known sample prompts to their captured responses. */
 function getFixtureName(question) {
@@ -100,6 +105,31 @@ export async function askMockFixture(
 
 /** Select a saved fixture based on the submitted sample question. */
 export function askMockQuestion({ question, conversationId = null, signal }) {
+  const normalizedQuestion =
+    typeof question === "string" ? question.trim().toLowerCase() : "";
+
+  if (normalizedQuestion === "mock 401") {
+    throw normalizeApiError({
+      status: ERROR_FIXTURES.unauthorized.status,
+      body: ERROR_FIXTURES.unauthorized.body,
+    });
+  }
+  if (normalizedQuestion === "mock 429") {
+    throw normalizeApiError({
+      status: ERROR_FIXTURES.rate_limited.status,
+      body: ERROR_FIXTURES.rate_limited.body,
+      retryAfter: Number(
+        ERROR_FIXTURES.rate_limited.headers["Retry-After"],
+      ),
+    });
+  }
+  if (normalizedQuestion === "mock 404" && conversationId) {
+    throw normalizeApiError({
+      status: ERROR_FIXTURES.conversation_not_found.status,
+      body: ERROR_FIXTURES.conversation_not_found.body,
+    });
+  }
+
   return askMockFixture(getFixtureName(question), {
     conversationId,
     signal,

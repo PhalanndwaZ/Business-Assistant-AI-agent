@@ -193,6 +193,83 @@ def test_rate_limit_retries_before_falling_back(
     assert fallback.calls == 1
 
 
+def test_fallback_rate_limit_retries_with_provider_delay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Groq fallback 429 responses are retried instead of failing immediately."""
+    primary = FakeChatModel(
+        [
+            OpenAIAPIConnectionError(
+                request=httpx.Request("POST", "https://inception.example")
+            )
+        ]
+    )
+    fallback = FakeChatModel(
+        [
+            _status_error(429, GroqAPIStatusError),
+            _status_error(429, GroqAPIStatusError),
+            AIMessage(content="fallback answer"),
+        ]
+    )
+    delays: list[float] = []
+
+    async def no_wait(delay: float) -> None:
+        delays.append(delay)
+
+    monkeypatch.setattr("app.llm_fallback.asyncio.sleep", no_wait)
+
+    response = asyncio.run(
+        _wrapper(primary, fallback, max_retries=2).ainvoke([])
+    )
+
+    assert response.content == "fallback answer"
+    assert response.response_metadata["llm_provider"] == "groq"
+    assert primary.calls == 3
+    assert fallback.calls == 3
+    assert delays[-2:] == [8.0, 16.0]
+
+
+def test_fallback_rate_limit_respects_retry_after_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A provider Retry-After value takes precedence over the default wait."""
+    primary = FakeChatModel(
+        [
+            OpenAIAPIConnectionError(
+                request=httpx.Request("POST", "https://inception.example")
+            )
+        ]
+    )
+    response = httpx.Response(
+        429,
+        request=httpx.Request("POST", "https://groq.example"),
+        headers={"Retry-After": "12"},
+    )
+    limited = GroqAPIStatusError(
+        "rate limited",
+        response=response,
+        body={"error": {"code": "rate_limit_exceeded"}},
+    )
+    fallback = FakeChatModel([limited, AIMessage(content="fallback answer")])
+    delays: list[float] = []
+
+    async def no_wait(delay: float) -> None:
+        delays.append(delay)
+
+    monkeypatch.setattr("app.llm_fallback.asyncio.sleep", no_wait)
+    monkeypatch.setattr(
+        "app.llm_fallback.random.uniform",
+        lambda low, high: 0.0,
+    )
+
+    response_message = asyncio.run(
+        _wrapper(primary, fallback, max_retries=2).ainvoke([])
+    )
+
+    assert response_message.content == "fallback answer"
+    assert delays == [0.0, 0.0, 12.0]
+
+
 def test_bad_request_does_not_fall_back() -> None:
     """An Inception 400 is surfaced without sending the bad request to Groq."""
     bad_request = _status_error(400)

@@ -12,7 +12,8 @@ from app.state import ToolResult
 
 YEAR_PATTERN = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 ISO_DATE_PATTERN = re.compile(
-    r"(?<!\d)(?:19|20)\d{2}-\d{2}-\d{2}(?!\d)"
+    r"(?<!\d)(?:19|20)\d{2}[-/\u2010-\u2015]\d{1,2}"
+    r"(?:[-/\u2010-\u2015]\d{1,2})?(?!\d)"
 )
 
 
@@ -130,6 +131,6 @@ def validate_report_evidence(
 
 
 def _without_report_dates(content: str) -> str:
-    """Remove ISO dates and years, which are report labels rather than claims."""
+    """Remove year-month dates, full dates, and years before numeric checks."""
     without_iso_dates = ISO_DATE_PATTERN.sub(" ", content)
     return YEAR_PATTERN.sub(" ", without_iso_dates)

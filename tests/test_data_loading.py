@@ -18,7 +18,18 @@ def _write_datasets(
 ) -> None:
     """Write test datasets to a temporary directory."""
     directory.mkdir(parents=True, exist_ok=True)
-    for name, records in datasets.items():
+    complete_datasets = dict(datasets)
+    if "employees" not in complete_datasets:
+        employee_path = (
+            Path(__file__).resolve().parents[1]
+            / "data"
+            / "sample_data"
+            / "employees.json"
+        )
+        complete_datasets["employees"] = json.loads(
+            employee_path.read_text(encoding="utf-8")
+        )
+    for name, records in complete_datasets.items():
         (directory / f"{name}.json").write_text(
             json.dumps(records), encoding="utf-8"
         )
