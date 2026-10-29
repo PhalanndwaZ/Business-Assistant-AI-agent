@@ -61,6 +61,22 @@ DATASETS: Mapping[str, DatasetSchema] = MappingProxyType(
             ),
             primary_key="order_id",
         ),
+        "employees": DatasetSchema(
+            fields=MappingProxyType(
+                {
+                    "employee_id": str,
+                    "department": str,
+                    "job_title": str,
+                    "hire_date": date,
+                    "manager_id": str | None,
+                    "salary_cents": int,
+                    "performance_rating": int,
+                    "work_email": str,
+                    "phone": str,
+                }
+            ),
+            primary_key="employee_id",
+        ),
     }
 )
 
@@ -68,6 +84,7 @@ RELATIONSHIPS = (
     ("orders.customer_id", "customers.customer_id"),
     ("order_items.order_id", "orders.order_id"),
     ("order_items.product_id", "products.product_id"),
+    ("employees.manager_id", "employees.employee_id"),
 )
 
 BUSINESS_GLOSSARY = {

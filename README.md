@@ -33,7 +33,7 @@ flowchart LR
     U --> API[FastAPI POST /ask]
     CLI --> G[LangGraph workflow]
     API --> G
-    G <--> LLM[Groq-hosted chat model]
+    G <--> LLM[Inception primary / Groq fallback]
     G <--> MCPC[MCP client]
 
     MCPC <--> DMCP[Business-data MCP server]
@@ -52,9 +52,10 @@ flowchart LR
 ```
 
 The app uses local JSON files rather than a database. The business-data and
-document-search MCP servers run as local stdio subprocesses. The Groq model
-selects among discovered tools; it does not receive arbitrary code, file
-paths, or unrestricted queries to run.
+document-search MCP servers run as local stdio subprocesses. The Inception
+model selects among discovered tools first; Groq is tried when Inception is
+unavailable. Neither model receives arbitrary code, file paths, or unrestricted
+queries to run.
 
 ## LangGraph workflow
 
@@ -81,10 +82,11 @@ results and relevant caveats remain available to the CLI/API response.
 
 ## Setup and run
 
-Requirements: Python, Git, network access, and Groq and Mistral API keys for
-live questions. Groq powers question answering; Mistral creates embeddings for
-document search. The commands below use PowerShell on Windows and should be
-run from the project root.
+Requirements: Python, Git, network access, one of the Inception or Groq API
+keys, and a Mistral API key for live questions. Inception is the primary chat
+provider; Groq is the fallback and can run alone when the Inception key is not
+configured. Mistral creates embeddings for document search. The commands below
+use PowerShell on Windows and should be run from the project root.
 
 ```powershell
 git clone <repository-url>
@@ -96,16 +98,24 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `.env` and supply `GROQ_API_KEY` and `MISTRAL_API_KEY`. Keep `.env`
-private; do not commit keys. The checked-in `.env.example` contains blank
-credentials and default settings:
+Edit `.env` and supply `INCEPTION_API_KEY` or `GROQ_API_KEY`, plus
+`MISTRAL_API_KEY`. Inception is used first when its key is present; if not, the
+app logs a warning and uses Groq only. Keep `.env` private; do not commit keys.
+The checked-in `.env.example` contains blank credentials and default settings:
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `GROQ_API_KEY` | Yes, for answering questions | — | Authenticates chat completions. |
+| `INCEPTION_API_KEY` | No, if Groq is configured | — | Authenticates the primary Inception chat model. |
+| `GROQ_API_KEY` | No, if Inception is configured | — | Authenticates the fallback Groq model; enables Groq-only mode when Inception is absent. |
 | `MISTRAL_API_KEY` | Yes, for document search and ingestion | — | Authenticates document embeddings. |
-| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Groq chat model; GPT-OSS models use parsed reasoning output. |
-| `GROQ_MAX_TOKENS` | No | `1024` | Maximum generated tokens per Groq response; lower values can help with TPM limits. |
+| `INCEPTION_BASE_URL` | No | `https://api.inceptionlabs.ai/v1` | OpenAI-compatible Inception API endpoint. |
+| `INCEPTION_MODEL` | No | `mercury-3` | Primary chat model. |
+| `INCEPTION_MAX_RETRIES` | No | `2` | Retry count for transient primary and fallback provider errors. |
+| `INCEPTION_BACKOFF_BASE_SECONDS` | No | `1` | Exponential retry backoff base; jitter is applied. |
+| `INCEPTION_BACKOFF_MAX_SECONDS` | No | `8` | Maximum primary retry backoff. |
+| `LLM_CALL_TIMEOUT_SECONDS` | No | `20` | Primary retry budget and per-provider request timeout. |
+| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Fallback chat model; GPT-OSS models use parsed reasoning output. |
+| `GROQ_MAX_TOKENS` | No | `1024` | Maximum generated tokens per chat response; lower values can help with TPM limits. |
 | `MISTRAL_EMBEDDING_MODEL` | No | `mistral-embed` | Embedding model used for document search. |
 | `AS_OF_DATE` | No | `2025-01-15` | Date anchor for relative-date questions; ISO `YYYY-MM-DD`. |
 | `MIN_SIMILARITY` | No | `0.84` | Minimum document-search similarity from `0` to `1`. |
@@ -118,6 +128,11 @@ credentials and default settings:
 | `DATA_DIR` | No | `data/sample_data` | Directory containing the approved JSON datasets. |
 | `DOCUMENTS_DIR` | No | `data/documents` | Document files and their manifest. |
 | `VECTOR_STORE_PATH` | No | `data/vector_store/chunks.json` | Local embedded document-chunk store. |
+
+Transient Groq fallback errors use bounded exponential retries and honor a
+valid `Retry-After` response header. Retries cannot overcome an exhausted
+provider quota or billing limit; configure an available provider key or wait
+for its quota window to reset.
 
 The vector store is ignored by Git, so create it after a fresh clone before
 starting the API or CLI. Rebuild it after adding/changing documents:
@@ -217,7 +232,8 @@ causes; the report does not quantify their contribution.
   groups. This verifies benchmark contracts and independent expected data;
   it is **not** a live answer-accuracy score.
 - **Live check:** one API question about November-to-December revenue was
-  verified against the configured Groq model and MCP tools. The full
+  verified against Groq and MCP tools before Inception became the primary
+  provider. The full
   31-question live benchmark and DeepEval metrics have not been run.
 - **Failure and lesson:** an earlier live answer described a negative
   revenue change as a positive “decrease by” magnitude. The original
@@ -269,7 +285,8 @@ above provide a repeatable live demo.
 ## CV-ready summary
 
 - Built a Python business-analysis assistant using LangGraph, MCP, Pandas,
-  Groq, Mistral embeddings, and FastAPI over synthetic JSON data and documents.
+  Inception with Groq fallback, Mistral embeddings, and FastAPI over synthetic
+  JSON data and documents.
 - Added constrained data tools, thresholded document retrieval, and
   deterministic evidence checks; the current deterministic suite passes
   **148 tests**.
@@ -366,14 +383,15 @@ Phase 10 pytest cases. It writes
 `evaluation/reports/phase10-evaluation.md`. Its per-group rates are explicitly
 labelled **readiness**, not model answer accuracy.
 
-To ask the complete question bank to the configured Groq model through both
-MCP servers, use `--live`:
+To ask the complete question bank through both MCP servers, use `--live`.
+Each LLM call tries the configured Inception model first and falls back to
+Groq on configured provider failures:
 
 ```powershell
 .\.venv\Scripts\python.exe -m evaluation.evaluate --live
 ```
 
-This makes live Groq and Mistral requests and checks the actual tool names,
+This makes live Inception/Groq and Mistral requests and checks the actual tool names,
 arguments, result values against the independent Pandas truth, document
 retrieval/citations, refusals, and causal wording. To additionally run
 DeepEval faithfulness, answer relevancy, context precision, and context recall
@@ -390,9 +408,10 @@ offline Phase 10 validation.
 
 ## Phase 11: HTTP API
 
-The service currently exposes one application endpoint: `POST /ask`. FastAPI
-also provides interactive API documentation and its OpenAPI schema. There is
-no separate health-check endpoint.
+The service exposes `POST /auth/login`, `GET /me`, `POST /ask`,
+`GET /reports/{filename}`, and admin-only `GET /audit`. FastAPI also provides
+interactive API documentation and its OpenAPI schema. There is no separate
+health-check endpoint.
 
 Start the API from the project root after configuring `.env` and installing
 dependencies:
@@ -405,6 +424,48 @@ The local development base URL is `http://127.0.0.1:8000`. Open
 `http://127.0.0.1:8000/docs` for Swagger UI,
 `http://127.0.0.1:8000/redoc` for ReDoc, or
 `http://127.0.0.1:8000/openapi.json` for the OpenAPI document.
+
+Set `JWT_SECRET_KEY` to a random secret of at least 32 bytes before starting
+the API. For a local PowerShell session, generate one with:
+
+```powershell
+$env:JWT_SECRET_KEY = & .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+The token expires after 30 minutes. Demo credentials are stored as Argon2id
+hashes in `data/policy/users.json`; the plaintext passwords are not stored in
+the repository. The four demo usernames and generated passwords are provided
+in the development handover, not in this README.
+
+### `POST /auth/login` and `GET /me`
+
+Login with JSON credentials and pass the returned bearer token to protected
+endpoints:
+
+```powershell
+$login = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/auth/login `
+  -ContentType "application/json" `
+  -Body '{"username":"sales.demo","password":"<demo-password>"}'
+$token = $login.access_token
+Invoke-RestMethod -Method Get -Uri http://127.0.0.1:8000/me `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+`GET /me` returns the authenticated account's stable user ID, display name,
+username, and current role. `/ask` and report downloads require a valid bearer
+token. `/ask` is limited to 20 requests per user per rolling minute; login
+attempts are limited per username. These in-memory limits reset when the
+service restarts and are intended for this demonstration, not production
+deployment.
+
+The `/ask` response includes a `moderation` object with status `ok`,
+`redacted`, or `refused`. Input refusals return HTTP 200 without starting the
+model; sensitive or restricted output is withheld with a generic notice.
+Prompt-injection instructions in retrieved or saved document passages are
+dropped before they reach the model. Moderation and access decisions are
+written to the SQLite audit log at `AUDIT_DB_PATH` (default
+`data/audit.sqlite3`). Questions are stored as SHA-256 hashes, not raw text.
+Only accounts with the `admin` role can read recent events from `/audit`.
 
 ### `POST /ask`
 
@@ -424,12 +485,14 @@ it. The response always returns the active ID. Pass it in follow-up requests:
 
 ```powershell
 $first = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/ask `
+  -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
   -Body '{"question":"Give me a report on November 2024 sales"}'
 $first.conversation_id
 
 $conversationId = $first.conversation_id
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/ask `
+  -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
   -Body (@{
     question = "Compare it with December"
@@ -445,16 +508,30 @@ The response JSON has this shape:
   "conversation_id": "server-generated UUID",
   "figures": [],
   "sources": [],
-  "caveats": []
+  "caveats": [],
+  "report_filename": "sales-report-november-2024-a1b2c3d4.docx"
 }
 ```
+
+`report_filename` is optional and appears only when a report was successfully
+created inside the project `reports/` directory. Download it with
+`GET /reports/{filename}` using the same bearer token. The endpoint accepts
+only a single `.docx` filename and serves it only when the resolved file
+remains inside `reports/`; invalid, missing, or out-of-directory files return
+`404`.
 
 `answer` contains the final evidence-checked response. For report requests it
 states whether a report file was generated and includes its path only after a
 successful `generate_report` call. Files are written under the project
-`reports/` directory. `figures` contains successful analysis/query results;
-`sources` lists tool and document names; `caveats` contains assumptions,
-evidence limitations, and workflow errors.
+`reports/` directory. `charts` contains chart specifications built only from
+successful analysis results; the frontend renders these directly in the chat,
+so chart requests do not create image files. A malformed optional chart in a
+report request is omitted so it cannot block creation of an otherwise valid
+report. `figures` contains successful analysis/query results from the current
+request only; prior-turn evidence remains available internally for follow-up
+questions but is not repeated in each response. `sources` lists current-turn
+tool and document names; `caveats` contains current-turn assumptions, evidence
+limitations, and workflow errors.
 
 Completed user/assistant turns are persisted in the SQLite database at
 `CONVERSATION_DB_PATH`. The default location is
@@ -467,15 +544,22 @@ least?” from that analysis. Category analysis results include a precomputed
 highest-to-lowest revenue difference and the difference as a percentage of
 the lowest category; “How far apart are they?” can use those figures without
 another tool call. Evidence is stored separately from chat messages. Treat
-conversation IDs as private identifiers: this development API has no
-authentication or per-user access controls.
+conversation IDs as private identifiers. Each conversation is bound to the
+authenticated user and role that created it. Other users receive the same
+`404` for foreign and unknown conversation IDs. If a user's role changes, a
+follow-up starts a new conversation so previous-role evidence is not reused.
+Conversations that existed before ownership migration remain stored but are
+unowned and cannot be resumed through the authenticated API.
 
 | Status | Meaning |
 |---|---|
 | `200` | Question processed; inspect `answer` and `caveats` for workflow/report limitations. |
+| `401` | Missing, invalid, or expired bearer token, or invalid login credentials. |
+| `404` | Conversation is unknown or does not belong to the authenticated user; report not found. |
 | `422` | Missing, empty, or whitespace-only `question`. |
-| `502` | Groq/model API request failed. Check server logs for the upstream error; a 400 tool-validation error is not a rate-limit error. |
-| `503` | Required configuration or an MCP/service dependency failed. |
+| `429` | Per-user or per-username request limit exceeded; honor `Retry-After`. |
+| `502` | Both configured model providers were unavailable, or a model request was rejected. Check the provider/status logs; 400 errors are not retried on another provider. |
+| `503` | Required configuration, authentication data, or an MCP/service dependency failed. |
 
 To stop the development server, press `Ctrl+C` in its terminal. The `--reload`
 flag is for local development; omit it for a non-reloading process:
@@ -484,5 +568,6 @@ flag is for local development; omit it for a non-reloading process:
 .\.venv\Scripts\python.exe -m uvicorn main:app
 ```
 
-**Authentication and rate limiting are not included.** Do not expose this
-development API to untrusted networks without adding both controls.
+Authentication and basic in-memory rate limiting are included for the demo.
+They are not production identity or distributed rate-limiting systems; do not
+expose this development API to untrusted networks.

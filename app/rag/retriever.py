@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from app.config import EMBEDDING_DIMENSIONS
+from app.policy.policy import AccessPolicy
 from app.rag.embeddings import MistralEmbedder
 from app.rag.vector_store import JsonVectorStore
 
@@ -53,10 +54,15 @@ class DocumentRetriever:
         document_type: str | None = None,
         document_date: str | None = None,
         k: int | None = None,
+        *,
+        access_policy: AccessPolicy | None = None,
+        role: str | None = None,
     ) -> dict[str, Any]:
         """Return the top relevant passages after metadata and threshold filters."""
         if not query.strip():
             raise ValueError("query cannot be empty.")
+        if (access_policy is None) != (role is None):
+            raise ValueError("access_policy and role must be supplied together.")
         result_count = self._top_k if k is None else k
         if (
             isinstance(result_count, bool)
@@ -79,6 +85,14 @@ class DocumentRetriever:
             and (
                 cutoff_date is None
                 or date.fromisoformat(chunk["document_date"]) == cutoff_date
+            )
+            and (
+                access_policy is None
+                or access_policy.can_access_document(
+                    role or "",
+                    chunk.get("department"),
+                    chunk.get("classification"),
+                )
             )
         ]
         if not candidates:

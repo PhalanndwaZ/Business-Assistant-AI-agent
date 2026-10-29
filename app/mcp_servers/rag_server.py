@@ -6,15 +6,18 @@ import logging
 import time
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from app.config import load_settings
+from app.policy.context import MCPUserContext, PolicyAccessDenied, resolve_mcp_user
+from app.policy.policy import AccessPolicy
 from app.rag.embeddings import MistralEmbedder
 from app.rag.retriever import DocumentRetriever
 
 LOGGER = logging.getLogger(__name__)
 server = FastMCP("document-search")
 _retriever: DocumentRetriever | None = None
+_policy: AccessPolicy | None = None
 
 
 def get_retriever() -> DocumentRetriever:
@@ -36,15 +39,34 @@ def get_retriever() -> DocumentRetriever:
     return _retriever
 
 
+def get_policy() -> AccessPolicy:
+    """Return the process-wide validated access policy."""
+    global _policy
+    if _policy is None:
+        _policy = AccessPolicy()
+    return _policy
+
+
 def _search_documents(
+    user: MCPUserContext,
     query: str,
     document_type: str | None = None,
     document_date: str | None = None,
     k: int | None = None,
 ) -> dict[str, Any]:
     """Find relevant passages and return their source metadata and scores."""
+    policy = get_policy()
+    if not policy.can_use_tool(user.role, "search_documents"):
+        raise PolicyAccessDenied()
     started_at = time.monotonic()
-    result = get_retriever().search(query, document_type, document_date, k)
+    result = get_retriever().search(
+        query,
+        document_type,
+        document_date,
+        k,
+        access_policy=policy,
+        role=user.role,
+    )
     LOGGER.info(
         "tool=search_documents duration_ms=%.2f results=%d",
         (time.monotonic() - started_at) * 1000,
@@ -55,13 +77,20 @@ def _search_documents(
 
 @server.tool()
 def search_documents(
+    ctx: Context,
     query: str,
     document_type: str | None = None,
     document_date: str | None = None,
     k: int | None = None,
 ) -> dict[str, Any]:
     """Search business documents and return relevant passages with citations."""
-    return _search_documents(query, document_type, document_date, k)
+    return _search_documents(
+        resolve_mcp_user(ctx),
+        query,
+        document_type,
+        document_date,
+        k,
+    )
 
 
 def main() -> None:

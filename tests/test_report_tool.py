@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from docx import Document
 import pytest
@@ -10,6 +11,22 @@ import pytest
 from app.mcp_servers import business_data_server
 from app.state import ToolResult
 from tests.test_report_validation import _report, _sources
+
+
+def _sales_context() -> SimpleNamespace:
+    """Build the verified demo-user identity for direct MCP-tool tests."""
+    return SimpleNamespace(
+        request_context=SimpleNamespace(
+            meta=SimpleNamespace(
+                model_extra={
+                    "user_context": {
+                        "user_id": "user-sales-demo",
+                        "role": "sales",
+                    }
+                }
+            )
+        )
+    )
 
 
 def _sources_by_call_id() -> dict[str, ToolResult]:
@@ -29,6 +46,7 @@ def test_generate_report_creates_report_with_valid_sources(
     monkeypatch.setattr(business_data_server, "REPORTS_DIR", reports_dir)
 
     result = business_data_server.generate_report(
+        _sales_context(),
         _report().model_dump(mode="json"),
         _sources_by_call_id(),
     )
@@ -47,6 +65,30 @@ def test_generate_report_creates_report_with_valid_sources(
     assert document.inline_shapes
 
 
+def test_generate_report_accepts_year_month_period_labels(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Year-month labels remain dates during evidence validation."""
+    reports_dir = tmp_path / "reports"
+    monkeypatch.setattr(business_data_server, "REPORTS_DIR", reports_dir)
+    report = _report()
+    report.key_figures[2].label = "Period"
+    report.key_figures[2].value = "2024-11"
+    report.key_figures[2].source_ref = "call_1"
+    report.findings[0].finding += " The period was 2024-11."
+    report.findings[0].source_refs.append("call_1")
+
+    result = business_data_server.generate_report(
+        _sales_context(),
+        report.model_dump(mode="json"),
+        _sources_by_call_id(),
+    )
+
+    assert "error" not in result
+    assert Path(result["path"]).is_file()
+
+
 def test_generate_report_rejects_invalid_object_without_creating_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -55,7 +97,11 @@ def test_generate_report_rejects_invalid_object_without_creating_file(
     reports_dir = tmp_path / "reports"
     monkeypatch.setattr(business_data_server, "REPORTS_DIR", reports_dir)
 
-    result = business_data_server.generate_report({}, _sources_by_call_id())
+    result = business_data_server.generate_report(
+        _sales_context(),
+        {},
+        _sources_by_call_id(),
+    )
 
     assert "error" in result
     assert "Invalid report object" in result["error"]
@@ -73,6 +119,7 @@ def test_generate_report_rejects_unsupported_evidence_without_creating_file(
     report.key_figures[0].value = 19900000
 
     result = business_data_server.generate_report(
+        _sales_context(),
         report.model_dump(mode="json"),
         _sources_by_call_id(),
     )
@@ -91,7 +138,10 @@ def test_generate_report_requires_tool_evidence(
     reports_dir = tmp_path / "reports"
     monkeypatch.setattr(business_data_server, "REPORTS_DIR", reports_dir)
 
-    result = business_data_server.generate_report(_report().model_dump(mode="json"))
+    result = business_data_server.generate_report(
+        _sales_context(),
+        _report().model_dump(mode="json"),
+    )
 
     assert "error" in result
     assert "evidence is unavailable" in result["error"]

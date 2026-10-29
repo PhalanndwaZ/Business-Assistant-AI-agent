@@ -1,0 +1,167 @@
+[
+  {
+    "employee_id": "E001",
+    "department": "Sales",
+    "job_title": "Sales Manager",
+    "hire_date": "2018-03-12",
+    "manager_id": null,
+    "salary_cents": 9240000,
+    "performance_rating": 4,
+    "work_email": "employee001@example.invalid",
+    "phone": "+1-202-555-0101"
+  },
+  {
+    "employee_id": "E002",
+    "department": "Sales",
+    "job_title": "Account Executive",
+    "hire_date": "2021-06-07",
+    "manager_id": "E001",
+    "salary_cents": 6840000,
+    "performance_rating": 4,
+    "work_email": "employee002@example.invalid",
+    "phone": "+1-202-555-0102"
+  },
+  {
+    "employee_id": "E003",
+    "department": "Sales",
+    "job_title": "Sales Representative",
+    "hire_date": "2022-01-17",
+    "manager_id": "E001",
+    "salary_cents": 5920000,
+    "performance_rating": 3,
+    "work_email": "employee003@example.invalid",
+    "phone": "+1-202-555-0103"
+  },
+  {
+    "employee_id": "E004",
+    "department": "Sales",
+    "job_title": "Account Executive",
+    "hire_date": "2023-09-11",
+    "manager_id": "E001",
+    "salary_cents": 6570000,
+    "performance_rating": 5,
+    "work_email": "employee004@example.invalid",
+    "phone": "+1-202-555-0104"
+  },
+  {
+    "employee_id": "E005",
+    "department": "Sales",
+    "job_title": "Sales Operations Analyst",
+    "hire_date": "2020-11-02",
+    "manager_id": "E001",
+    "salary_cents": 7310000,
+    "performance_rating": 4,
+    "work_email": "employee005@example.invalid",
+    "phone": "+1-202-555-0105"
+  },
+  {
+    "employee_id": "E006",
+    "department": "HR",
+    "job_title": "HR Manager",
+    "hire_date": "2017-05-22",
+    "manager_id": null,
+    "salary_cents": 8870000,
+    "performance_rating": 5,
+    "work_email": "employee006@example.invalid",
+    "phone": "+1-202-555-0106"
+  },
+  {
+    "employee_id": "E007",
+    "department": "HR",
+    "job_title": "People Operations Specialist",
+    "hire_date": "2020-02-10",
+    "manager_id": "E006",
+    "salary_cents": 6230000,
+    "performance_rating": 4,
+    "work_email": "employee007@example.invalid",
+    "phone": "+1-202-555-0107"
+  },
+  {
+    "employee_id": "E008",
+    "department": "HR",
+    "job_title": "Recruiter",
+    "hire_date": "2021-08-16",
+    "manager_id": "E006",
+    "salary_cents": 6410000,
+    "performance_rating": 3,
+    "work_email": "employee008@example.invalid",
+    "phone": "+1-202-555-0108"
+  },
+  {
+    "employee_id": "E009",
+    "department": "HR",
+    "job_title": "Benefits Specialist",
+    "hire_date": "2019-10-28",
+    "manager_id": "E006",
+    "salary_cents": 6680000,
+    "performance_rating": 4,
+    "work_email": "employee009@example.invalid",
+    "phone": "+1-202-555-0109"
+  },
+  {
+    "employee_id": "E010",
+    "department": "HR",
+    "job_title": "HR Coordinator",
+    "hire_date": "2023-04-03",
+    "manager_id": "E006",
+    "salary_cents": 5180000,
+    "performance_rating": 3,
+    "work_email": "employee010@example.invalid",
+    "phone": "+1-202-555-0110"
+  },
+  {
+    "employee_id": "E011",
+    "department": "Operations",
+    "job_title": "Operations Manager",
+    "hire_date": "2016-09-19",
+    "manager_id": null,
+    "salary_cents": 9560000,
+    "performance_rating": 5,
+    "work_email": "employee011@example.invalid",
+    "phone": "+1-202-555-0111"
+  },
+  {
+    "employee_id": "E012",
+    "department": "Operations",
+    "job_title": "Supply Chain Analyst",
+    "hire_date": "2020-07-13",
+    "manager_id": "E011",
+    "salary_cents": 7130000,
+    "performance_rating": 4,
+    "work_email": "employee012@example.invalid",
+    "phone": "+1-202-555-0112"
+  },
+  {
+    "employee_id": "E013",
+    "department": "Operations",
+    "job_title": "Fulfilment Coordinator",
+    "hire_date": "2022-05-09",
+    "manager_id": "E011",
+    "salary_cents": 5720000,
+    "performance_rating": 3,
+    "work_email": "employee013@example.invalid",
+    "phone": "+1-202-555-0113"
+  },
+  {
+    "employee_id": "E014",
+    "department": "Operations",
+    "job_title": "Inventory Planner",
+    "hire_date": "2021-12-06",
+    "manager_id": "E011",
+    "salary_cents": 6490000,
+    "performance_rating": 4,
+    "work_email": "employee014@example.invalid",
+    "phone": "+1-202-555-0114"
+  },
+  {
+    "employee_id": "E015",
+    "department": "Operations",
+    "job_title": "Logistics Specialist",
+    "hire_date": "2024-02-12",
+    "manager_id": "E011",
+    "salary_cents": 5570000,
+    "performance_rating": 3,
+    "work_email": "employee015@example.invalid",
+    "phone": "+1-202-555-0115"
+  }
+]

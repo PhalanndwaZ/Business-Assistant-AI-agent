@@ -13,14 +13,21 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult, Tool
 
 from app.config import PROJECT_ROOT, Settings
+from app.policy.context import MCPUserContext
+from app.policy.policy import AccessPolicy
 
 
 class BusinessDataMCPClient:
     """Manage the local business-data server process and tool calls."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        user_context: MCPUserContext,
+    ) -> None:
         """Configure the local stdio server with only required environment."""
         self.settings = settings
+        self.user_context = user_context
         self._exit_stack = AsyncExitStack()
         self._session: ClientSession | None = None
 
@@ -76,7 +83,17 @@ class BusinessDataMCPClient:
         """Call a discovered MCP tool and preserve the protocol response."""
         if self._session is None:
             raise RuntimeError("MCP client is not connected.")
-        return await self._session.call_tool(tool_name, arguments)
+        metadata = {
+            "user_context": {
+                "user_id": self.user_context.user_id,
+                "role": self.user_context.role,
+            },
+        }
+        return await self._session.call_tool(
+            tool_name,
+            arguments,
+            meta=metadata,
+        )
 
 
 class DocumentSearchMCPClient(BusinessDataMCPClient):
@@ -121,13 +138,22 @@ class DocumentSearchMCPClient(BusinessDataMCPClient):
 class AnalystMCPClient:
     """Expose business-data and document-search MCP tools as one client."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        user_context: MCPUserContext,
+    ) -> None:
         """Create both isolated stdio MCP clients."""
-        self._business_client = BusinessDataMCPClient(settings)
-        self._document_client = DocumentSearchMCPClient(settings)
+        if not user_context.user_id or not user_context.role:
+            raise ValueError("MCP user context must include user ID and role.")
+        self.user_context = user_context
+        self._policy = AccessPolicy()
+        self._business_client = BusinessDataMCPClient(settings, user_context)
+        self._document_client = DocumentSearchMCPClient(settings, user_context)
         self._tool_clients: dict[str, BusinessDataMCPClient] = {}
         self._stack = AsyncExitStack()
         self._tools: list[Tool] = []
+        self._connected = False
 
     async def __aenter__(self) -> AnalystMCPClient:
         """Start both MCP servers and index their tool declarations."""
@@ -140,6 +166,16 @@ class AnalystMCPClient:
             tool_names = [tool.name for tool in all_tools]
             if len(tool_names) != len(set(tool_names)):
                 raise RuntimeError("MCP servers declared duplicate tool names.")
+            allowed_tools = [
+                tool
+                for tool in all_tools
+                if self._policy.can_use_tool(self.user_context.role, tool.name)
+                and (
+                    tool.name != "generate_report"
+                    or self._policy.can_generate_report(self.user_context.role)
+                )
+            ]
+            allowed_tool_names = {tool.name for tool in allowed_tools}
             self._tool_clients = {
                 tool.name: client
                 for client, tools in (
@@ -147,8 +183,10 @@ class AnalystMCPClient:
                     (self._document_client, document_tools),
                 )
                 for tool in tools
+                if tool.name in allowed_tool_names
             }
-            self._tools = all_tools
+            self._tools = allowed_tools
+            self._connected = True
         except BaseException:
             await self._stack.aclose()
             raise
@@ -159,10 +197,11 @@ class AnalystMCPClient:
         await self._stack.aclose()
         self._tool_clients.clear()
         self._tools = []
+        self._connected = False
 
     async def list_tools(self) -> list[Tool]:
         """Return tool declarations from both connected MCP servers."""
-        if not self._tool_clients:
+        if not self._connected:
             raise RuntimeError("MCP clients are not connected.")
         return self._tools
 

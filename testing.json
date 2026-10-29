@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "Business Analyst AI",
+    "description": "Tests the question-answering API and conversation history.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "conversationId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Ask a new question",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"How did completed-order revenue change from November to December 2024?\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/ask",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "ask"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Request succeeded\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test(\"Response includes answer and evidence fields\", function () {",
+              "  pm.expect(body.answer).to.be.a(\"string\");",
+              "  pm.expect(body.conversation_id).to.be.a(\"string\");",
+              "  pm.expect(body.figures).to.be.an(\"array\");",
+              "  pm.expect(body.sources).to.be.an(\"array\");",
+              "  pm.expect(body.caveats).to.be.an(\"array\");",
+              "});",
+              "pm.environment.set(\"conversationId\", body.conversation_id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Continue conversation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What was the percentage change?\",\n  \"conversation_id\": \"{{conversationId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/ask",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "ask"
+          ]
+        }
+      }
+    }
+  ]
+}

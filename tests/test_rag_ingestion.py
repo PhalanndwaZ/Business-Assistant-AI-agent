@@ -40,12 +40,16 @@ def test_document_chunks_preserve_manifest_metadata(tmp_path: Path) -> None:
         "file": "policy.md",
         "document_type": "policy",
         "document_date": "2024-01-01",
+        "department": "general",
+        "classification": "internal",
     }
 
     chunks = _document_chunks(entry, tmp_path)
 
     assert chunks[0]["chunk_id"] == "policy-chunk-0001"
     assert chunks[0]["document_type"] == "policy"
+    assert chunks[0]["department"] == "general"
+    assert chunks[0]["classification"] == "internal"
     assert chunks[0]["page_number"] is None
 
 
@@ -63,6 +67,8 @@ def test_manifest_rejects_paths_outside_documents_directory(
                     "file": "../outside.md",
                     "document_type": "test",
                     "document_date": "2024-01-01",
+                    "department": "general",
+                    "classification": "internal",
                 }
             ]
         ),
@@ -70,6 +76,29 @@ def test_manifest_rejects_paths_outside_documents_directory(
     )
 
     with pytest.raises(ValueError, match="escapes its directory"):
+        _read_manifest(tmp_path)
+
+
+def test_manifest_rejects_unknown_classification(tmp_path: Path) -> None:
+    """Document metadata must use one of the declared classification levels."""
+    (tmp_path / "policy.md").write_text("Synthetic policy.", encoding="utf-8")
+    (tmp_path / "manifest.json").write_text(
+        json.dumps(
+            [
+                {
+                    "document_id": "policy",
+                    "file": "policy.md",
+                    "document_type": "policy",
+                    "document_date": "2024-01-01",
+                    "department": "general",
+                    "classification": "unknown",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Invalid classification"):
         _read_manifest(tmp_path)
 
 
@@ -92,6 +121,29 @@ def test_phase_six_sample_documents_are_synthetic_and_fully_manifested() -> None
         entry["document_type"] == "management_report" for entry in manifest
     ) >= 2
     assert all("synthetic" in content.casefold() for content in contents.values())
+    assert {entry["department"] for entry in manifest} >= {
+        "general",
+        "sales",
+        "hr",
+    }
+    assert all(
+        entry["classification"]
+        in {"public", "internal", "confidential", "restricted"}
+        for entry in manifest
+    )
+    assert {
+        entry["document_id"]
+        for entry in manifest
+        if entry["department"] == "hr"
+    } == {"hr-salary-review-notes"}
+    assert next(
+        entry for entry in manifest if entry["document_id"] == "hr-leave-policy"
+    )["department"] == "general"
+    assert next(
+        entry
+        for entry in manifest
+        if entry["document_id"] == "hr-salary-review-notes"
+    )["classification"] == "restricted"
 
     december_report = next(
         content
@@ -120,6 +172,8 @@ def test_vector_store_replaces_document_chunks_without_duplicates(
         "document_name": "policy.md",
         "document_type": "policy",
         "document_date": "2024-01-01",
+        "department": "general",
+        "classification": "internal",
         "chunk_id": "policy-chunk-0001",
         "text": "Policy text.",
         "embedding": [0.0] * EMBEDDING_DIMENSIONS,
@@ -156,6 +210,8 @@ def test_vector_store_rejects_non_finite_embedding_values(
         "document_name": "policy.md",
         "document_type": "policy",
         "document_date": "2024-01-01",
+        "department": "general",
+        "classification": "internal",
         "chunk_id": "policy-chunk-0001",
         "text": "Policy text.",
         "embedding": [float("nan")] + [0.0] * (EMBEDDING_DIMENSIONS - 1),
@@ -183,6 +239,8 @@ def test_vector_store_prunes_documents_removed_from_manifest(
             "document_name": f"{document_id}.md",
             "document_type": "policy",
             "document_date": "2024-01-01",
+            "department": "general",
+            "classification": "internal",
             "chunk_id": f"{document_id}-chunk-0001",
             "text": "Policy text.",
             "embedding": [0.0] * EMBEDDING_DIMENSIONS,
@@ -221,12 +279,16 @@ def test_ingestion_embeds_all_manifest_documents_idempotently(
             "file": "policy.md",
             "document_type": "policy",
             "document_date": "2024-01-01",
+            "department": "general",
+            "classification": "internal",
         },
         {
             "document_id": "notes",
             "file": "notes.txt",
             "document_type": "meeting_notes",
             "document_date": "2024-02-01",
+            "department": "sales",
+            "classification": "internal",
         },
     ]
     (documents_dir / "manifest.json").write_text(
@@ -283,6 +345,8 @@ def test_ingestion_embeds_all_manifest_documents_idempotently(
         {
             "document_name",
             "text",
+            "department",
+            "classification",
             "embedding",
             "page_number",
             "uploaded_at",
@@ -290,6 +354,10 @@ def test_ingestion_embeds_all_manifest_documents_idempotently(
         <= chunk.keys()
         for chunk in second_store["chunks"]
     )
+    assert {
+        (chunk["department"], chunk["classification"])
+        for chunk in second_store["chunks"]
+    } == {("general", "internal"), ("sales", "internal")}
     assert [chunk["chunk_id"] for chunk in first_store["chunks"]] == [
         chunk["chunk_id"] for chunk in second_store["chunks"]
     ]

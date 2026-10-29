@@ -1,0 +1,37 @@
+{
+  "answer": "I could not verify the draft's factual claims against the successful tool results, so I cannot present them as factual.\n\nSources: get_data_schema, run_analysis.",
+  "conversation_id": null,
+  "figures": [
+    {
+      "analysis": "period_change",
+      "period": {
+        "current": {
+          "start": "2024-12-01",
+          "end": "2024-12-31"
+        },
+        "previous": {
+          "start": "2024-11-01",
+          "end": "2024-11-30"
+        }
+      },
+      "data": [
+        {
+          "metric": "revenue",
+          "current_value": 1574792,
+          "previous_value": 4017949,
+          "absolute_change": -2443157,
+          "percent_change": -60.80607294915888
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "run_analysis:period_change"
+  ],
+  "caveats": [
+    "Only completed orders are included.",
+    "A zero previous value has no defined percentage change.",
+    "Revenue is returned in integer cents.",
+    "Evidence check: A document-attributed claim has no retrieved document evidence."
+  ]
+}

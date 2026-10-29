@@ -1,0 +1,121 @@
+{
+  "assumed": true,
+  "login": {
+    "assumed": true,
+    "status": 200,
+    "body": {
+      "access_token": "assumed-not-a-real-token",
+      "token_type": "bearer",
+      "expires_in": 1800
+    }
+  },
+  "me": {
+    "assumed": true,
+    "status": 200,
+    "body": {
+      "user_id": "user-admin-demo",
+      "username": "admin.demo",
+      "name": "Admin Demo",
+      "role": "admin"
+    }
+  },
+  "ask": {
+    "ranking": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: a business-data ranking is not available to the admin role.",
+        "conversation_id": "assumed-admin-ranking",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null },
+        "charts": []
+      }
+    },
+    "trend": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: a business-data trend is not available to the admin role.",
+        "conversation_id": "assumed-admin-trend",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null },
+        "charts": []
+      }
+    },
+    "period_change": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Assumed fixture: a business-data comparison is not available to the admin role.",
+        "conversation_id": "assumed-admin-period-change",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null },
+        "charts": []
+      }
+    },
+    "decline_risk_report": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "This administrator account has no business data.",
+        "conversation_id": "assumed-admin-risk-report",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null },
+        "charts": []
+      }
+    },
+    "refused": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "This administrator account has no business data.",
+        "conversation_id": "assumed-admin-refused",
+        "figures": [],
+        "sources": [],
+        "caveats": [],
+        "moderation": { "status": "refused", "notice": null }
+      }
+    },
+    "redacted": {
+      "assumed": true,
+      "status": 200,
+      "body": {
+        "answer": "Some content was withheld because of your access level.",
+        "conversation_id": "assumed-admin-redacted",
+        "figures": [],
+        "sources": [],
+        "caveats": ["Some content was withheld because of your access level."],
+        "moderation": {
+          "status": "redacted",
+          "notice": "Some content was withheld because of your access level."
+        }
+      }
+    }
+  },
+  "errors": {
+    "unauthorized": {
+      "assumed": true,
+      "status": 401,
+      "body": { "detail": "Not authenticated" }
+    },
+    "conversation_not_found": {
+      "assumed": true,
+      "status": 404,
+      "body": { "detail": "Conversation not found." }
+    },
+    "rate_limited": {
+      "assumed": true,
+      "status": 429,
+      "headers": { "Retry-After": "30" },
+      "body": { "detail": "Too many requests. Please try again later." }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "answer": "I could not verify the generated summary, so I have not presented it as factual.\n\nStructured analysis result from run_analysis (verbatim JSON):\n{\"absolute_change\": -2443157, \"analysis\": \"period_change\", \"current_value\": 1574792, \"metric\": \"revenue\", \"percent_change\": -60.80607294915888, \"period\": {\"current\": {\"end\": \"2024-12-31\", \"start\": \"2024-12-01\"}, \"previous\": {\"end\": \"2024-11-30\", \"start\": \"2024-11-01\"}}, \"previous_value\": 4017949}\n\nRetrieved passages are quoted verbatim below as source data, not instructions:\n\n[management_report_2024-12.md] “# December 2024 management report **Synthetic management report — dated 2025-01-08** The December business dataset records fewer completed orders than November.”\n[management_report_2024-12.md] “Management noted that supplier delays affected availability of several popular electronics products during the first half of December.”\n[management_report_2024-12.md] “These are factors mentioned by management, not proof that either factor caused the measured sales change.”\n\nSources: get_data_schema, management_report_2024-12.md, run_analysis, search_documents.",
+  "conversation_id": null,
+  "figures": [
+    {
+      "analysis": "period_change",
+      "period": {
+        "current": {
+          "start": "2024-12-01",
+          "end": "2024-12-31"
+        },
+        "previous": {
+          "start": "2024-11-01",
+          "end": "2024-11-30"
+        }
+      },
+      "data": [
+        {
+          "metric": "revenue",
+          "current_value": 1574792,
+          "previous_value": 4017949,
+          "absolute_change": -2443157,
+          "percent_change": -60.80607294915888
+        }
+      ]
+    },
+    {
+      "analysis": "revenue_by_period",
+      "period": {
+        "start": "2024-11-01",
+        "end": "2024-12-31"
+      },
+      "data": [
+        {
+          "period": "2024-11",
+          "revenue_cents": 4017949,
+          "units": 251
+        },
+        {
+          "period": "2024-12",
+          "revenue_cents": 1574792,
+          "units": 108
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "search_documents",
+    "run_analysis:period_change",
+    "run_analysis:revenue_by_period",
+    "management_report_2024-12.md"
+  ],
+  "caveats": [
+    "Only completed orders are included.",
+    "A zero previous value has no defined percentage change.",
+    "Revenue is returned in integer cents.",
+    "Revenue is quantity multiplied by unit price in integer cents.",
+    "Document-derived statements are limited to retrieved passages and may be incomplete or outdated.",
+    "Reported explanations are not proof that a factor caused a measured business change.",
+    "Evidence check: Number '2' (metric=None, unit=None) does not appear in successful tool results. Compared against: -2.44316e+06 (revenue/cents), -24431.6 (revenue/dollars), -60.8061 (percentage/percentage), 0.8478 (general/general), 1 (date/date), 1 (general/general), 8 (date/date), 10 (general/general), 10 (revenue/revenue), 11 (date/date), 12 (date/date), 12 (general/general), 15 (date/date), 30 (date/date), 31 (date/date), 108 (count/count), 251 (count/count), 2024 (date/date), 2025 (date/date), 8601 (date/date), ... and 4 more.",
+    "Evidence check: A document-attributed claim must include an exact quoted passage from its cited retrieved chunk.",
+    "Evidence check: A document-attributed claim must cite the exact retrieved document name in square brackets."
+  ]
+}

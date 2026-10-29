@@ -14,7 +14,7 @@ from typing import Any
 from uuid import uuid4
 
 import pandas as pd
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from pydantic import ValidationError
 
 from app.analysis.analyses import run_analysis as dispatch_analysis
@@ -27,6 +27,9 @@ from app.data_access.schema import (
     RELATIONSHIPS,
 )
 from app.config import PROJECT_ROOT
+from app.policy.context import MCPUserContext, PolicyAccessDenied, resolve_mcp_user
+from app.policy.filters import filter_fields, group_size_allowed
+from app.policy.policy import AccessPolicy
 from app.reporting.builder import build_report_document
 from app.reporting.charts import render_revenue_chart
 from app.reporting.models import ReportObject
@@ -39,6 +42,7 @@ VALID_OPERATORS = frozenset({"eq", "ne", "gt", "gte", "lt", "lte", "in", "contai
 REPORTS_DIR = PROJECT_ROOT / "reports"
 server = FastMCP("business-data")
 _store: JsonDataStore | None = None
+_policy: AccessPolicy | None = None
 
 
 def get_store() -> JsonDataStore:
@@ -52,25 +56,79 @@ def get_store() -> JsonDataStore:
     return _store
 
 
-def _get_data_schema() -> dict[str, Any]:
+def get_policy() -> AccessPolicy:
+    """Return the process-wide validated access policy."""
+    global _policy
+    if _policy is None:
+        _policy = AccessPolicy()
+    return _policy
+
+
+def _field_type_name(field_type: type) -> str:
+    """Return a stable display name for normal and optional field types."""
+    return (
+        field_type.__name__
+        if hasattr(field_type, "__name__")
+        else str(field_type)
+    )
+
+
+def _get_data_schema(user: MCPUserContext) -> dict[str, Any]:
     """Describe allowed data, glossary, analyses, and the configured anchor date."""
-    return {
-        "datasets": {
-            name: {
-                "fields": {
-                    field_name: field_type.__name__
-                    for field_name, field_type in schema.fields.items()
-                },
-                "primary_key": schema.primary_key,
+    policy = get_policy()
+    visible_datasets = {
+        name: schema
+        for name, schema in DATASETS.items()
+        if policy.can_access_dataset(user.role, name)
+    }
+    dataset_descriptions: dict[str, Any] = {}
+    for name, schema in visible_datasets.items():
+        dataset_description: dict[str, Any] = {
+            "fields": {
+                field_name: _field_type_name(field_type)
+                for field_name, field_type in schema.fields.items()
+                if policy.can_access_field(user.role, name, field_name)
             }
-            for name, schema in DATASETS.items()
-        },
+        }
+        if (
+            policy.dataset_mode(user.role, name) != "aggregate_only"
+            and policy.can_access_field(user.role, name, schema.primary_key)
+        ):
+            dataset_description["primary_key"] = schema.primary_key
+        dataset_descriptions[name] = dataset_description
+    return {
+        "datasets": dataset_descriptions,
         "relationships": [
-            {"from": source, "to": target} for source, target in RELATIONSHIPS
+            {"from": source, "to": target}
+            for source, target in RELATIONSHIPS
+            if source.split(".", 1)[0] in visible_datasets
+            and target.split(".", 1)[0] in visible_datasets
+            and policy.can_access_field(
+                user.role,
+                source.split(".", 1)[0],
+                source.split(".", 1)[1],
+            )
+            and policy.can_access_field(
+                user.role,
+                target.split(".", 1)[0],
+                target.split(".", 1)[1],
+            )
         ],
-        "glossary": BUSINESS_GLOSSARY,
-        "available_analyses": list(AVAILABLE_ANALYSES),
-        "analysis_parameters": ANALYSIS_PARAMETERS,
+        "glossary": (
+            BUSINESS_GLOSSARY
+            if policy.can_access_dataset(user.role, "orders")
+            else {}
+        ),
+        "available_analyses": [
+            analysis
+            for analysis in AVAILABLE_ANALYSES
+            if policy.can_run_analysis(user.role, analysis)
+        ],
+        "analysis_parameters": {
+            analysis: ANALYSIS_PARAMETERS[analysis]
+            for analysis in AVAILABLE_ANALYSES
+            if policy.can_run_analysis(user.role, analysis)
+        },
         "as_of_date": os.getenv("AS_OF_DATE", date(2025, 1, 15).isoformat()),
     }
 
@@ -108,25 +166,54 @@ def _apply_filter(
 
 
 def _query_business_data(
+    user: MCPUserContext,
     dataset: str,
     fields: list[str],
     filters: list[dict[str, Any]] | None = None,
     date_range: dict[str, str] | None = None,
     sort: dict[str, str] | None = None,
     limit: int = 20,
+    group_by: list[str] | None = None,
 ) -> dict[str, Any]:
     """Filter an allowlisted dataset and return a capped result with count."""
     started_at = time.monotonic()
-    if dataset not in DATASETS:
-        raise ValueError(f"Unknown dataset '{dataset}'.")
+    policy = get_policy()
+    if dataset not in DATASETS or not policy.can_access_dataset(user.role, dataset):
+        raise PolicyAccessDenied()
     if isinstance(limit, bool) or not 1 <= limit <= MAX_QUERY_LIMIT:
         raise ValueError(f"limit must be between 1 and {MAX_QUERY_LIMIT}.")
     allowed_fields = set(DATASETS[dataset].fields)
     if not fields or set(fields) - allowed_fields:
-        invalid_fields = sorted(set(fields) - allowed_fields)
-        raise ValueError(
-            f"fields must contain approved fields; invalid fields: {invalid_fields}."
+        raise PolicyAccessDenied()
+    selected_fields = filter_fields(policy, user.role, dataset, fields)
+    if not selected_fields:
+        raise PolicyAccessDenied()
+    mode = policy.dataset_mode(user.role, dataset)
+    if mode == "aggregate_only":
+        if (
+            dataset != "employees"
+            or not group_by
+            or any(field not in {"department", "tenure_band"} for field in group_by)
+            or sort is not None
+        ):
+            raise PolicyAccessDenied()
+        selected_fields = ["department"]
+    elif group_by is not None and (
+        not group_by
+        or any(
+            (
+                field not in allowed_fields
+                or not policy.can_access_field(user.role, dataset, field)
+            )
+            and not (
+                field == "tenure_band"
+                and dataset == "employees"
+                and policy.can_access_field(user.role, dataset, "hire_date")
+            )
+            for field in group_by
         )
+    ):
+        raise PolicyAccessDenied()
     frame = get_store().get_frame(dataset)
 
     if date_range is not None:
@@ -156,8 +243,11 @@ def _query_business_data(
         if set(filter_item) != {"field", "operator", "value"}:
             raise ValueError("Each filter requires field, operator, and value.")
         field = filter_item["field"]
-        if field not in allowed_fields:
-            raise ValueError(f"Unknown field '{field}' for dataset '{dataset}'.")
+        if (
+            field not in allowed_fields
+            or not policy.can_access_field(user.role, dataset, field)
+        ):
+            raise PolicyAccessDenied()
         frame = _apply_filter(
             frame,
             field,
@@ -170,16 +260,55 @@ def _query_business_data(
             raise ValueError("sort requires field and direction.")
         sort_field = sort["field"]
         direction = sort["direction"]
-        if sort_field not in allowed_fields:
-            raise ValueError(
-                f"Unknown sort field '{sort_field}' for dataset '{dataset}'."
-            )
+        if (
+            sort_field not in allowed_fields
+            or not policy.can_access_field(user.role, dataset, sort_field)
+        ):
+            raise PolicyAccessDenied()
         if direction not in {"asc", "desc"}:
             raise ValueError("sort direction must be 'asc' or 'desc'.")
         frame = frame.sort_values(sort_field, ascending=direction == "asc")
 
     total_matches = len(frame)
-    selected_rows = frame.loc[:, fields].head(limit)
+    if group_by is not None:
+        if "tenure_band" in group_by:
+            as_of_date = date.fromisoformat(
+                os.getenv("AS_OF_DATE", date(2025, 1, 15).isoformat())
+            )
+
+            def to_tenure_band(hire_date_value: Any) -> str:
+                hire_date = date.fromisoformat(str(hire_date_value))
+                completed_years = as_of_date.year - hire_date.year - (
+                    (as_of_date.month, as_of_date.day)
+                    < (hire_date.month, hire_date.day)
+                )
+                if completed_years <= 2:
+                    return "0-2 years"
+                if completed_years <= 5:
+                    return "3-5 years"
+                return "6+ years"
+
+            frame["tenure_band"] = frame["hire_date"].map(to_tenure_band)
+        grouped = (
+            frame.groupby(group_by, dropna=False)
+            .size()
+            .reset_index(name="count")
+        )
+        if mode == "aggregate_only" and any(
+            not group_size_allowed(
+                policy,
+                user.role,
+                dataset,
+                int(group_count),
+            )
+            for group_count in grouped["count"]
+        ):
+            raise PolicyAccessDenied()
+        selected_rows = grouped.head(limit)
+        output_fields = [*group_by, "count"]
+    else:
+        selected_rows = frame.loc[:, selected_fields].head(limit)
+        output_fields = selected_fields
     rows = json.loads(selected_rows.to_json(orient="records", date_format="iso"))
     elapsed_ms = round((time.monotonic() - started_at) * 1000, 2)
     LOGGER.info(
@@ -190,7 +319,7 @@ def _query_business_data(
     )
     return {
         "dataset": dataset,
-        "fields": fields,
+        "fields": output_fields,
         "total_matches": total_matches,
         "returned_rows": len(rows),
         "rows": rows,
@@ -198,10 +327,13 @@ def _query_business_data(
 
 
 def _run_analysis(
+    user: MCPUserContext,
     analysis_name: str,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
     """Run one allowlisted deterministic analysis with its validated inputs."""
+    if not get_policy().can_run_analysis(user.role, analysis_name):
+        raise PolicyAccessDenied()
     started_at = time.monotonic()
     result = dispatch_analysis(get_store(), analysis_name, parameters)
     LOGGER.info(
@@ -215,10 +347,13 @@ def _run_analysis(
 
 
 def _generate_report(
+    user: MCPUserContext,
     report_data: dict[str, Any],
     tool_results_by_ref: dict[str, ToolResult] | None = None,
 ) -> dict[str, Any]:
     """Validate evidence and create a safely named editable Word report."""
+    if not get_policy().can_generate_report(user.role):
+        raise PolicyAccessDenied()
     try:
         report = ReportObject.model_validate(report_data)
     except (ValidationError, TypeError, ValueError) as exc:
@@ -307,40 +442,62 @@ def _report_source_labels(
 
 
 @server.tool()
-def get_data_schema() -> dict[str, Any]:
+def get_data_schema(ctx: Context) -> dict[str, Any]:
     """Return approved datasets, their fields, glossary, analyses, and as-of date."""
-    return _get_data_schema()
+    return _get_data_schema(resolve_mcp_user(ctx))
 
 
 @server.tool()
 def query_business_data(
+    ctx: Context,
     dataset: str,
     fields: list[str],
     filters: list[dict[str, Any]] | None = None,
     date_range: dict[str, str] | None = None,
     sort: dict[str, str] | None = None,
     limit: int = 20,
+    group_by: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Return capped rows and exact total_matches for the dataset and filters."""
-    return _query_business_data(dataset, fields, filters, date_range, sort, limit)
+    """Return capped rows and exact total_matches for a filtered dataset.
+
+    Manager employee queries must group by department or tenure_band; groups
+    smaller than the policy minimum are denied.
+    """
+    user = resolve_mcp_user(ctx)
+    return _query_business_data(
+        user,
+        dataset,
+        fields,
+        filters,
+        date_range,
+        sort,
+        limit,
+        group_by,
+    )
 
 
 @server.tool()
 def run_analysis(
+    ctx: Context,
     analysis_name: str,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
     """Run one named Pandas analysis with validated arguments."""
-    return _run_analysis(analysis_name, parameters)
+    return _run_analysis(resolve_mcp_user(ctx), analysis_name, parameters)
 
 
 @server.tool()
 def generate_report(
+    ctx: Context,
     report: dict[str, Any],
     tool_results_by_ref: dict[str, ToolResult] | None = None,
 ) -> dict[str, Any]:
     """Create a DOCX only when its figures validate against cited tool results."""
-    return _generate_report(report, tool_results_by_ref)
+    return _generate_report(
+        resolve_mcp_user(ctx),
+        report,
+        tool_results_by_ref,
+    )
 
 
 def main() -> None:
