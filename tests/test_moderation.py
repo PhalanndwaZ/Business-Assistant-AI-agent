@@ -13,6 +13,7 @@ import main
 from app.auth.users import get_user_by_id
 from app.auth.tokens import create_access_token
 from app.config import EMBEDDING_DIMENSIONS, Settings
+from app.data_access.employee_loader import load_employee_records
 from app.moderation.moderator import (
     ModerationError,
     check_input,
@@ -109,6 +110,154 @@ def test_output_moderation_withholds_emails_and_unauthorized_salary_values(
     assert salary_result.status == "redacted"
     assert salary_result.reason_codes == ("M5",)
     assert permitted_salary_result.status == "ok"
+
+
+def test_employee_ids_follow_role_field_permissions(
+    tmp_path: Path,
+) -> None:
+    """HR can see permitted employee IDs while roles without access are redacted."""
+    data_dir = Path("data/sample_data").resolve()
+    vector_store_path = tmp_path / "empty-chunks.json"
+    JsonVectorStore(vector_store_path).save(
+        {
+            "embedding_model": "test-model",
+            "embedding_dimensions": EMBEDDING_DIMENSIONS,
+            "chunks": [],
+        }
+    )
+    serialized_count_response = (
+        '{"answer":"There are 15 employees.",'
+        '"figures":[{"employee_id":"E001"}]}'
+    )
+
+    hr_result = moderate_output(
+        serialized_count_response,
+        "hr",
+        data_dir,
+        vector_store_path,
+    )
+    manager_result = moderate_output(
+        serialized_count_response,
+        "manager",
+        data_dir,
+        vector_store_path,
+    )
+
+    assert hr_result.status == "ok"
+    assert manager_result.status == "redacted"
+    assert manager_result.reason_codes == ("M5",)
+
+
+def test_hr_can_access_employee_contacts_but_not_unrelated_contacts(
+    tmp_path: Path,
+) -> None:
+    """HR may see employee contact fields allowed by policy, not arbitrary PII."""
+    data_dir = Path("data/sample_data").resolve()
+    vector_store_path = tmp_path / "empty-chunks.json"
+    JsonVectorStore(vector_store_path).save(
+        {
+            "embedding_model": "test-model",
+            "embedding_dimensions": EMBEDDING_DIMENSIONS,
+            "chunks": [],
+        }
+    )
+
+    permitted_employee_contact = moderate_output(
+        "employee001@example.invalid +1-202-555-0101",
+        "hr",
+        data_dir,
+        vector_store_path,
+    )
+    unrelated_contact = moderate_output(
+        "Contact someone@example.invalid",
+        "hr",
+        data_dir,
+        vector_store_path,
+    )
+
+    assert permitted_employee_contact.status == "ok"
+    assert unrelated_contact.status == "redacted"
+
+
+def test_hr_employee_query_response_passes_api_output_moderation(
+    tmp_path: Path,
+) -> None:
+    """Authorized HR employee rows survive the API's complete output check."""
+    data_dir = Path("data/sample_data").resolve()
+    vector_store_path = tmp_path / "empty-chunks.json"
+    JsonVectorStore(vector_store_path).save(
+        {
+            "embedding_model": "test-model",
+            "embedding_dimensions": EMBEDDING_DIMENSIONS,
+            "chunks": [],
+        }
+    )
+    employees = load_employee_records(data_dir)
+    department_payroll: dict[str, int] = {}
+    for employee in employees:
+        department = employee["department"]
+        department_payroll[department] = (
+            department_payroll.get(department, 0) + employee["salary_cents"]
+        )
+    state = {
+        "final_answer": (
+            "The chart shows total payroll grouped by department."
+        ),
+        "tool_results": [
+            {
+                "tool_name": "query_business_data",
+                "arguments": {"dataset": "employees"},
+                "result": {
+                    "dataset": "employees",
+                    "total_matches": len(employees),
+                    "returned_rows": len(employees),
+                    "rows": employees,
+                },
+                "success": True,
+            },
+            {
+                "tool_name": "query_business_data",
+                "arguments": {
+                    "dataset": "employees",
+                    "fields": ["department"],
+                    "group_by": ["department"],
+                    "aggregate": "sum_salary_cents",
+                },
+                "result": {
+                    "dataset": "employees",
+                    "fields": ["department", "salary_cents_sum"],
+                    "total_matches": len(employees),
+                    "total_groups": len(department_payroll),
+                    "returned_rows": len(department_payroll),
+                    "rows": [
+                        {
+                            "department": department,
+                            "salary_cents_sum": salary_cents_sum,
+                        }
+                        for department, salary_cents_sum
+                        in department_payroll.items()
+                    ],
+                },
+                "success": True,
+            },
+        ],
+        "retrieved_chunks": [],
+        "evidence_errors": [],
+        "errors": [],
+    }
+
+    response = main._response_fields(state)
+    result = moderate_output(
+        response.model_dump_json(),
+        "hr",
+        data_dir,
+        vector_store_path,
+        answer_text=response.answer,
+    )
+
+    assert result.status == "ok"
+    assert response.figures[0]["total_matches"] == len(employees)
+    assert response.charts[0]["title"] == "Total payroll by department"
 
 
 def test_output_moderation_detects_system_prompt_fragments(

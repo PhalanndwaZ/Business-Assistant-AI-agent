@@ -466,6 +466,14 @@ dropped before they reach the model. Moderation and access decisions are
 written to the SQLite audit log at `AUDIT_DB_PATH` (default
 `data/audit.sqlite3`). Questions are stored as SHA-256 hashes, not raw text.
 Only accounts with the `admin` role can read recent events from `/audit`.
+Output moderation applies employee identifiers and contact checks against the
+role's employee-field permissions, so HR-authorized employee details are not
+redacted solely because they contain an employee ID.
+For HR users with salary-field access, `query_business_data` supports the
+restricted `sum_salary_cents` aggregation grouped only by department. Results
+contain department payroll totals in integer cents, not individual salaries;
+roles without salary access cannot invoke this aggregation. Ask for a chart of
+"total earnings by department" to render those supported totals as bars.
 
 ### `POST /ask`
 
@@ -524,7 +532,8 @@ remains inside `reports/`; invalid, missing, or out-of-directory files return
 states whether a report file was generated and includes its path only after a
 successful `generate_report` call. Files are written under the project
 `reports/` directory. `charts` contains chart specifications built only from
-successful analysis results; the frontend renders these directly in the chat,
+successful analysis results or complete, successful department-grouped
+employee queries; the frontend renders these directly in the chat,
 so chart requests do not create image files. A malformed optional chart in a
 report request is omitted so it cannot block creation of an otherwise valid
 report. `figures` contains successful analysis/query results from the current

@@ -14,8 +14,17 @@ NUMBER_PATTERN = re.compile(
     r"(?:(?<![\w.])|(?<=[Rr]))[−‑+-]?\d+(?:,\d{3})*(?:\.\d+)?%?"
 )
 SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<!\d)[.!?](?!\d)|\n")
-MONEY_CENT_KEYS = frozenset({"revenue_cents", "unit_price_cents"})
+MONEY_CENT_KEYS = frozenset(
+    {"revenue_cents", "unit_price_cents", "salary_cents_sum"}
+)
 METRIC_TERMS = (
+    (
+        "payroll",
+        re.compile(
+            r"\b(payroll|earnings?|salar(?:y|ies)|wages?|compensation)\b",
+            re.IGNORECASE,
+        ),
+    ),
     ("revenue", re.compile(r"\b(revenue|sales)\b", re.IGNORECASE)),
     ("price", re.compile(r"\b(price|unit price)\b", re.IGNORECASE)),
     ("cost", re.compile(r"\bcost\b", re.IGNORECASE)),
@@ -24,7 +33,8 @@ METRIC_TERMS = (
     (
         "count",
         re.compile(
-            r"\b(orders?|customers?|units?|quantities|count|records?|days?|weeks?)\b",
+            r"\b(orders?|customers?|employees?|products?|categories?|items?|units?|"
+            r"quantities|count|records?|days?|weeks?)\b",
             re.IGNORECASE,
         ),
     ),
@@ -99,6 +109,11 @@ def _field_category(field_path: str) -> str:
         for key in ("percent", "percentage", "_pct", "growth_rate")
     ):
         return "percentage"
+    if any(
+        key in normalized_path
+        for key in ("salary", "payroll", "earnings", "wages", "compensation")
+    ):
+        return "payroll"
     if "revenue" in normalized_path or "sales" in normalized_path:
         return "revenue"
     if any(
@@ -223,6 +238,8 @@ def _claim_category(
         return None, None
     if re.search(r"\brevenue_cents\s*=\s*$", preceding_text, re.IGNORECASE):
         return "revenue", "cents"
+    if re.search(r"\b(?:top|first|last)\s*$", preceding_text, re.IGNORECASE):
+        return "count", None
     date_start = max(0, match.start() - 10)
     date_end = min(len(draft_answer), match.end() + 10)
     for date_match in ISO_DATE_PATTERN.finditer(draft_answer, date_start, date_end):
@@ -297,6 +314,7 @@ def _claim_category(
     context_end = sentence_end
     for category, pattern in METRIC_TERMS:
         if unit in {"cents", "dollars"} and category not in {
+            "payroll",
             "revenue",
             "price",
             "cost",
