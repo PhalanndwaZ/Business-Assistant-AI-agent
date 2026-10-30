@@ -24,6 +24,95 @@ def _result(
     ]
 
 
+def test_category_limit_is_checked_as_a_count_near_revenue() -> None:
+    """A top-N category count is not mistaken for a revenue amount."""
+    results = _result(
+        {"total_matches": 5, "revenue_cents": 1500},
+        tool_name="query_business_data",
+    )
+
+    for answer in (
+        "The top 5 categories by revenue are shown.",
+        "Revenue was grouped into 5 categories.",
+    ):
+        is_valid, issues = check_numeric_evidence(answer, results)
+
+        assert is_valid is True
+        assert issues == []
+
+
+def test_employee_count_is_not_misclassified_by_nearby_revenue() -> None:
+    """Employee-count claims stay counts when revenue is mentioned nearby."""
+    results = _result(
+        {
+            "total_matches": 5,
+            "returned_rows": 5,
+            "rows": [{"employee_id": employee_id} for employee_id in range(1, 6)],
+        },
+        tool_name="query_business_data",
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "There are 5 employees, and revenue is tracked separately.",
+        results,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_department_payroll_sum_supports_payroll_currency_claim() -> None:
+    """A salary sum supports its exact payroll amount in dollars."""
+    result: list[ToolResult] = [
+        {
+            "tool_name": "query_business_data",
+            "arguments": {
+                "dataset": "employees",
+                "group_by": ["department"],
+                "aggregate": "sum_salary_cents",
+            },
+            "result": {
+                "dataset": "employees",
+                "total_matches": 15,
+                "total_groups": 1,
+                "returned_rows": 1,
+                "rows": [
+                    {"department": "HR", "salary_cents_sum": 12_345_678}
+                ],
+            },
+            "success": True,
+        }
+    ]
+
+    is_valid, issues = check_numeric_evidence(
+        "HR total earnings were $123,456.78.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_employee_count_cannot_support_payroll_claim() -> None:
+    """Employee counts are not evidence for payroll values."""
+    result: list[ToolResult] = [
+        {
+            "tool_name": "query_business_data",
+            "arguments": {"dataset": "employees"},
+            "result": {"total_matches": 5},
+            "success": True,
+        }
+    ]
+
+    is_valid, issues = check_numeric_evidence(
+        "Total payroll was $5.",
+        result,
+    )
+
+    assert is_valid is False
+    assert "metric='payroll'" in issues[0]
+
+
 def test_revenue_cents_can_be_formatted_as_dollars() -> None:
     """Integer cents support the exact dollar-formatted equivalent."""
     is_valid, issues = check_numeric_evidence(

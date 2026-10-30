@@ -10,7 +10,7 @@ import tempfile
 import time
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 import pandas as pd
@@ -90,6 +90,18 @@ def _get_data_schema(user: MCPUserContext) -> dict[str, Any]:
                 if policy.can_access_field(user.role, name, field_name)
             }
         }
+        if name == "employees" and policy.can_access_field(
+            user.role,
+            "employees",
+            "salary_cents",
+        ):
+            dataset_description["aggregations"] = {
+                "sum_salary_cents": {
+                    "field": "salary_cents",
+                    "group_by": ["department"],
+                    "result_field": "salary_cents_sum",
+                }
+            }
         if (
             policy.dataset_mode(user.role, name) != "aggregate_only"
             and policy.can_access_field(user.role, name, schema.primary_key)
@@ -174,6 +186,7 @@ def _query_business_data(
     sort: dict[str, str] | None = None,
     limit: int = 20,
     group_by: list[str] | None = None,
+    aggregate: Literal["sum_salary_cents"] | None = None,
 ) -> dict[str, Any]:
     """Filter an allowlisted dataset and return a capped result with count."""
     started_at = time.monotonic()
@@ -187,6 +200,14 @@ def _query_business_data(
         raise PolicyAccessDenied()
     selected_fields = filter_fields(policy, user.role, dataset, fields)
     if not selected_fields:
+        raise PolicyAccessDenied()
+    if aggregate is not None and (
+        aggregate != "sum_salary_cents"
+        or dataset != "employees"
+        or fields != ["department"]
+        or group_by != ["department"]
+        or not policy.can_access_field(user.role, "employees", "salary_cents")
+    ):
         raise PolicyAccessDenied()
     mode = policy.dataset_mode(user.role, dataset)
     if mode == "aggregate_only":
@@ -289,11 +310,25 @@ def _query_business_data(
                 return "6+ years"
 
             frame["tenure_band"] = frame["hire_date"].map(to_tenure_band)
-        grouped = (
-            frame.groupby(group_by, dropna=False)
-            .size()
-            .reset_index(name="count")
-        )
+        if aggregate == "sum_salary_cents":
+            grouped = (
+                frame.groupby(group_by, dropna=False)
+                .agg(
+                    salary_cents_sum=("salary_cents", "sum"),
+                    _group_size=("salary_cents", "size"),
+                )
+                .reset_index()
+            )
+            group_sizes = grouped["_group_size"]
+            output_fields = [*group_by, "salary_cents_sum"]
+        else:
+            grouped = (
+                frame.groupby(group_by, dropna=False)
+                .size()
+                .reset_index(name="count")
+            )
+            group_sizes = grouped["count"]
+            output_fields = [*group_by, "count"]
         if mode == "aggregate_only" and any(
             not group_size_allowed(
                 policy,
@@ -301,11 +336,13 @@ def _query_business_data(
                 dataset,
                 int(group_count),
             )
-            for group_count in grouped["count"]
+            for group_count in group_sizes
         ):
             raise PolicyAccessDenied()
         selected_rows = grouped.head(limit)
-        output_fields = [*group_by, "count"]
+        total_groups = len(grouped)
+        if aggregate == "sum_salary_cents":
+            selected_rows = selected_rows.drop(columns="_group_size")
     else:
         selected_rows = frame.loc[:, selected_fields].head(limit)
         output_fields = selected_fields
@@ -317,13 +354,16 @@ def _query_business_data(
         dataset,
         min(total_matches, limit),
     )
-    return {
+    response = {
         "dataset": dataset,
         "fields": output_fields,
         "total_matches": total_matches,
         "returned_rows": len(rows),
         "rows": rows,
     }
+    if group_by is not None:
+        response["total_groups"] = total_groups
+    return response
 
 
 def _run_analysis(
@@ -457,11 +497,13 @@ def query_business_data(
     sort: dict[str, str] | None = None,
     limit: int = 20,
     group_by: list[str] | None = None,
+    aggregate: Literal["sum_salary_cents"] | None = None,
 ) -> dict[str, Any]:
     """Return capped rows and exact total_matches for a filtered dataset.
 
     Manager employee queries must group by department or tenure_band; groups
-    smaller than the policy minimum are denied.
+    smaller than the policy minimum are denied. Salary aggregation is available
+    only to roles with salary-field access and only as department total payroll.
     """
     user = resolve_mcp_user(ctx)
     return _query_business_data(
@@ -473,6 +515,7 @@ def query_business_data(
         sort,
         limit,
         group_by,
+        aggregate,
     )
 
 

@@ -1133,6 +1133,163 @@ def test_customer_count_uses_exact_query_match_count() -> None:
     assert "returned_rows" in prompt
 
 
+def test_department_headcount_chart_uses_grouped_employee_query() -> None:
+    """Grouped employee query results satisfy an explicit chart request."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "query_business_data",
+                {
+                    "dataset": "employees",
+                    "fields": ["department"],
+                    "group_by": ["department"],
+                },
+                "department-headcount",
+            ),
+            AIMessage(content="There are three departments."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "dataset": "employees",
+                    "fields": ["department", "count"],
+                    "total_matches": 15,
+                    "total_groups": 3,
+                    "returned_rows": 3,
+                    "rows": [
+                        {"department": "HR", "count": 5},
+                        {"department": "Operations", "count": 5},
+                        {"department": "Sales", "count": 5},
+                    ],
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Give me a chart showing headcount by department.",
+            model,
+            [_tool("query_business_data")],
+            client,
+        )
+    )
+
+    assert result["evidence_ok"] is True
+    assert result["final_answer"].startswith(
+        "Here is the requested **Headcount by department** chart."
+    )
+
+
+def test_department_payroll_chart_uses_authorized_salary_aggregation() -> None:
+    """Payroll charts request explicit salary sums rather than employee rows."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "query_business_data",
+                {
+                    "dataset": "employees",
+                    "fields": ["department"],
+                    "group_by": ["department"],
+                    "aggregate": "sum_salary_cents",
+                },
+                "department-payroll",
+            ),
+            AIMessage(content="Payroll by department is shown in the chart."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "dataset": "employees",
+                    "fields": ["department", "salary_cents_sum"],
+                    "total_matches": 15,
+                    "total_groups": 3,
+                    "returned_rows": 3,
+                    "rows": [
+                        {"department": "HR", "salary_cents_sum": 150_000_000},
+                        {
+                            "department": "Operations",
+                            "salary_cents_sum": 250_000_000,
+                        },
+                        {
+                            "department": "Sales",
+                            "salary_cents_sum": 350_000_000,
+                        },
+                    ],
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Give me a chart of total earnings by department.",
+            model,
+            [_tool("query_business_data")],
+            client,
+        )
+    )
+
+    assert client.calls[0][1] == {
+        "dataset": "employees",
+        "fields": ["department"],
+        "group_by": ["department"],
+        "aggregate": "sum_salary_cents",
+    }
+    assert result["evidence_ok"] is True
+    assert result["final_answer"].startswith(
+        "Here is the requested **Total payroll by department** chart."
+    )
+
+
+def test_employee_count_uses_exact_query_count_when_draft_is_invalid() -> None:
+    """An invalid draft cannot block a count supported by employee query metadata."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "query_business_data",
+                {"dataset": "employees", "fields": ["employee_id"], "limit": 5},
+                "employee-count",
+            ),
+            AIMessage(content="Revenue is 5. There are 15 employees."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "dataset": "employees",
+                    "fields": ["employee_id"],
+                    "total_matches": 15,
+                    "returned_rows": 5,
+                    "rows": [{"employee_id": f"E{i:03d}"} for i in range(1, 6)],
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "How many employees are there?",
+            model,
+            [_tool("query_business_data")],
+            client,
+            max_retries=0,
+        )
+    )
+
+    assert result["evidence_ok"] is True
+    assert result["evidence_errors"] == []
+    assert result["final_answer"].startswith(
+        "The employee query matched 15 employees."
+    )
+    assert "Revenue is 5" not in result["final_answer"]
+
+
 def test_unsupported_number_is_rejected_and_retried() -> None:
     """A second draft is requested when a number is absent from tool output."""
     model = FakeModel(
@@ -2020,6 +2177,7 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
     async def query_as_manager() -> tuple[
         CallToolResult,
         CallToolResult,
+        CallToolResult,
         list[Tool],
     ]:
         async with AnalystMCPClient(
@@ -2041,17 +2199,32 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
                     "fields": ["department"],
                 },
             )
-            return aggregate, individual, await client.list_tools()
+            payroll = await client.call_tool(
+                "query_business_data",
+                {
+                    "dataset": "employees",
+                    "fields": ["department"],
+                    "group_by": ["department"],
+                    "aggregate": "sum_salary_cents",
+                },
+            )
+            return aggregate, individual, payroll, await client.list_tools()
 
-    aggregate, individual, manager_tools = asyncio.run(query_as_manager())
+    aggregate, individual, manager_payroll, manager_tools = asyncio.run(
+        query_as_manager()
+    )
     aggregate_output = json.loads(aggregate.content[0].text)
     assert aggregate.isError is not True
     assert aggregate_output["rows"]
     assert all(row["count"] >= 5 for row in aggregate_output["rows"])
     assert set(aggregate_output["rows"][0]) == {"department", "count"}
     assert individual.isError is True
+    assert manager_payroll.isError is True
     assert "That data isn't available for your account." in (
         individual.content[0].text
+    )
+    assert "That data isn't available for your account." in (
+        manager_payroll.content[0].text
     )
     assert {tool.name for tool in manager_tools} == {
         "get_data_schema",
@@ -2061,19 +2234,36 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
         "search_documents",
     }
 
-    async def list_hr_tools() -> list[Tool]:
+    async def query_as_hr() -> tuple[list[Tool], CallToolResult]:
         async with AnalystMCPClient(
             settings,
             MCPUserContext("user-hr-demo", "hr"),
         ) as client:
-            return await client.list_tools()
+            tools = await client.list_tools()
+            payroll = await client.call_tool(
+                "query_business_data",
+                {
+                    "dataset": "employees",
+                    "fields": ["department"],
+                    "group_by": ["department"],
+                    "aggregate": "sum_salary_cents",
+                },
+            )
+            return tools, payroll
 
-    hr_tools = asyncio.run(list_hr_tools())
+    hr_tools, hr_payroll = asyncio.run(query_as_hr())
     assert {tool.name for tool in hr_tools} == {
         "get_data_schema",
         "query_business_data",
         "search_documents",
     }
+    hr_payroll_output = json.loads(hr_payroll.content[0].text)
+    assert hr_payroll.isError is not True
+    assert hr_payroll_output["rows"]
+    assert all(
+        set(row) == {"department", "salary_cents_sum"}
+        for row in hr_payroll_output["rows"]
+    )
 
 
 def test_mcp_client_closes_transport_if_initialization_fails(

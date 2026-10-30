@@ -697,6 +697,47 @@ def _revenue_period_fallback(
     )
 
 
+def _employee_count_fallback(
+    question: str,
+    tool_results: list[ToolResult],
+) -> str | None:
+    """Answer employee-count questions from exact query metadata."""
+    asks_for_count = re.search(
+        r"\b(?:how many|number of|count of|headcount|total)\b",
+        question,
+        re.IGNORECASE,
+    )
+    mentions_employees = re.search(
+        r"\b(?:employees?|staff)\b",
+        question,
+        re.IGNORECASE,
+    )
+    if not asks_for_count or not mentions_employees:
+        return None
+
+    for tool_result in tool_results:
+        arguments = tool_result.get("arguments")
+        result = tool_result.get("result")
+        if (
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "query_business_data"
+            or not isinstance(arguments, dict)
+            or arguments.get("dataset") != "employees"
+            or arguments.get("group_by")
+            or not isinstance(result, dict)
+            or result.get("dataset") != "employees"
+        ):
+            continue
+        total_matches = result.get("total_matches")
+        if (
+            isinstance(total_matches, int)
+            and not isinstance(total_matches, bool)
+            and total_matches >= 0
+        ):
+            return f"The employee query matched {total_matches} employees."
+    return None
+
+
 async def _invoke_with_backoff(
     model: AsyncChatModel,
     messages: list[Any],
@@ -1137,17 +1178,30 @@ def build_graph(
 
     def evidence_check_node(state: AnalystState) -> dict[str, Any]:
         """Validate figures, document citations, and causal wording."""
+        draft_answer = state.get("draft_answer", "")
+        chart_requested = _chart_requested(state.get("question", ""))
+        report_requested = _report_requested(state.get("question", ""))
+        employee_count = (
+            _employee_count_fallback(
+                state.get("question", ""),
+                state.get("tool_results", []),
+            )
+            if not chart_requested and not report_requested
+            else None
+        )
+        if employee_count is not None:
+            draft_answer = employee_count
+
         numeric_valid, numeric_issues = check_numeric_evidence(
-            state.get("draft_answer", ""),
+            draft_answer,
             state.get("tool_results", []),
         )
         document_valid, document_issues = check_document_evidence(
-            state.get("draft_answer", ""),
-            state.get("retrieved_chunks", []),
+            draft_answer,
+            [] if employee_count is not None else state.get("retrieved_chunks", []),
         )
         issues = numeric_issues + document_issues
         is_valid = numeric_valid and document_valid
-        chart_requested = _chart_requested(state.get("question", ""))
         if chart_requested and not build_chart_specs(
             state.get("tool_results", [])
         ):
@@ -1156,7 +1210,6 @@ def build_graph(
                 "ranking, comparison, or multi-period analysis."
             )
             is_valid = False
-        report_requested = _report_requested(state.get("question", ""))
         report_generated = any(
             result.get("success")
             and result.get("tool_name") == "generate_report"
@@ -1195,6 +1248,7 @@ def build_graph(
         if not is_valid:
             LOGGER.warning("Evidence check failed issues=%s", issues)
         return {
+            "draft_answer": draft_answer,
             "evidence_ok": is_valid,
             "evidence_errors": issues,
             "retry_count": state.get("retry_count", 0) + (0 if is_valid else 1),
@@ -1270,6 +1324,11 @@ def build_graph(
                     "do not contain a ranking, comparison, or multiple periods. "
                     "Request a product/category breakdown or a longer date range."
                 )
+        elif employee_count := _employee_count_fallback(
+            state.get("question", ""),
+            state.get("tool_results", []),
+        ):
+            answer = employee_count
         elif not successful_results:
             answer = (
                 "I cannot answer this question from the available business data "

@@ -17,6 +17,7 @@ MODERATION_RULES_PATH = (
     PROJECT_ROOT / "data" / "policy" / "moderation_rules.json"
 )
 SYSTEM_PROMPT_PATH = PROJECT_ROOT / "app" / "prompts" / "system_prompt.md"
+EMPLOYEE_ID_PATTERN = re.compile(r"\bE\d{3,}\b", re.IGNORECASE)
 
 
 class ModerationError(RuntimeError):
@@ -203,18 +204,29 @@ def moderate_output(
             ) from exc
 
     try:
-        if any(
-            re.search(pattern, content, re.IGNORECASE)
-            for check in checks
-            for pattern in check["patterns"]
-        ):
-            return _redacted_output(notice, "M5")
+        policy = AccessPolicy()
+        for check in checks:
+            for pattern in check["patterns"]:
+                for match in re.finditer(pattern, content, re.IGNORECASE):
+                    if _is_permitted_employee_contact(
+                        match.group(),
+                        role,
+                        policy,
+                        data_dir,
+                    ):
+                        continue
+                    return _redacted_output(notice, "M5")
 
         prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
         if _contains_prompt_fragment(content, prompt, prompt_min_words):
             return _redacted_output(notice, "M5")
 
-        policy = AccessPolicy()
+        if (
+            not policy.can_access_field(role, "employees", "employee_id")
+            and EMPLOYEE_ID_PATTERN.search(content)
+        ):
+            return _redacted_output(notice, "M5")
+
         if not policy.can_access_field(role, "employees", "salary_cents"):
             if re.search(
                 r"\b(?:salary|salaries|compensation|employee pay)\b.{0,30}"
@@ -263,6 +275,33 @@ def moderate_output(
         raise ModerationError("Output moderation could not verify the response.") from exc
 
     return OutputModerationResult(status="ok", notice=None)
+
+
+def _is_permitted_employee_contact(
+    value: str,
+    role: str,
+    policy: AccessPolicy,
+    data_dir: Path,
+) -> bool:
+    """Allow a contact value only when it belongs to an accessible employee."""
+    field = "work_email" if "@" in value else "phone"
+    if not policy.can_access_field(role, "employees", field):
+        return False
+    employees = load_employee_records(data_dir)
+    if field == "work_email":
+        normalized_value = value.casefold()
+        return any(
+            employee["work_email"].casefold() == normalized_value
+            for employee in employees
+        )
+
+    digits = re.sub(r"\D", "", value)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    return any(
+        re.sub(r"\D", "", employee["phone"]).removeprefix("1") == digits
+        for employee in employees
+    )
 
 
 def _redacted_output(
