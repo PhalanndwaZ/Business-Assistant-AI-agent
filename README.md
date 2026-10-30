@@ -12,6 +12,7 @@ checks numeric and document claims before returning an answer.
 
 ## Contents
 
+- [Current application workflow guide](APPLICATION_WORKFLOW.md)
 - [Architecture](#architecture)
 - [LangGraph workflow](#langgraph-workflow)
 - [Setup and run](#setup-and-run)

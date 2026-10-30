@@ -2,38 +2,16 @@ import { AnswerText } from "./AnswerText.jsx";
 import { ChartGrid } from "./ChartGrid.jsx";
 import { EvidencePanel } from "./EvidencePanel.jsx";
 import {
-<<<<<<< HEAD
+  getRedactionNotice,
+  ModerationNotice,
+} from "./ModerationNotice.jsx";
+import {
   getReportFilename,
   removeReportPathFromAnswer,
   ReportNotice,
 } from "./ReportNotice.jsx";
 
-/** Render an assistant answer followed by its current-turn evidence. */
-export function AssistantMessage({ content, response }) {
-  const reportFilename = getReportFilename(
-    content,
-    response?.report_filename,
-  );
-  const visibleAnswer = removeReportPathFromAnswer(
-    content,
-    response?.report_filename,
-  );
-
-  return (
-    <article className="message-bubble message-bubble--assistant">
-      <AnswerText content={visibleAnswer} />
-      <ReportNotice
-        answer={content}
-        reportFilename={reportFilename}
-      />
-      <EvidencePanel response={response} />
-=======
-  getRedactionNotice,
-  ModerationNotice,
-} from "./ModerationNotice.jsx";
-import { ReportNotice } from "./ReportNotice.jsx";
-
-/** Render an assistant answer followed by its current-turn evidence. */
+/** Render an assistant answer, moderation status, charts, report, and evidence. */
 export function AssistantMessage({ content, response }) {
   const isRefused = response?.moderation?.status === "refused";
   const redactionNotice = getRedactionNotice(response?.moderation);
@@ -52,6 +30,14 @@ export function AssistantMessage({ content, response }) {
           ),
         }
       : response;
+  const reportFilename = getReportFilename(
+    content,
+    response?.report_filename,
+  );
+  const visibleAnswer = removeReportPathFromAnswer(
+    content,
+    response?.report_filename,
+  );
 
   return (
     <article
@@ -61,12 +47,14 @@ export function AssistantMessage({ content, response }) {
           : "message-bubble message-bubble--assistant"
       }
     >
-      {answerRepeatsNotice ? null : <AnswerText content={content} />}
+      {answerRepeatsNotice ? null : <AnswerText content={visibleAnswer} />}
       <ModerationNotice moderation={response?.moderation} />
       <ChartGrid charts={response?.charts} />
-      <ReportNotice reportFilename={response?.report_filename} />
+      <ReportNotice
+        answer={content}
+        reportFilename={reportFilename}
+      />
       <EvidencePanel response={evidenceResponse} />
->>>>>>> dev
     </article>
   );
 }
