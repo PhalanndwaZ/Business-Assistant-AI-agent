@@ -142,11 +142,15 @@ class AnalystMCPClient:
         self,
         settings: Settings,
         user_context: MCPUserContext,
+        conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> None:
         """Create both isolated stdio MCP clients."""
         if not user_context.user_id or not user_context.role:
             raise ValueError("MCP user context must include user ID and role.")
         self.user_context = user_context
+        self.conversation_id = conversation_id
+        self.document_ids = document_ids or []
         self._policy = AccessPolicy()
         self._business_client = BusinessDataMCPClient(settings, user_context)
         self._document_client = DocumentSearchMCPClient(settings, user_context)
@@ -154,6 +158,16 @@ class AnalystMCPClient:
         self._stack = AsyncExitStack()
         self._tools: list[Tool] = []
         self._connected = False
+
+    def set_document_context(
+        self,
+        *,
+        conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
+    ) -> None:
+        """Attach document-search context without changing MCP client construction."""
+        self.conversation_id = conversation_id
+        self.document_ids = document_ids or []
 
     async def __aenter__(self) -> AnalystMCPClient:
         """Start both MCP servers and index their tool declarations."""
@@ -214,4 +228,11 @@ class AnalystMCPClient:
         client = self._tool_clients.get(tool_name)
         if client is None:
             raise ValueError(f"Unknown MCP tool: {tool_name}.")
+        if tool_name == "search_documents":
+            if self.conversation_id:
+                arguments["conversation_id"] = self.conversation_id
+            if self.document_ids:
+                arguments["document_ids"] = self.document_ids
+        if tool_name == "draft_message" and self.conversation_id:
+            arguments["conversation_id"] = self.conversation_id
         return await client.call_tool(tool_name, arguments)

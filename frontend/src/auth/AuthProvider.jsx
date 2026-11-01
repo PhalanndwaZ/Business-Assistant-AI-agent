@@ -10,10 +10,7 @@ import {
   savePendingQuestion,
   saveAuthSession,
 } from "./authStore.js";
-import {
-  clearLegacyConversationData,
-  clearUserConversations,
-} from "../storage/conversationStore.js";
+import { clearLegacyConversationData } from "../storage/conversationStore.js";
 
 export const AuthContext = createContext(null);
 
@@ -41,9 +38,6 @@ export function AuthProvider({ children }) {
         savePendingQuestion(pending.question, pending.userId);
         setPendingQuestion(pending);
       }
-      if (expiredUser?.user_id) {
-        clearUserConversations(expiredUser.user_id);
-      }
       clearAuthSession();
       setUser(null);
       setSessionExpired(true);
@@ -60,12 +54,11 @@ export function AuthProvider({ children }) {
         handleSessionExpired,
       );
     };
-  }, [user]);
+  }, []);
 
   /** Restore a saved session only after validating it with the API. */
   useEffect(function restoreSavedSession() {
     const accessToken = loadAuthToken();
-    const storedUser = loadAuthUser();
     clearLegacyConversationData();
     if (!accessToken) {
       setIsLoading(false);
@@ -82,12 +75,6 @@ export function AuthProvider({ children }) {
         if (active) {
           const savedPendingQuestion = loadPendingQuestion();
           if (
-            storedUser?.user_id &&
-            storedUser.user_id !== currentUser.user_id
-          ) {
-            clearUserConversations(storedUser.user_id);
-          }
-          if (
             savedPendingQuestion &&
             savedPendingQuestion.userId !== currentUser.user_id
           ) {
@@ -101,9 +88,6 @@ export function AuthProvider({ children }) {
         }
       } catch (error) {
         if (active && error?.kind !== "cancelled") {
-          if (storedUser?.user_id) {
-            clearUserConversations(storedUser.user_id);
-          }
           clearAuthSession();
           setUser(null);
           if (error?.status === 401) {
@@ -126,18 +110,11 @@ export function AuthProvider({ children }) {
 
   /** Sign in, verify the returned bearer token, and store the profile. */
   const signIn = useCallback(async function signInUser(username, password) {
-    const previousUser = user || loadAuthUser();
     try {
       const loginResponse = await loginRequest(username, password);
       saveAuthSession(loginResponse.access_token);
       const currentUser = await getMe();
       const savedPendingQuestion = loadPendingQuestion();
-      if (
-        previousUser?.user_id &&
-        previousUser.user_id !== currentUser.user_id
-      ) {
-        clearUserConversations(previousUser.user_id);
-      }
       if (
         savedPendingQuestion &&
         savedPendingQuestion.userId !== currentUser.user_id
@@ -152,26 +129,20 @@ export function AuthProvider({ children }) {
       setSessionExpired(false);
       return currentUser;
     } catch (error) {
-      if (previousUser?.user_id) {
-        clearUserConversations(previousUser.user_id);
-      }
       clearAuthSession();
       setUser(null);
       throw error;
     }
-  }, [user]);
+  }, []);
 
-  /** End the session and remove its token, profile, and saved chat data. */
+  /** End the session while preserving this user's saved chats for its next login. */
   const signOut = useCallback(function signOutUser() {
-    if (user?.user_id) {
-      clearUserConversations(user.user_id);
-    }
     clearSavedPendingQuestion();
     setPendingQuestion(null);
     clearAuthSession();
     setUser(null);
     setSessionExpired(false);
-  }, [user]);
+  }, []);
 
   /** Clear the expired-session notice before a new login attempt. */
   const clearSessionExpired = useCallback(function clearExpiredNotice() {

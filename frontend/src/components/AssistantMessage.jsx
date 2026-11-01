@@ -53,6 +53,7 @@ export function AssistantMessage({ content, response }) {
       <ReportNotice
         answer={content}
         reportFilename={reportFilename}
+        reportData={response?.report_data}
       />
       <EvidencePanel response={evidenceResponse} />
     </article>

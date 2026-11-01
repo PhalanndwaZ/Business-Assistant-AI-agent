@@ -1,4 +1,4 @@
-import { API_BASE, REQUEST_TIMEOUT_MS, USE_MOCK } from "../config.js";
+﻿import { API_BASE, REQUEST_TIMEOUT_MS, USE_MOCK } from "../config.js";
 import {
   clearAuthSession,
   loadAuthToken,
@@ -45,6 +45,8 @@ function isAskResponse(payload) {
     Array.isArray(payload.figures) &&
     (!Object.hasOwn(payload, "charts") || Array.isArray(payload.charts)) &&
     Array.isArray(payload.sources) &&
+    (!Object.hasOwn(payload, "source_metadata") ||
+      Array.isArray(payload.source_metadata)) &&
     Array.isArray(payload.caveats) &&
     (!Object.hasOwn(payload, "report_filename") ||
       payload.report_filename === null ||
@@ -140,7 +142,7 @@ export async function requestJson(
     if (authenticated) {
       const accessToken = loadAuthToken();
       if (accessToken) {
-        requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+        requestHeaders.set("Authorization", "Bearer " + accessToken);
       }
     }
 
@@ -222,7 +224,7 @@ export async function requestBlob(path, { signal } = {}) {
     const requestHeaders = new Headers();
     const accessToken = loadAuthToken();
     if (accessToken) {
-      requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+        requestHeaders.set("Authorization", "Bearer " + accessToken);
     }
 
     const response = await fetch(`${apiBase}${path}`, {
@@ -274,6 +276,7 @@ export async function requestBlob(path, { signal } = {}) {
 export async function askQuestion({
   question,
   conversationId = null,
+  documentIds = [],
   signal,
 } = {}) {
   if (USE_MOCK) {
@@ -293,6 +296,7 @@ export async function askQuestion({
     body: {
       question: typeof question === "string" ? question.trim() : "",
       conversation_id: conversationId,
+      document_ids: documentIds,
     },
     signal,
     authenticated: true,

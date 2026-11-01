@@ -111,6 +111,16 @@ class Finding(ReportModel):
     source_refs: list[NonEmptyText] = Field(min_length=1)
 
 
+class ReportContextItem(ReportModel):
+    """One short report-context quote with its document provenance."""
+
+    quote: NonEmptyText
+    document_name: NonEmptyText
+    origin: Literal["company", "uploaded"]
+    page_number: int | None = None
+    source_label: NonEmptyText
+
+
 class ReportObject(ReportModel):
     """Complete report content, validated before evidence checks or rendering."""
 
@@ -123,3 +133,4 @@ class ReportObject(ReportModel):
     tables: list[ReportTable] = Field(default_factory=list, max_length=2)
     findings: list[Finding] = Field(min_length=2, max_length=5)
     notes: list[NonEmptyText] = Field(default_factory=list)
+    context: list[ReportContextItem] = Field(default_factory=list, max_length=3)

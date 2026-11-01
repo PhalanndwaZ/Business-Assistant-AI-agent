@@ -2124,6 +2124,7 @@ def test_analyst_mcp_client_routes_both_servers_over_stdio(tmp_path: Path) -> No
         "run_analysis",
         "generate_report",
         "search_documents",
+        "draft_message",
     }
     assert analysis_result.isError is not True
     assert "employees" not in schema_output["datasets"]
@@ -2232,6 +2233,7 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
         "run_analysis",
         "generate_report",
         "search_documents",
+        "draft_message",
     }
 
     async def query_as_hr() -> tuple[list[Tool], CallToolResult]:
@@ -2256,6 +2258,7 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
         "get_data_schema",
         "query_business_data",
         "search_documents",
+        "draft_message",
     }
     hr_payroll_output = json.loads(hr_payroll.content[0].text)
     assert hr_payroll.isError is not True

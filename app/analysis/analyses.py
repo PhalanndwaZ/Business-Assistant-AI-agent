@@ -393,6 +393,12 @@ ANALYSIS_FUNCTIONS: dict[str, Callable[..., dict[str, Any]]] = {
     "outliers": outliers,
 }
 
+from app.analysis.product_portfolio import product_portfolio  # noqa: E402
+from app.analysis.customer_segments import customer_segments  # noqa: E402
+
+ANALYSIS_FUNCTIONS["product_portfolio"] = product_portfolio
+ANALYSIS_FUNCTIONS["customer_segments"] = customer_segments
+
 
 def run_analysis(
     store: JsonDataStore,

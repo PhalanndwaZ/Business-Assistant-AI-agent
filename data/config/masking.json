@@ -1,0 +1,15 @@
+{
+  "blocked_fields": [
+    "draft_body",
+    "customer_name",
+    "employee_name",
+    "salary",
+    "payroll",
+    "uploaded_text",
+    "document_text",
+    "password",
+    "token",
+    "secret"
+  ],
+  "placeholder": "[REDACTED]"
+}

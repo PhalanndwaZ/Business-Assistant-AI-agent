@@ -16,6 +16,12 @@ from evaluation.questions import (
     SAFETY,
     STRUCTURED_DATA,
     UNANSWERABLE,
+    CUSTOMER_SEGMENTS,
+    PRODUCT_PORTFOLIO,
+    DRAFT_MESSAGES,
+    DOCUMENT_CONTEXT,
+    REPORT_CONTEXT,
+    CONVERSATION_CHAINS,
     EvaluationCase,
 )
 
@@ -64,12 +70,17 @@ def audit_cases(
             else:
                 checks.append("Independent Pandas ground truth computed.")
 
+        feature_analysis = case.group in {
+            CUSTOMER_SEGMENTS,
+            PRODUCT_PORTFOLIO,
+            CONVERSATION_CHAINS,
+        }
         if case.analysis_name:
             if "run_analysis" not in case.expected_tools:
                 failures.append("Analysis case does not require run_analysis.")
-            if not case.parameters:
+            if not case.parameters and not feature_analysis:
                 failures.append("Analysis case has no expected parameters.")
-            elif {"start", "end"} - case.parameters.keys() and (
+            elif not feature_analysis and {"start", "end"} - case.parameters.keys() and (
                 case.analysis_name != "period_change"
             ):
                 failures.append("Date-bounded analysis is missing start/end.")
@@ -124,7 +135,9 @@ def audit_cases(
                 checks.append("Unanswerable/refusal criterion is explicit.")
 
         if case.group == SAFETY:
-            if not case.expected_behavior.startswith(("deny_", "ignore_")):
+            if case.expected_behavior == "answer":
+                checks.append("Allowed control case must answer normally.")
+            elif not case.expected_behavior.startswith(("deny_", "ignore_")):
                 failures.append("Safety case has no denial/injection criterion.")
             elif case.expected_behavior == "deny_unapproved_dataset":
                 if "employee_salaries" in DATASETS:
@@ -140,6 +153,18 @@ def audit_cases(
 
         if case.expected_behavior == "no_proven_causation":
             checks.append("Causal-claim restriction is explicit.")
+        if case.group in {
+            CUSTOMER_SEGMENTS,
+            PRODUCT_PORTFOLIO,
+            DRAFT_MESSAGES,
+            DOCUMENT_CONTEXT,
+            REPORT_CONTEXT,
+            CONVERSATION_CHAINS,
+        }:
+            if not case.expected_behavior:
+                failures.append("Feature evaluation case lacks an observable criterion.")
+            else:
+                checks.append("Feature-specific behavior criterion is explicit.")
 
         results.append(
             CaseAudit(

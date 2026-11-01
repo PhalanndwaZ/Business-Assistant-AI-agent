@@ -6,6 +6,8 @@ import { ChatWindow } from "./components/ChatWindow.jsx";
 import { LoginView } from "./components/LoginView.jsx";
 import { SHOW_DEMO_ACCOUNTS } from "./config.js";
 import { useConversation } from "./hooks/useConversation.js";
+import { useDocuments } from "./hooks/useDocuments.js";
+import { useDrafts } from "./hooks/useDrafts.js";
 
 /** Select the login screen or the authenticated chat workspace. */
 export default function App() {
@@ -52,10 +54,23 @@ function AuthenticatedChat({
   onClearPendingQuestion,
 }) {
   const conversation = useConversation(user.user_id);
+  const documents = useDocuments(
+    user.user_id,
+    conversation.conversationId,
+    conversation.adoptConversation,
+  );
+  const drafts = useDrafts(conversation.conversationId);
 
   return (
     <ChatWindow
       {...conversation}
+      documents={documents.documents}
+      onAttachDocument={documents.attach}
+      onRemoveDocument={documents.remove}
+      documentError={documents.error}
+      drafts={drafts.drafts}
+      draftsError={drafts.error}
+      onSaveDraft={drafts.save}
       user={user}
       onLogout={onLogout}
       pendingQuestion={pendingQuestion}

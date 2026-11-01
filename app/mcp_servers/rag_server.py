@@ -13,6 +13,7 @@ from app.policy.context import MCPUserContext, PolicyAccessDenied, resolve_mcp_u
 from app.policy.policy import AccessPolicy
 from app.rag.embeddings import MistralEmbedder
 from app.rag.retriever import DocumentRetriever
+from app.uploads import UploadStore
 
 LOGGER = logging.getLogger(__name__)
 server = FastMCP("document-search")
@@ -53,12 +54,15 @@ def _search_documents(
     document_type: str | None = None,
     document_date: str | None = None,
     k: int | None = None,
+    conversation_id: str | None = None,
+    document_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Find relevant passages and return their source metadata and scores."""
     policy = get_policy()
     if not policy.can_use_tool(user.role, "search_documents"):
         raise PolicyAccessDenied()
     started_at = time.monotonic()
+    settings = load_settings(require_groq_api_key=False)
     result = get_retriever().search(
         query,
         document_type,
@@ -67,6 +71,35 @@ def _search_documents(
         access_policy=policy,
         role=user.role,
     )
+    result_limit = k or settings.top_k
+    company_results = result["results"]
+    for chunk in company_results:
+        chunk["origin"] = "company"
+    uploaded_results: list[dict[str, Any]] = []
+    if conversation_id:
+        settings = load_settings(require_groq_api_key=False)
+        store = UploadStore(settings.conversation_db_path)
+        query_vector = get_retriever()._embedder.embed([query])[0]
+        uploaded_results = store.search(
+            conversation_id=conversation_id,
+            user_id=user.user_id,
+            query_vector=query_vector,
+            document_ids=document_ids,
+            min_similarity=settings.min_similarity,
+            top_k=k or settings.top_k,
+            embedder_model=settings.mistral_embedding_model,
+        )
+    all_results = sorted(
+        [*company_results, *uploaded_results],
+        key=lambda chunk: (-float(chunk["similarity"]), str(chunk["chunk_id"])),
+    )
+
+    result["results"] = all_results[:result_limit]
+    if not result["results"]:
+        if conversation_id:
+            result["message"] = "The documents do not cover this question."
+        else:
+            result["message"] = "No relevant passages found."
     LOGGER.info(
         "tool=search_documents duration_ms=%.2f results=%d",
         (time.monotonic() - started_at) * 1000,
@@ -82,6 +115,8 @@ def search_documents(
     document_type: str | None = None,
     document_date: str | None = None,
     k: int | None = None,
+    conversation_id: str | None = None,
+    document_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Search business documents and return relevant passages with citations."""
     return _search_documents(
@@ -90,6 +125,8 @@ def search_documents(
         document_type,
         document_date,
         k,
+        conversation_id,
+        document_ids,
     )
 
 

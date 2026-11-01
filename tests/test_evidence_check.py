@@ -256,6 +256,58 @@ def test_numeric_failure_lists_compared_tool_evidence() -> None:
     assert "50 (count/count)" in issues[0]
 
 
+def test_customer_segment_counts_revenue_shares_and_ratios_are_supported() -> None:
+    result = _result(
+        {
+            "status": "ok",
+            "customers_counted": 60,
+            "segments": [
+                {
+                    "name": "Best customers",
+                    "customers": 17,
+                    "share_of_customers": 0.283333,
+                    "revenue_cents": 8993282,
+                    "share_of_revenue": 0.233974,
+                    "avg_orders": 9.0,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The analysis counted 60 customers. Best customers contains 17 customers "
+        "(28.3333%) and generated $89,932.82, representing 23.3974% of revenue "
+        "with 9 average orders.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_segment_revenue_cents_and_share_fields_are_not_counts() -> None:
+    result = _result(
+        {
+            "segments": [
+                {
+                    "customers": 12,
+                    "revenue_cents": 8993282,
+                    "share_of_revenue": 0.233974,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The segment has 12 customers, revenue_cents of 8,993,282, "
+        "and a revenue share of 0.233974.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
 def test_non_numeric_response_does_not_require_business_numeric_evidence() -> None:
     """Document-only and cannot-answer drafts may contain no numeric claims."""
     is_valid, issues = check_numeric_evidence(

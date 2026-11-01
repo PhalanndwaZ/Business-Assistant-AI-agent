@@ -1,12 +1,17 @@
 import { useState } from "react";
 
 import { QUESTION_LENGTH_LIMIT } from "../config.js";
+import { DocumentPanel } from "./DocumentPanel.jsx";
 
 /** Render an accessible question box with Enter and Shift+Enter behavior. */
 export function QuestionInput({
   disabled,
   inputRef,
   onSend,
+  documents = [],
+  onAttachDocument,
+  onRemoveDocument,
+  documentError,
 }) {
   const [value, setValue] = useState("");
   const showCharacterCount =
@@ -69,6 +74,15 @@ export function QuestionInput({
           Send
         </button>
       </div>
+      {onAttachDocument ? (
+        <DocumentPanel
+          disabled={disabled}
+          documents={documents}
+          error={documentError}
+          onAttach={onAttachDocument}
+          onRemove={onRemoveDocument}
+        />
+      ) : null}
       <div className="question-form__meta">
         <span id="question-input-help">
           Enter to send · Shift+Enter for a new line

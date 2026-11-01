@@ -1,0 +1,10 @@
+{
+  "allowed_extensions": ["pdf", "docx", "txt", "md"],
+  "max_file_bytes": 10485760,
+  "max_files_per_conversation": 5,
+  "max_chunks_per_file": 300,
+  "uploads_per_user_per_day": 20,
+  "retention_days": 30,
+  "context_max": 3,
+  "unsupported": ["scanned PDF", "image", "spreadsheet", "CSV"]
+}

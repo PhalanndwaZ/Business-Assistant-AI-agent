@@ -49,6 +49,10 @@
         "tool:run_analysis:use",
         "tool:generate_report:use",
         "tool:search_documents:use",
+        "tool:draft_message:use",
+        "tool:upload_document:use",
+        "tool:list_documents:use",
+        "tool:delete_document:use",
         "dataset:customers:read",
         "dataset:products:read",
         "dataset:orders:read",
@@ -61,6 +65,8 @@
         "analysis:trend:run",
         "analysis:outliers:run",
         "analysis:decline_risk:run",
+        "analysis:customer_segments:run",
+        "analysis:product_portfolio:run",
         "documents:sales:read",
         "documents:general:read",
         "report:sales:generate",
@@ -105,10 +111,15 @@
         "top_customers",
         "trend",
         "outliers",
-        "decline_risk"
+        "decline_risk",
+        "customer_segments",
+        "product_portfolio"
       ],
       "documents": {
-        "departments": ["sales", "general"],
+        "departments": [
+          "sales",
+          "general"
+        ],
         "max_classification": "internal"
       }
     },
@@ -117,6 +128,10 @@
         "tool:get_data_schema:use",
         "tool:query_business_data:use",
         "tool:search_documents:use",
+        "tool:draft_message:use",
+        "tool:upload_document:use",
+        "tool:list_documents:use",
+        "tool:delete_document:use",
         "dataset:employees:read",
         "analysis:headcount:run",
         "documents:hr:read",
@@ -135,9 +150,14 @@
           "mode": "read"
         }
       },
-      "analyses": ["headcount"],
+      "analyses": [
+        "headcount"
+      ],
       "documents": {
-        "departments": ["hr", "general"],
+        "departments": [
+          "hr",
+          "general"
+        ],
         "max_classification": "restricted"
       }
     },
@@ -148,6 +168,10 @@
         "tool:run_analysis:use",
         "tool:generate_report:use",
         "tool:search_documents:use",
+        "tool:draft_message:use",
+        "tool:upload_document:use",
+        "tool:list_documents:use",
+        "tool:delete_document:use",
         "dataset:customers:read",
         "dataset:products:read",
         "dataset:orders:read",
@@ -161,6 +185,8 @@
         "analysis:trend:run",
         "analysis:outliers:run",
         "analysis:decline_risk:run",
+        "analysis:customer_segments:run",
+        "analysis:product_portfolio:run",
         "analysis:headcount:run",
         "documents:sales:read",
         "documents:general:read",
@@ -202,7 +228,10 @@
         "employees": {
           "department": "hr",
           "classification": "confidential",
-          "fields": ["department", "hire_date"],
+          "fields": [
+            "department",
+            "hire_date"
+          ],
           "mode": "aggregate_only",
           "min_group_size": 5
         }
@@ -216,15 +245,23 @@
         "trend",
         "outliers",
         "decline_risk",
+        "customer_segments",
+        "product_portfolio",
         "headcount"
       ],
       "documents": {
-        "departments": ["sales", "general"],
+        "departments": [
+          "sales",
+          "general"
+        ],
         "max_classification": "internal"
       }
     },
     "admin": {
-      "permissions": ["users:admin", "audit:read"],
+      "permissions": [
+        "users:admin",
+        "audit:read"
+      ],
       "max_classification": {},
       "datasets": {},
       "analyses": [],

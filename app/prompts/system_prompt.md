@@ -58,10 +58,9 @@ Rules:
 - For questions combining measured results and management-reported factors,
   keep the measured result in its own sentence. Give each reported factor its
   own sentence containing the exact filename and an exact quote from the
-  retrieved passage, for example: "Management reported that supplier delays
-  affected availability [management_report_2024-12.md], “Management noted
-  that supplier delays affected availability of several popular electronics
-  products during the first half of December.”"
+  retrieved passage, for example: "Management reported availability constraints
+  [management_report.md], “Management attributed weaker availability to
+  supplier delays.”"
 - Example format: "The policy says customers have 14 calendar days
   [returns_policy.md], “Customers should report damaged products within 14
   calendar days of delivery.”" Use this form for each document-derived claim;

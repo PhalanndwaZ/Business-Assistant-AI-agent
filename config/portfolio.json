@@ -1,0 +1,28 @@
+{
+  "top_n": 10,
+  "min_base_cents": 100,
+  "class_a_cumulative_share": 0.80,
+  "classes": ["A", "B", "C"],
+  "observations": [
+    {
+      "condition": "top_3_share_above",
+      "threshold": 0.60,
+      "sentence": "A small number of products carry most of the revenue. A problem with one of them would be felt across the business."
+    },
+    {
+      "condition": "class_a_revenue_fall_above",
+      "threshold": 0.15,
+      "sentence": "A major product is selling less than before. Worth looking at before the next period closes."
+    },
+    {
+      "condition": "long_tail_share_above",
+      "threshold": 0.20,
+      "sentence": "Many products contribute very little. Review whether all of them are needed."
+    },
+    {
+      "condition": "any_dormant",
+      "threshold": null,
+      "sentence": "These products had no sales in the period."
+    }
+  ]
+}

@@ -35,6 +35,8 @@ from app.reporting.charts import render_revenue_chart
 from app.reporting.models import ReportObject
 from app.reporting.validate import validate_report_evidence
 from app.state import ToolResult
+from app.drafts.writer import create_draft
+from app.drafts.purposes import purpose_allowed
 
 LOGGER = logging.getLogger(__name__)
 MAX_QUERY_LIMIT = 100
@@ -380,7 +382,7 @@ def _run_analysis(
         "tool=run_analysis duration_ms=%.2f analysis=%s result_rows=%d period=%s",
         (time.monotonic() - started_at) * 1000,
         analysis_name,
-        len(result["data"]),
+        len(result.get("data", result.get("items", result.get("segments", [])))),
         result.get("period"),
     )
     return result
@@ -443,7 +445,11 @@ def _generate_report(
         LOGGER.exception("Report generation failed filename=%s", filename)
         return {"error": f"Report generation failed: {exc}"}
 
-    return {"path": str(output_path), "warnings": []}
+    return {
+        "path": str(output_path),
+        "report": report.model_dump(mode="json"),
+        "warnings": [],
+    }
 
 
 def _report_filename(report: ReportObject) -> str:
@@ -532,15 +538,83 @@ def run_analysis(
 @server.tool()
 def generate_report(
     ctx: Context,
-    report: dict[str, Any],
+    report: ReportObject,
     tool_results_by_ref: dict[str, ToolResult] | None = None,
 ) -> dict[str, Any]:
     """Create a DOCX only when its figures validate against cited tool results."""
+    report_data = (
+        report.model_dump(mode="json")
+        if isinstance(report, ReportObject)
+        else report
+    )
     return _generate_report(
         resolve_mcp_user(ctx),
-        report,
+        report_data,
         tool_results_by_ref,
     )
+
+
+@server.tool()
+def draft_message(
+    ctx: Context,
+    purpose: str,
+    source_result_ids: list[str],
+    audience: str = "",
+    tone: str = "formal",
+    notes: str = "",
+    subject_ref: dict[str, Any] | None = None,
+    tool_results_by_ref: dict[str, ToolResult] | None = None,
+    conversation_id: str = "",
+) -> dict[str, Any]:
+    """Create a safe draft from tool results, without sending any message."""
+    user = resolve_mcp_user(ctx)
+    if len(notes) > 300:
+        raise ValueError("Notes must not exceed 300 characters.")
+    references = tool_results_by_ref or {}
+    selected = [references[result_id] for result_id in source_result_ids if result_id in references]
+    if len(selected) != len(set(source_result_ids)):
+        raise ValueError("One or more result IDs are not available in this conversation.")
+    result_types = {
+        str(result.get("result", {}).get("analysis"))
+        for result in selected
+        if isinstance(result.get("result"), dict)
+    }
+    if not purpose_allowed(purpose, user.role, next(iter(result_types)) if len(result_types) == 1 else None):
+        raise ValueError("This role or result type cannot use the requested draft purpose.")
+    text, facts, warnings = create_draft(purpose, selected)
+    from app.feature_config import load_feature_config
+    status_line = load_feature_config("drafts.json")["visible_status_line"]
+    subject = ""
+    if subject_ref and subject_ref.get("type") == "customer":
+        subject = f"Customer follow-up: {subject_ref.get('id', '')}"
+    draft = {
+        "draft_id": f"d_{uuid4().hex}",
+        "purpose": purpose,
+        "audience": audience,
+        "subject": subject,
+        "body": f"{text}\n\n{status_line}",
+        "facts_used": facts,
+        "warnings": warnings,
+        "status": "draft",
+        "edited": False,
+    }
+    if conversation_id:
+        from app.config import load_settings
+        from app.drafts.draft_store import DraftStore
+        settings = load_settings(require_groq_api_key=False)
+        draft_store = DraftStore(settings.conversation_db_path)
+        stored = draft_store.create(
+            conversation_id=conversation_id,
+            user_id=user.user_id,
+            role=user.role,
+            purpose=purpose,
+            subject=subject,
+            body=draft["body"],
+            facts=facts,
+            warnings=warnings,
+        )
+        draft.update(stored)
+    return draft
 
 
 def main() -> None:

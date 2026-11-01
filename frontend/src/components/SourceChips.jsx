@@ -3,10 +3,13 @@ export function SourceChips({ sources }) {
   const chips = [];
   for (let index = 0; index < sources.length; index += 1) {
     const source = sources[index];
-    const label =
-      typeof source === "string"
-        ? source
-        : JSON.stringify(source) ?? String(source);
+    const origin = typeof source === "object" ? source.origin : null;
+    const name = typeof source === "object" ? source.document_name || source.name : null;
+    const page = typeof source === "object" ? source.page : null;
+    const badge = origin === "uploaded" ? "Your document" : origin === "company" ? "Company" : null;
+    const label = typeof source === "string"
+      ? source
+      : ([badge, name, page !== undefined && page !== null ? `p. ${page}` : null].filter(Boolean).join(" · ") || JSON.stringify(source)) ?? String(source);
     chips.push(
       <li className="source-chip" key={`${index}-${label}`}>
         {label}

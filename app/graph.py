@@ -1048,9 +1048,22 @@ def build_graph(
                 arguments["report"] = _omit_malformed_optional_report_chart(
                     arguments["report"]
                 )
+                from app.feature_config import load_feature_config
+                from app.reporting.feature_reports import attach_report_context
+                arguments["report"] = attach_report_context(
+                    arguments["report"],
+                    state.get("retrieved_chunks", []),
+                    max_items=int(load_feature_config("uploads.json")["context_max"]),
+                )
                 arguments["tool_results_by_ref"] = {
                     source_call_id: result
                     for result in evidence_results
+                    if (source_call_id := result.get("call_id"))
+                }
+            if tool_name == "draft_message":
+                arguments["tool_results_by_ref"] = {
+                    source_call_id: result
+                    for result in [*state.get("tool_results", []), *results]
                     if (source_call_id := result.get("call_id"))
                 }
             step_count += 1

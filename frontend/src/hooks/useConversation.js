@@ -75,7 +75,7 @@ export function useConversation(userId) {
 
   /** Submit a question, optionally reusing the existing user message on retry. */
   const submitQuestion = useCallback(
-    async function submitQuestionRequest(question, isRetry = false) {
+    async function submitQuestionRequest(question, isRetry = false, documentIds = []) {
       const normalizedQuestion =
         typeof question === "string" ? question.trim() : "";
       if (
@@ -108,6 +108,7 @@ export function useConversation(userId) {
           response = await askQuestion({
             question: normalizedQuestion,
             conversationId,
+            documentIds,
             signal: controller.signal,
           });
         } catch (requestError) {
@@ -131,6 +132,7 @@ export function useConversation(userId) {
           response = await askQuestion({
             question: normalizedQuestion,
             conversationId: null,
+            documentIds,
             signal: controller.signal,
           });
         }
@@ -188,8 +190,8 @@ export function useConversation(userId) {
 
   /** Send a new user question unless another request is still in flight. */
   const send = useCallback(
-    function sendQuestion(question) {
-      return submitQuestion(question);
+    function sendQuestion(question, documentIds = []) {
+      return submitQuestion(question, false, documentIds);
     },
     [submitQuestion],
   );
@@ -208,6 +210,13 @@ export function useConversation(userId) {
   /** Abort the active request and let the hook record its cancellation state. */
   const cancel = useCallback(function cancelRequest() {
     activeRequestRef.current?.abort();
+  }, []);
+
+  /** Adopt a conversation ID created by an upload before the chat has been sent. */
+  const adoptConversation = useCallback(function adoptConversationId(nextConversationId) {
+    if (typeof nextConversationId === "string" && nextConversationId) {
+      setConversationId(nextConversationId);
+    }
   }, []);
 
   /** Start a blank chat while retaining saved conversations in Recents. */
@@ -242,6 +251,7 @@ export function useConversation(userId) {
         userId,
         selectedConversationId,
       );
+
       if (!conversation) {
         setError({
           kind: "storage",
@@ -288,5 +298,6 @@ export function useConversation(userId) {
     cancel,
     reset,
     selectConversation,
+    adoptConversation,
   };
 }

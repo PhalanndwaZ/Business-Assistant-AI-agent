@@ -3,6 +3,7 @@ import {
   downloadReport,
   isSafeReportFilename,
 } from "../api/reportsApi.js";
+import { RichReportCanvas } from "./RichReportCanvas.jsx";
 
 const REPORT_PATH_PATTERN =
   /(?:[A-Za-z]:[\\/]|\/|(?:\.{1,2}|reports)[\\/])[^\r\n"'<>]*?\.docx\b/i;
@@ -78,9 +79,10 @@ function getReportTitle(filename) {
 }
 
 /** Render a generated report as a downloadable document card in the chat. */
-export function ReportNotice({ answer, reportFilename }) {
+export function ReportNotice({ answer, reportFilename, reportData }) {
   const [downloadStatus, setDownloadStatus] = useState("idle");
   const [downloadError, setDownloadError] = useState("");
+  const [canvasOpen, setCanvasOpen] = useState(false);
   const filename = getReportFilename(answer, reportFilename);
   if (!filename) {
     return null;
@@ -123,17 +125,31 @@ export function ReportNotice({ answer, reportFilename }) {
         <p>{filename}</p>
         <span>Word document</span>
       </div>
-      <button
-        className="button button--secondary report-card__download"
-        onClick={handleDownload}
-        type="button"
-        disabled={downloadStatus === "downloading"}
-      >
-        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-          <path d="M10 2.5v9m0 0 3.5-3.5M10 11.5 6.5 8M3.5 13v3.5h13V13" />
-        </svg>
-        <span>{buttonLabel}</span>
-      </button>
+      <div className="report-card__actions">
+        {reportData ? (
+          <button
+            className="button button--secondary report-card__preview"
+            onClick={() => setCanvasOpen(true)}
+            type="button"
+          >
+            Open report
+          </button>
+        ) : null}
+        <button
+          className="button button--secondary report-card__download"
+          onClick={handleDownload}
+          type="button"
+          disabled={downloadStatus === "downloading"}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="M10 2.5v9m0 0 3.5-3.5M10 11.5 6.5 8M3.5 13v3.5h13V13" />
+          </svg>
+          <span>{buttonLabel}</span>
+        </button>
+      </div>
+      {canvasOpen ? (
+        <RichReportCanvas report={reportData} onClose={() => setCanvasOpen(false)} />
+      ) : null}
       {downloadError ? (
         <p className="report-notice__error" role="alert">
           {downloadError}

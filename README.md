@@ -27,6 +27,26 @@ checks numeric and document claims before returning an answer.
 
 ## Architecture
 
+## Added analyst features
+
+- Customer segments and product portfolios are available as constrained
+  analyses and reports.
+- Users can attach PDF, DOCX, TXT, and MD documents to a conversation. Uploads
+  are limited to 10 MB each and five documents per conversation.
+- Documents are isolated by authenticated user and conversation, and can be
+  selected for retrieval in individual questions.
+- Uploaded document text is untrusted input. It is not independent evidence,
+  and its claims are attributed to the document rather than treated as verified
+  business figures.
+- The assistant can create editable drafts for configured purposes. Drafts
+  never send automatically, and an `approved` status records human review only.
+  There is intentionally no send or delivery route in the application, API, or
+  frontend.
+
+Provider attribution is retained in response metadata for figures and model
+answers, so an evaluation report can identify the provider that produced each
+result.
+
 ```mermaid
 flowchart LR
     U[User] --> CLI[Python CLI]
@@ -434,8 +454,14 @@ $env:JWT_SECRET_KEY = & .\.venv\Scripts\python.exe -c "import secrets; print(sec
 
 The token expires after 30 minutes. Demo credentials are stored as Argon2id
 hashes in `data/policy/users.json`; the plaintext passwords are not stored in
-the repository. The four demo usernames and generated passwords are provided
-in the development handover, not in this README.
+the repository. Local development credentials:
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Sales | `sales.demo` | `SalesDemo123!` |
+| HR | `hr.demo` | `HrDemo123!` |
+| Manager | `manager.demo` | `ManagerDemo123!` |
+| Admin | `admin.demo` | `AdminDemo123!` |
 
 ### `POST /auth/login` and `GET /me`
 

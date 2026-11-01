@@ -469,6 +469,10 @@ def test_ask_returns_same_answer_and_supporting_workflow_data(
         ],
         "charts": [],
         "sources": ["run_analysis:period_change", "search_documents", "management_report_2024-12.md"],
+        "source_metadata": [],
+        "evidence_chunks": [
+            {"document_name": "management_report_2024-12.md"}
+        ],
         "caveats": [
             "Only completed orders are included.",
             "Document-derived statements are limited to retrieved passages and may be incomplete or outdated.",

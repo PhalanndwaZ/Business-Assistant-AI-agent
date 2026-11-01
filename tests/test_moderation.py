@@ -268,7 +268,7 @@ def test_output_moderation_detects_system_prompt_fragments(
         .resolve()
         .read_text(encoding="utf-8")
     )
-    prompt_fragment = " ".join(prompt.split()[:12])
+    prompt_fragment = " ".join(prompt.split()[:40])
     vector_store_path = tmp_path / "empty-chunks.json"
     JsonVectorStore(vector_store_path).save(
         {
@@ -287,6 +287,27 @@ def test_output_moderation_detects_system_prompt_fragments(
 
     assert result.status == "redacted"
     assert result.reason_codes == ("M5",)
+
+
+def test_output_moderation_allows_short_prompt_overlap(tmp_path: Path) -> None:
+    vector_store_path = tmp_path / "empty-chunks.json"
+    JsonVectorStore(vector_store_path).save(
+        {
+            "embedding_model": "test-model",
+            "embedding_dimensions": EMBEDDING_DIMENSIONS,
+            "chunks": [],
+        }
+    )
+
+    result = moderate_output(
+        "December revenue was lower than November, but the monthly result "
+        "still stayed within the business planning range.",
+        "sales",
+        Path("data/sample_data").resolve(),
+        vector_store_path,
+    )
+
+    assert result.status == "ok"
 
 
 def test_output_moderation_detects_quotes_from_forbidden_documents(

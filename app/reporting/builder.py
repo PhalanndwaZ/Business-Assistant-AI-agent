@@ -72,6 +72,18 @@ def build_report_document(
         picture._inline.docPr.set("descr", report.chart.title)
         picture._inline.docPr.set("title", report.chart.title)
 
+    if report.context:
+        _add_heading(document, "Document context")
+        for item in report.context:
+            page = f", page {item.page_number}" if item.page_number is not None else ""
+            label = item.source_label
+            document.add_paragraph(
+                f"“{item.quote}” — {item.document_name}{page} ({label})"
+            )
+        document.add_paragraph(
+            "Documents used; claims were not independently verified unless the agent checked them."
+        )
+
     for table_data in report.tables:
         _add_heading(document, table_data.title)
         _add_data_table(

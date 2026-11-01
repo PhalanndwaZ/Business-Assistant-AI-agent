@@ -7,6 +7,8 @@ import { RecentConversations } from "./RecentConversations.jsx";
 import { SessionNotice } from "./SessionNotice.jsx";
 import { UserMenu } from "./UserMenu.jsx";
 import { STARTER_QUESTIONS_BY_ROLE } from "../config.js";
+import { DraftCard } from "./DraftCard.jsx";
+import { DocumentsPanel } from "./DocumentsPanel.jsx";
 
 /** Compose the conversation sidebar, message area, and question input. */
 export function ChatWindow({
@@ -26,6 +28,13 @@ export function ChatWindow({
   onLogout,
   pendingQuestion,
   onClearPendingQuestion,
+  documents = [],
+  onAttachDocument,
+  onRemoveDocument,
+  documentError,
+  drafts = [],
+  draftsError,
+  onSaveDraft,
 }) {
   const questionInputRef = useRef(null);
   const recentSidebarRef = useRef(null);
@@ -110,9 +119,13 @@ export function ChatWindow({
     if (!pendingQuestion) {
       return;
     }
-    send(pendingQuestion);
+    send(pendingQuestion, readyDocumentIds);
     onClearPendingQuestion?.();
   }
+
+  const readyDocumentIds = documents
+    .filter((document) => document.status !== "uploading" && document.status !== "failed" && document.document_id && !document.document_id.startsWith("pending-"))
+    .map((document) => document.document_id);
 
   /** Keep keyboard focus inside the modal drawer while it is open. */
   function handleRecentSidebarKeyDown(event) {
@@ -243,6 +256,22 @@ export function ChatWindow({
               onCancel={cancel}
               onRetry={retry}
             />
+            {drafts.length > 0 || draftsError ? (
+              <section className="draft-panel" aria-label="Message drafts">
+                <h2>Message drafts</h2>
+                {draftsError ? <p role="alert">{draftsError}</p> : null}
+                {drafts.map((draft) => (
+                  <DraftCard key={draft.draft_id} draft={draft} onSave={onSaveDraft} />
+                ))}
+              </section>
+            ) : null}
+            {documents.length > 0 ? (
+              <DocumentsPanel
+                disabled={loading}
+                documents={documents}
+                onRemove={onRemoveDocument}
+              />
+            ) : null}
           </div>
         </main>
 
@@ -250,7 +279,11 @@ export function ChatWindow({
           <QuestionInput
             disabled={loading || retryAfterSeconds > 0}
             inputRef={questionInputRef}
-            onSend={send}
+            documents={documents}
+            documentError={documentError}
+            onAttachDocument={onAttachDocument}
+            onRemoveDocument={onRemoveDocument}
+            onSend={(question) => send(question, readyDocumentIds)}
           />
         </div>
       </div>

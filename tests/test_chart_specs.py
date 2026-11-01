@@ -140,6 +140,46 @@ def test_employee_department_payroll_query_creates_money_chart() -> None:
     assert chart["highlight"] == "Sales"
 
 
+def test_portfolio_and_segment_results_create_ranking_charts() -> None:
+    """New portfolio and segment result shapes receive default charts."""
+    portfolio_result: ToolResult = {
+        "call_id": "portfolio-call",
+        "tool_name": "run_analysis",
+        "arguments": {},
+        "result": {
+            "analysis": "product_portfolio",
+            "as_of": "2024-12-31",
+            "level": "product",
+            "items": [
+                {"product_id": "P001", "revenue_cents": 200},
+                {"product_id": "P002", "revenue_cents": 100},
+            ],
+        },
+        "success": True,
+    }
+    segment_result: ToolResult = {
+        "call_id": "segment-call",
+        "tool_name": "run_analysis",
+        "arguments": {},
+        "result": {
+            "analysis": "customer_segments",
+            "as_of": "2025-01-15",
+            "segments": [
+                {"name": "Best customers", "revenue_cents": 300},
+                {"name": "Occasional", "revenue_cents": 100},
+            ],
+        },
+        "success": True,
+    }
+
+    charts = build_chart_specs([portfolio_result, segment_result])
+
+    assert [chart["source"]["analysis"] for chart in charts] == [
+        "product_portfolio",
+        "customer_segments",
+    ]
+
+
 def test_employee_department_chart_rejects_malformed_group_rows() -> None:
     """Partial grouped data must not be presented as a complete chart."""
     result: ToolResult = {
