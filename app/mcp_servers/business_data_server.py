@@ -19,6 +19,7 @@ from pydantic import ValidationError
 
 from app.analysis.analyses import run_analysis as dispatch_analysis
 from app.data_access.json_loader import JsonDataStore
+from app.data_access.postgres_loader import PostgresDataStore
 from app.data_access.schema import (
     AVAILABLE_ANALYSES,
     ANALYSIS_PARAMETERS,
@@ -41,18 +42,47 @@ MAX_QUERY_LIMIT = 100
 VALID_OPERATORS = frozenset({"eq", "ne", "gt", "gte", "lt", "lte", "in", "contains"})
 REPORTS_DIR = PROJECT_ROOT / "reports"
 server = FastMCP("business-data")
-_store: JsonDataStore | None = None
+_store: JsonDataStore | PostgresDataStore | None = None
 _policy: AccessPolicy | None = None
 
 
-def get_store() -> JsonDataStore:
-    """Return the process-wide, once-loaded JSON data store."""
+def get_store() -> JsonDataStore | PostgresDataStore:
+    """Return the process-wide, once-loaded data store (JSON or PostgreSQL)."""
     global _store
     if _store is None:
-        data_dir = Path(os.getenv("DATA_DIR", "data/sample_data"))
-        if not data_dir.is_absolute():
-            data_dir = PROJECT_ROOT / data_dir
-        _store = JsonDataStore(data_dir.resolve())
+        use_database = os.getenv("USE_DATABASE", "false").lower() == "true"
+        
+        if use_database:
+            # Use Neon PostgreSQL database
+            database_url = os.getenv("NEON_DATABASE_URL", "").strip()
+            if not database_url:
+                raise ValueError(
+                    "USE_DATABASE is true but NEON_DATABASE_URL is not set. "
+                    "Add your Neon connection string to .env"
+                )
+            pool_size = int(os.getenv("DATABASE_POOL_SIZE", "5"))
+            max_overflow = int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
+            
+            LOGGER.info(
+                "Initializing PostgresDataStore with pool_size=%d, max_overflow=%d",
+                pool_size,
+                max_overflow,
+            )
+            _store = PostgresDataStore(
+                database_url=database_url,
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+            )
+            LOGGER.info("✓ Connected to Neon PostgreSQL database")
+        else:
+            # Use JSON files (legacy mode)
+            data_dir = Path(os.getenv("DATA_DIR", "data/sample_data"))
+            if not data_dir.is_absolute():
+                data_dir = PROJECT_ROOT / data_dir
+            LOGGER.info("Initializing JsonDataStore from %s", data_dir)
+            _store = JsonDataStore(data_dir.resolve())
+            LOGGER.info("✓ Loaded data from JSON files")
+    
     return _store
 
 
