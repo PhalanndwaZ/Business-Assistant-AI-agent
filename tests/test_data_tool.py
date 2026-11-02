@@ -156,6 +156,13 @@ def test_role_schema_and_manager_employee_aggregation(
     hr_schema = business_data_server.get_data_schema(hr_context)
     assert "employees" in hr_schema["datasets"]
     assert "orders" not in hr_schema["datasets"]
+    assert hr_schema["datasets"]["employees"]["aggregations"] == {
+        "sum_salary_cents": {
+            "field": "salary_cents",
+            "group_by": ["department"],
+            "result_field": "salary_cents_sum",
+        }
+    }
     salary_result = business_data_server.query_business_data(
         hr_context,
         "employees",
@@ -167,6 +174,7 @@ def test_role_schema_and_manager_employee_aggregation(
     manager_context = _mcp_context("user-manager-demo", "manager")
     manager_schema = business_data_server.get_data_schema(manager_context)
     assert "employees" in manager_schema["datasets"]
+    assert "aggregations" not in manager_schema["datasets"]["employees"]
     assert "employee_id" not in manager_schema["datasets"]["employees"]["fields"]
     assert "primary_key" not in manager_schema["datasets"]["employees"]
     aggregate = business_data_server.query_business_data(
@@ -176,6 +184,7 @@ def test_role_schema_and_manager_employee_aggregation(
         group_by=["department"],
     )
     assert aggregate["rows"]
+    assert aggregate["total_groups"] == aggregate["returned_rows"]
     assert all(row["count"] >= 5 for row in aggregate["rows"])
     assert set(aggregate["rows"][0]) == {"department", "count"}
 
@@ -191,6 +200,14 @@ def test_role_schema_and_manager_employee_aggregation(
             "employees",
             ["salary_cents"],
             group_by=["department"],
+        )
+    with pytest.raises(PolicyAccessDenied):
+        business_data_server.query_business_data(
+            manager_context,
+            "employees",
+            ["department"],
+            group_by=["department"],
+            aggregate="sum_salary_cents",
         )
     with pytest.raises(PolicyAccessDenied):
         business_data_server.query_business_data(
@@ -213,4 +230,49 @@ def test_role_schema_and_manager_employee_aggregation(
             "employees",
             ["hire_date"],
             group_by=["tenure_band"],
+        )
+
+
+def test_hr_can_query_department_payroll_without_exposing_employee_salaries(
+    data_tool_store: JsonDataStore,
+) -> None:
+    """Authorized salary aggregation returns grouped sums, never row salaries."""
+    context = _mcp_context("user-hr-demo", "hr")
+    result = business_data_server.query_business_data(
+        context,
+        "employees",
+        ["department"],
+        group_by=["department"],
+        aggregate="sum_salary_cents",
+    )
+    expected = (
+        data_tool_store.get_frame("employees")
+        .groupby("department")["salary_cents"]
+        .sum()
+        .to_dict()
+    )
+
+    assert result["total_groups"] == result["returned_rows"]
+    assert result["fields"] == ["department", "salary_cents_sum"]
+    assert {
+        row["department"]: row["salary_cents_sum"]
+        for row in result["rows"]
+    } == expected
+    assert all(
+        set(row) == {"department", "salary_cents_sum"}
+        for row in result["rows"]
+    )
+
+
+def test_salary_aggregation_rejects_other_groupings(
+    data_tool_store: JsonDataStore,
+) -> None:
+    """Payroll totals cannot be regrouped or summed outside the approved shape."""
+    with pytest.raises(PolicyAccessDenied):
+        business_data_server.query_business_data(
+            _mcp_context("user-hr-demo", "hr"),
+            "employees",
+            ["department"],
+            group_by=["job_title"],
+            aggregate="sum_salary_cents",
         )

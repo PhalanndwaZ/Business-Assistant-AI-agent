@@ -1,4 +1,4 @@
-"""Build chart specifications directly from successful analysis results."""
+"""Build chart specifications directly from successful business-tool results."""
 
 from __future__ import annotations
 
@@ -12,16 +12,22 @@ ChartSpec = dict[str, Any]
 
 
 def build_chart_specs(tool_results: Sequence[ToolResult]) -> list[ChartSpec]:
-    """Create up to three supported chart specs from returned analyses."""
+    """Create up to three supported chart specs from returned tool results."""
     charts: list[ChartSpec] = []
     for index, tool_result in enumerate(tool_results, start=1):
-        if (
-            not tool_result.get("success")
-            or tool_result.get("tool_name") != "run_analysis"
-        ):
+        if not tool_result.get("success"):
             continue
         result = tool_result.get("result")
         if not isinstance(result, dict):
+            continue
+        if tool_result.get("tool_name") == "query_business_data":
+            chart = _department_employee_chart(tool_result, result, index)
+            if chart is not None:
+                charts.append(chart)
+            if len(charts) == 3:
+                break
+            continue
+        if tool_result.get("tool_name") != "run_analysis":
             continue
         analysis = result.get("analysis")
         if not isinstance(analysis, str):
@@ -33,6 +39,99 @@ def build_chart_specs(tool_results: Sequence[ToolResult]) -> list[ChartSpec]:
         if len(charts) == 3:
             break
     return charts
+
+
+def _department_employee_chart(
+    tool_result: ToolResult,
+    result: dict[str, Any],
+    index: int,
+) -> ChartSpec | None:
+    """Chart complete department headcount or payroll query results."""
+    arguments = tool_result.get("arguments")
+    if (
+        not isinstance(arguments, dict)
+        or arguments.get("dataset") != "employees"
+        or arguments.get("group_by") != ["department"]
+        or result.get("dataset") != "employees"
+    ):
+        return None
+
+    aggregate = arguments.get("aggregate")
+    if aggregate not in {None, "sum_salary_cents"}:
+        return None
+    value_field = "salary_cents_sum" if aggregate == "sum_salary_cents" else "count"
+    title = (
+        "Total payroll by department"
+        if aggregate == "sum_salary_cents"
+        else "Headcount by department"
+    )
+    subtitle = (
+        "Total salary · integer cents"
+        if aggregate == "sum_salary_cents"
+        else "Employee count · grouped by department"
+    )
+    unit = "money_cents" if aggregate == "sum_salary_cents" else "count"
+    rows = result.get("rows")
+    total_groups = result.get("total_groups")
+    returned_rows = result.get("returned_rows")
+    if (
+        not isinstance(rows, list)
+        or not rows
+        or isinstance(total_groups, bool)
+        or not isinstance(total_groups, int)
+        or total_groups != len(rows)
+        or isinstance(returned_rows, bool)
+        or not isinstance(returned_rows, int)
+        or returned_rows != len(rows)
+    ):
+        return None
+    series: list[dict[str, Any]] = []
+    seen_departments: set[str] = set()
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or not isinstance(row.get("department"), str)
+            or not row["department"]
+            or isinstance(row.get(value_field), bool)
+            or not isinstance(row.get(value_field), int)
+            or row[value_field] < 0
+            or row["department"] in seen_departments
+        ):
+            return None
+        seen_departments.add(row["department"])
+        series.append(
+            {"label": row["department"], "value": row[value_field]}
+        )
+
+    call_id = tool_result.get("call_id")
+    result_id = (
+        call_id if isinstance(call_id, str) else f"query-{index}"
+    )
+    highlight = max(series, key=lambda item: item["value"])["label"]
+    return {
+        "id": result_id,
+        "type": "ranking_bars",
+        "title": title,
+        "subtitle": subtitle,
+        "unit": unit,
+        "series": series,
+        "highlight": highlight,
+        "annotations": [],
+        "source": {
+            "analysis": "query_business_data",
+            "result_id": result_id,
+            "as_of": "",
+        },
+        "alt_text": (
+            "Horizontal bars comparing "
+            + (
+                "total payroll"
+                if aggregate == "sum_salary_cents"
+                else "employee headcount"
+            )
+            + " across returned departments."
+        ),
+    }
 
 
 def _chart_for_analysis(
