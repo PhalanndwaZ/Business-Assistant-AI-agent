@@ -108,7 +108,7 @@ export function ReportNotice({ answer, reportFilename }) {
       ? "Downloading..."
       : downloadStatus === "complete"
         ? "Download again"
-        : "Download report";
+        : "Download";
 
   return (
     <section className="report-card" aria-label="Generated report">
@@ -126,8 +126,8 @@ export function ReportNotice({ answer, reportFilename }) {
       </div>
       <button
         className="button button--secondary report-card__download"
-        onClick={handleDownload}
         type="button"
+        onClick={handleDownload}
         disabled={downloadStatus === "downloading"}
       >
         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">

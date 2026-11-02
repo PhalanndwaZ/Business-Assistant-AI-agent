@@ -65,6 +65,10 @@ class Settings:
     mongodb_enabled: bool = False
     mongodb_uri: str = "mongodb://127.0.0.1:27017"
     mongodb_database: str = "business_assistant"
+    use_database: bool = False
+    neon_database_url: str = ""
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
 
 
 def _path_from_environment(name: str, default: str) -> Path:
@@ -80,6 +84,9 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
     load_dotenv(PROJECT_ROOT / ".env")
     groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     inception_api_key = os.getenv("INCEPTION_API_KEY", "").strip()
+    use_database = os.getenv("USE_DATABASE", "false").strip().lower() == "true"
+    neon_database_url = os.getenv("NEON_DATABASE_URL", "").strip()
+    
     missing_keys = [
         key_name
         for key_name in ("MISTRAL_API_KEY",)
@@ -87,6 +94,14 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
     ]
     if require_groq_api_key and not (groq_api_key or inception_api_key):
         missing_keys.append("INCEPTION_API_KEY or GROQ_API_KEY")
+    
+    # Validate database configuration if USE_DATABASE is true
+    if use_database and not neon_database_url:
+        raise ConfigurationError(
+            "NEON_DATABASE_URL is required when USE_DATABASE=true. "
+            "Add your Neon PostgreSQL connection string to .env"
+        )
+    
     if missing_keys:
         raise ConfigurationError(
             "Missing required environment variable(s): "
@@ -155,6 +170,8 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         ).strip()
         if not mongodb_uri or not mongodb_database:
             raise ValueError("MONGODB_URI and MONGODB_DATABASE are required.")
+        database_pool_size = int(os.getenv("DATABASE_POOL_SIZE", "5"))
+        database_max_overflow = int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
     except ValueError as exc:
         raise ConfigurationError(f"Invalid application setting: {exc}") from exc
 
@@ -187,6 +204,10 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         raise ConfigurationError("GROQ_MAX_TOKENS must be at least 1.")
     if max_history_turns < 1:
         raise ConfigurationError("MAX_HISTORY_TURNS must be at least 1.")
+    if database_pool_size < 1:
+        raise ConfigurationError("DATABASE_POOL_SIZE must be at least 1.")
+    if database_max_overflow < 0:
+        raise ConfigurationError("DATABASE_MAX_OVERFLOW cannot be negative.")
 
     return Settings(
         groq_api_key=groq_api_key,
@@ -227,4 +248,8 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         inception_backoff_base_seconds=inception_backoff_base_seconds,
         inception_backoff_max_seconds=inception_backoff_max_seconds,
         llm_call_timeout_seconds=llm_call_timeout_seconds,
+        use_database=use_database,
+        neon_database_url=neon_database_url,
+        database_pool_size=database_pool_size,
+        database_max_overflow=database_max_overflow,
     )
