@@ -29,6 +29,7 @@ from app.services.evidence_check import (
     check_document_evidence,
     check_numeric_evidence,
 )
+from evaluation.langfuse_setup.tracing import build_langgraph_callback_handler
 from app.moderation.moderator import ModerationError, filter_retrieved_chunks
 from app.state import AnalystState, ToolResult
 
@@ -1497,6 +1498,8 @@ async def answer_question(
     history: list[tuple[str, str]] | None = None,
     prior_tool_results: list[ToolResult] | None = None,
     prior_retrieved_chunks: list[dict[str, Any]] | None = None,
+    *,
+    trace_metadata: dict[str, Any] | None = None,
 ) -> AnalystState:
     """Run a single question with a fresh state and no conversational memory."""
     if not question.strip():
@@ -1620,4 +1623,17 @@ async def answer_question(
         "evidence_ok": False,
         "evidence_errors": [],
     }
-    return await graph.ainvoke(initial_state)
+    trace_args = trace_metadata or {}
+    callback = build_langgraph_callback_handler(
+        role=str(trace_args.get("role") or "unknown"),
+        case_id=trace_args.get("case_id"),
+        group=trace_args.get("group"),
+        run_number=trace_args.get("run_number"),
+        user_id=trace_args.get("user_id"),
+        conversation_id=trace_args.get("conversation_id"),
+        provider=trace_args.get("provider"),
+        fallback_happened=trace_args.get("fallback_happened"),
+        moderation_status=trace_args.get("moderation_status"),
+    )
+    config = {"callbacks": [callback]} if callback is not None else None
+    return await graph.ainvoke(initial_state, config=config)

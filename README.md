@@ -25,6 +25,68 @@ checks numeric and document claims before returning an answer.
 - [Phase 10: question-level evaluation](#phase-10-question-level-evaluation)
 - [Phase 11: HTTP API](#phase-11-http-api)
 
+## Evaluation and Langfuse quick start
+
+Use these commands from a clean checkout to validate the app, run one slice of the evaluation, and inspect traces.
+
+### Full test suite
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
+python -m pytest -q
+```
+
+### One file or one group of tests
+
+```powershell
+python -m pytest -q tests/test_graph.py
+python -m pytest -q tests/test_evaluation.py -k segments
+python -m pytest -q tests/test_judge.py
+```
+
+### One evaluation case or case subset
+
+The project’s evaluation runner is schema-driven and can be filtered by group or case ID from Python. For a quick run, load the current cases and only execute a subset:
+
+```powershell
+python -c "from pathlib import Path; from evaluation.runner.loader import load_cases; from evaluation.runner.runner import subset_cases; cases = load_cases(Path('evaluation/questions.py')); print(cases)"
+```
+
+If you are validating a specific case set in code, keep the filter narrow and pass the subset into `run_case(...)` or `run_exit_code(...)` from `evaluation.runner.runner`.
+
+### Generate the evaluation report
+
+```powershell
+python -m evaluation.evaluate
+python -m evaluation.evaluate --live
+python -m evaluation.evaluate --live --deep-eval
+```
+
+The command writes a Markdown report under `evaluation/reports/` and prints a short summary in the terminal. Open the newest file in that directory to review the verdict, group pass rates, regressions, and failure list.
+
+### Read the Langfuse report
+
+Start the local Langfuse stack:
+
+```powershell
+docker compose -f docker-compose.langfuse.yml up -d
+```
+
+Then set the keys in `.env` (or keep the blank placeholders from `.env.example` and fill them in) and enable tracing:
+
+```powershell
+$env:TRACING_ENABLED = 'true'
+$env:LANGFUSE_PUBLIC_KEY = 'your-public-key'
+$env:LANGFUSE_SECRET_KEY = 'your-secret-key'
+$env:LANGFUSE_HOST = 'http://localhost:3000'
+```
+
+Open `http://localhost:3000` and inspect the trace for the latest request. A trace should show the case ID, role, group, provider, fallback status, conversation ID, and the masked workflow metadata. If `TRACING_ENABLED=false`, the app keeps the same behavior but sends nothing to Langfuse.
+
 ## Architecture
 
 ## Added analyst features

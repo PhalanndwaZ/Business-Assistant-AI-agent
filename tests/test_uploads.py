@@ -65,6 +65,7 @@ def test_docx_ingest_list_and_delete(upload_service: tuple[UploadService, Upload
         ("wrong.docx", b"not a zip", "valid DOCX"),
         ("large.txt", b"x" * (10 * 1024 * 1024 + 1), "10 MB"),
     ],
+    ids=["pdf", "docx", "large"],
 )
 def test_invalid_upload_content_is_refused(filename: str, data: bytes, message: str) -> None:
     """Wrong content and oversized files receive explicit refusals."""

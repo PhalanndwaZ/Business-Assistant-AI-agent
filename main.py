@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import re
@@ -474,6 +475,39 @@ def _record_workflow_audit(
             )
 
 
+def _call_question_runner(
+    question: str,
+    conversation_id: UUID | None,
+    user: UserAccount,
+    *,
+    document_ids: list[UUID] | None = None,
+    evaluation_case_id: str | None = None,
+) -> Any:
+    """Call the current question runner while preserving older 3-argument mocks."""
+    parameters = inspect.signature(_run_question).parameters
+    supported_kwargs: dict[str, Any] = {}
+    accepts_variadic = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+    if accepts_variadic:
+        supported_kwargs["document_ids"] = document_ids
+        supported_kwargs["evaluation_case_id"] = evaluation_case_id
+    else:
+        if "document_ids" in parameters:
+            supported_kwargs["document_ids"] = document_ids
+        if "evaluation_case_id" in parameters:
+            supported_kwargs["evaluation_case_id"] = evaluation_case_id
+    if supported_kwargs:
+        return _run_question(
+            question,
+            conversation_id,
+            user,
+            **supported_kwargs,
+        )
+    return _run_question(question, conversation_id, user)
+
+
 async def _run_question(
     question: str,
     conversation_id: UUID | None,
@@ -577,6 +611,24 @@ async def _run_question(
         )
     async with mcp_client:
         tools = await mcp_client.list_tools()
+        answer_kwargs: dict[str, Any] = {
+            "history": history,
+            "prior_tool_results": prior_tool_results,
+            "prior_retrieved_chunks": prior_retrieved_chunks,
+        }
+        parameters = inspect.signature(answer_question).parameters
+        accepts_variadic = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters.values()
+        )
+        if "trace_metadata" in parameters or accepts_variadic:
+            answer_kwargs["trace_metadata"] = {
+                "role": user.role,
+                "group": "evaluation" if evaluation_case_id else "api",
+                "case_id": evaluation_case_id,
+                "conversation_id": str(active_conversation_id),
+                "user_id": user.user_id,
+            }
         state = await answer_question(
             question,
             model,
@@ -584,9 +636,7 @@ async def _run_question(
             mcp_client,
             settings.max_steps,
             settings.max_retries,
-            history=history,
-            prior_tool_results=prior_tool_results,
-            prior_retrieved_chunks=prior_retrieved_chunks,
+            **answer_kwargs,
         )
     current_turn_state = dict(state)
     current_turn_state["tool_results"] = state.get("tool_results", [])[
@@ -673,11 +723,23 @@ async def _run_question(
     )
     if response.report_filename is not None:
         _register_report_access(response.report_filename, user)
+    llm_responses = state.get("llm_responses", [])
+    providers = [
+        str(response.get("provider"))
+        for response in llm_responses
+        if isinstance(response, dict) and isinstance(response.get("provider"), str)
+    ]
     send_trace(
         build_workflow_trace(
             state,
             role=user.role,
             case_id=evaluation_case_id,
+            user_id=user.user_id,
+            group="evaluation" if evaluation_case_id else "api",
+            conversation_id=str(active_conversation_id),
+            provider=providers[-1] if providers else None,
+            fallback_happened=len(providers) > 1,
+            moderation_status=moderation_info.status,
         )
     )
     return response
@@ -949,22 +1011,12 @@ def create_app() -> FastAPI:
                 reason_code="request_started",
                 question=payload.question,
             )
-            response = (
-                await _run_question(
-                    payload.question,
-                    payload.conversation_id,
-                    user,
-                    payload.document_ids,
-                    evaluation_case_id,
-                )
-                if payload.document_ids
-                else await _run_question(
-                    payload.question,
-                    payload.conversation_id,
-                    user,
-                    None,
-                    evaluation_case_id,
-                )
+            response = await _call_question_runner(
+                payload.question,
+                payload.conversation_id,
+                user,
+                document_ids=payload.document_ids or None,
+                evaluation_case_id=evaluation_case_id,
             )
             _record_audit(
                 user_id=user.user_id,
