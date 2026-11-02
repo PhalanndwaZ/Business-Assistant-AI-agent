@@ -11,21 +11,21 @@
     "username": "hr.demo",
     "name": "HR Demo",
     "role": "hr",
-    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$gPdGCWP/F1ZMXYS+cO9HlQ$OWy6WxHflxRAU+BX7QztPVCrz24uLLSYF2zN/Qg4ZhQ"
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$AZz1Gx0f07Sb73uB0IQy6g$glPtyoLcTVyF7iT7BajEQroR1W4sq2y89a6xM/waMgk"
   },
   {
     "user_id": "user-manager-demo",
     "username": "manager.demo",
     "name": "Manager Demo",
     "role": "manager",
-    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$1sZ+W4r7RzAGzve3eLKhYA$RcpclTVG2WCmY9zGCkiGNPqCWWUawFWTXxF0cN1vpiI"
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$1VMA2psPQ2aAx7V7YD0WYA$lXeLXMHrNuQFb952Ovvxss5EETaizfAUDNKmPrmMjEI"
   },
   {
     "user_id": "user-admin-demo",
     "username": "admin.demo",
     "name": "Admin Demo",
     "role": "admin",
-    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$I9A9+QUOkPmKt1n1B/v9RQ$XZ+vxtu4wB9AQv1yMtK3VnO9xif9wMici6p4LfppgDg"
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$AxRF80Znm/gYv8TYCQ1Xtw$YQuD2nz//HnzA1RNP1FnwWhe5vlo5np3w3a1DdpgjVQ"
   },
   {
     "user_id": "user-newuser-demo",

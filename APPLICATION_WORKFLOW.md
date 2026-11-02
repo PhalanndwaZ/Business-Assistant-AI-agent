@@ -29,8 +29,9 @@ The current interactive application consists of:
 - **Two local MCP subprocesses**: the business-data server and the
   document-search server. The backend starts and closes these for a question;
   they are not separately launched by the developer.
-- **Local JSON data and document/vector files**, plus SQLite files for
-  conversations, audit events, and report ownership.
+- **Local JSON business datasets**, MongoDB documents, embedded chunks, and
+  runtime policies; SQLite remains responsible for conversations, audit
+  events, and report ownership.
 - **External model services**: Inception is the primary chat model when
   configured, Groq is its fallback (or can run alone), and Mistral supplies
   document embeddings.
@@ -45,6 +46,7 @@ flowchart LR
     GRAPH <--> MCP[Role-filtered MCP tools]
     MCP --> DATA[Validated JSON + Pandas analyses]
     MCP --> DOCS[Document vector search]
+    DOCS --> MONGO[(MongoDB documents, chunks, policies)]
     GRAPH --> CHECK[Numeric and document evidence checks]
     CHECK --> API
     API --> STORE[(Conversation, audit, report access SQLite)]
@@ -96,9 +98,10 @@ passwords to be recoverable from the hashes.
 1. The backend loads and validates the server configuration. It requires a
    Mistral key for document-search initialization and at least one chat-model
    key (Inception or Groq).
-   Both local MCP servers are initialized for a question, so the vector store
-   must be present and compatible even when the question only needs structured
-   business data.
+   Both local MCP servers are initialized for a question. In MongoDB mode,
+   MongoDB must be running and seeded even when a question only needs
+   structured business data. The legacy JSON vector store is used only when
+   `MONGODB_ENABLED=false`.
 2. It builds the Inception-first/Groq-fallback chat model.
 3. It starts the two MCP servers as local stdio subprocesses and passes the
    verified user ID and role as tool-call metadata.
@@ -182,8 +185,15 @@ and assumptions.
 Documents are listed in `data/documents/manifest.json`, which provides their
 department, classification, type, and date. Ingestion reads the listed PDF,
 text, and Markdown files, splits the extracted text into overlapping
-character chunks, embeds those chunks with Mistral, and stores them in the
-configured JSON vector store.
+character chunks, embeds those chunks with Mistral, and stores both the
+extracted source text and chunks in MongoDB when `MONGODB_ENABLED=true`. The
+`access_control` and `moderation_rules` policy documents are stored separately
+in MongoDB; authentication users remain in the local `users.json` file.
+
+Run `.\.venv\Scripts\python.exe -m scripts.ingest_mongodb` from the repository
+root to ingest or refresh the checked-in sample corpus. This includes the
+additional fictional policy and sales-note examples. The script needs a
+running MongoDB instance and a valid `MISTRAL_API_KEY`.
 
 For a search, the retriever:
 
@@ -195,10 +205,13 @@ For a search, the retriever:
 4. Returns passage text and source metadata, including the original document
    filename and (for PDFs) page number.
 
-Before retrieved text reaches the model, moderation drops passages that match
-configured prompt-injection patterns. Retrieved text is treated as data, not
-instructions. The answer instructions require document-derived factual claims
-to include the exact filename and an exact supporting quote.
+Candidate chunks are filtered by the same access policy before ranking.
+Cosine similarity is still computed in process; the MongoDB migration does not
+depend on Atlas Vector Search. Before retrieved text reaches the model,
+moderation drops passages that match configured prompt-injection patterns.
+Retrieved text is treated as data, not instructions. The answer instructions
+require document-derived factual claims to include the exact filename and an
+exact supporting quote.
 
 ### G. Evidence check and final answer
 
@@ -247,17 +260,21 @@ audit SQLite file; question text is hashed rather than stored as plain text in
 the audit event. The `/audit` API is restricted to administrators.
 
 The frontend renders the answer, evidence panel, and any returned charts. If a
-report is available, it displays a download card. A download uses the
-authenticated report endpoint; the backend serves only registered files
-inside `reports/`, and allows access to the report's owner or an administrator.
+report is available, it displays a download card. A download uses the authenticated
+report endpoint; the backend serves only registered reports from MongoDB or
+the validated legacy local directory, and allows access to the report's owner
+or an administrator.
 
 ## 3. Role-based access
 
-The policy is configured in
-[`data/policy/access_policy.json`](./data/policy/access_policy.json). It
-combines tool permissions, dataset/field classifications, department and
-document classifications, analysis permissions, and (where configured)
-minimum group sizes. Both the MCP client and the MCP tools apply these rules.
+The checked-in policy seed is
+[`data/policy/access_policy.json`](./data/policy/access_policy.json). The
+ingestion script stores it as the `access_control` policy in MongoDB, where it
+is loaded and validated in MongoDB mode. It combines tool permissions,
+dataset/field classifications, department and document classifications,
+analysis permissions, and (where configured) minimum group sizes. Both the
+MCP client and the MCP tools apply these rules. Moderation rules are likewise
+seeded from `data/policy/moderation_rules.json`.
 
 | Role | Current policy intent |
 |---|---|
@@ -286,9 +303,10 @@ single total may not contain enough information to make a useful chart.
 a structured report object whose figures refer to successful tool-call
 evidence. The backend validates the report schema and checks its numeric claims
 against the cited tool results before rendering an editable DOCX into
-`reports/`. Report content includes key figures, summary, optional chart/table,
-findings, sources, and notes. A registered owner record is written before the
-report can be downloaded.
+`reports/`. The API uploads the generated DOCX to MongoDB GridFS and writes
+the registered owner record to SQLite before the report can be downloaded.
+Older registered reports can still be served from the local `reports/`
+directory if they have not yet been uploaded.
 
 ## 5. Run the application on Windows
 
@@ -324,8 +342,12 @@ frontend need separate terminals.
 
    Set `MISTRAL_API_KEY` and at least one of `INCEPTION_API_KEY` or
    `GROQ_API_KEY`. Inception is used first when configured; Groq is the
-   fallback. Mistral is needed for document search and document ingestion.
-   Keep `.env` private and do not commit secrets.
+   fallback. For MongoDB mode, keep `MONGODB_ENABLED=true`, set `MONGODB_URI`
+   and `MONGODB_DATABASE`, and configure a reachable MongoDB Atlas deployment.
+   In Atlas, allow the machine's IP in Network Access and create a database
+   user; replace the URI placeholders in `.env` and URL-encode special
+   characters in credentials. Mistral is needed for document search and
+   ingestion. Keep `.env` private and do not commit secrets.
 
 4. Set a JWT signing secret of at least 32 bytes. Either add a private
    `JWT_SECRET_KEY` value to `.env`, or generate a temporary key in the
@@ -338,15 +360,17 @@ frontend need separate terminals.
    A temporary key is sufficient for a local session, but tokens issued with
    it will not survive restarting the backend with a different key.
 
-5. If `data/vector_store/chunks.json` is missing (for example, after a fresh
-   clone) or you changed the source documents, build/update it:
+5. In MongoDB mode, seed or refresh source documents and policies after
+   configuring MongoDB:
 
    ```powershell
-   .\.venv\Scripts\python.exe -m app.rag.ingest
+   .\.venv\Scripts\python.exe -m scripts.ingest_mongodb
    ```
 
-   Ingestion calls the Mistral embeddings API and can use API quota. It is not
-   necessary to repeat it for an unchanged, already-built vector store.
+   Ingestion calls the Mistral embeddings API and can use API quota. Rerun it
+   after changing documents or policy seed files. If you explicitly set
+   `MONGODB_ENABLED=false`, the legacy JSON ingestion command remains available:
+   `.\.venv\Scripts\python.exe -m app.rag.ingest`.
 
 ### Start the web application
 
@@ -409,7 +433,8 @@ authentication in the current application.
 | Login fails with invalid credentials | Use the matching demo username/password from the development handover. The repository stores password hashes, not plaintext passwords. |
 | Frontend shows a network/proxy error | Confirm the backend is running on port 8000, then refresh the Vite page. |
 | Question workflow says it is not configured | Add `MISTRAL_API_KEY` and at least one chat-model key, then restart. |
-| Document search cannot load its vector store | Build it with `python -m app.rag.ingest`; verify the configured vector-store path. |
+| Document search cannot load its corpus | In MongoDB mode, confirm the Atlas URI and run `python -m scripts.ingest_mongodb`; in legacy mode, build the JSON store with `python -m app.rag.ingest`. |
+| Access policy or moderation is unavailable | In MongoDB mode, run the ingestion script and verify the `access_control` and `moderation_rules` policy documents exist. |
 | Model answers are refused, redacted, or cannot verify a claim | Check the moderation status and caveats in the response. A refusal/redaction is an intentional control; evidence failures can mean the available tools did not support the draft. |
 | API returns 429 | Wait for the `Retry-After` delay; the current limit is 20 questions per user per rolling minute. |
 | Report card is absent | The question may not have explicitly requested a report, the role may lack permission, evidence validation may have failed, or report generation may have hit a workflow limit. |
@@ -439,6 +464,7 @@ before relying on those use cases.
 | Business-data tools and report creation | [`app/mcp_servers/business_data_server.py`](./app/mcp_servers/business_data_server.py) |
 | Dataset schema, validation, and analyses | [`app/data_access/`](./app/data_access/) and [`app/analysis/`](./app/analysis/) |
 | Document ingestion and retrieval | [`app/rag/`](./app/rag/) and [`app/mcp_servers/rag_server.py`](./app/mcp_servers/rag_server.py) |
+| MongoDB document, policy, and report storage | [`app/mongodb.py`](./app/mongodb.py), [`scripts/ingest_mongodb.py`](./scripts/ingest_mongodb.py) |
 | Numeric and document evidence | [`app/services/evidence_check.py`](./app/services/evidence_check.py) |
 | Moderation rules and enforcement | [`app/moderation/`](./app/moderation/) |
 | Conversation, audit, report access | [`app/conversation_store.py`](./app/conversation_store.py), [`app/audit_log.py`](./app/audit_log.py), [`app/report_access.py`](./app/report_access.py) |

@@ -231,7 +231,11 @@ def test_input_refusal_returns_http_200_without_building_model(
         "notice": None,
     }
 
-    def fail_moderation(question: str, role: str) -> None:
+    def fail_moderation(
+        question: str,
+        role: str,
+        path: Path | None = None,
+    ) -> None:
         raise ModerationError("The configured rules are unavailable.")
 
     monkeypatch.setattr(main, "check_input", fail_moderation)

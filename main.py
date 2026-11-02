@@ -13,11 +13,12 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from groq import APIError as GroqAPIError
 from openai import APIError as OpenAIAPIError
 from pydantic import BaseModel, Field, SecretStr, field_validator
 from mcp.shared.exceptions import McpError
+from pymongo.errors import PyMongoError
 
 from app.auth.dependencies import get_current_user
 from app.auth.rate_limit import RateLimiter
@@ -36,15 +37,18 @@ from app.conversation_store import (
     ConversationStore,
 )
 from app.graph import answer_question
+from app.mongodb import MongoStore, get_mongo_store
 from app.llm_factory import build_chat_model
 from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
 from app.moderation.moderator import (
+    MODERATION_RULES_PATH,
     ModerationError,
     check_input,
     moderate_output,
 )
 from app.policy.context import ACCESS_DENIED_MESSAGE, MCPUserContext
+from app.policy.policy import PolicyError
 from app.report_access import ReportAccessStore
 
 LOGGER = logging.getLogger(__name__)
@@ -152,6 +156,11 @@ def _get_report_access_store() -> ReportAccessStore:
         database_path = PROJECT_ROOT / database_path
     return ReportAccessStore(database_path.resolve())
 
+def _get_mongo_store(settings: Settings | None = None) -> MongoStore:
+    """Return the shared MongoDB connection for app content and report files."""
+    if settings is None:
+        return MongoStore.from_environment()
+    return get_mongo_store(settings.mongodb_uri, settings.mongodb_database)
 
 def _record_audit(
     *,
@@ -186,8 +195,26 @@ def _record_audit(
         ) from exc
 
 
-def _register_report_access(filename: str, user: UserAccount) -> None:
-    """Record ownership, failing rather than exposing an untracked report."""
+def _register_report_access(
+    filename: str,
+    user: UserAccount,
+    settings: Settings,
+) -> None:
+    """Upload a generated DOCX and register its owner before exposing it."""
+    report_path = _resolve_report_file(REPORTS_DIR / filename)
+    if report_path is None:
+        raise HTTPException(
+            status_code=503,
+            detail="The generated report file is temporarily unavailable.",
+        )
+    try:
+        _get_mongo_store(settings).store_report(filename, report_path)
+    except (OSError, PyMongoError, ValueError) as exc:
+        LOGGER.error("Report MongoDB write failed type=%s", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Report storage is temporarily unavailable.",
+        ) from exc
     try:
         _get_report_access_store().register_report(
             filename,
@@ -464,7 +491,11 @@ async def _run_question(
             user_id=user.user_id,
         )
 
-    moderation_decision = check_input(question, user.role)
+    moderation_decision = check_input(
+        question,
+        user.role,
+        path=None if settings.mongodb_enabled else MODERATION_RULES_PATH,
+    )
     if moderation_decision is not None:
         LOGGER.warning(
             "moderation event=input_refusal user_id=%s role=%s reason=%s",
@@ -518,6 +549,9 @@ async def _run_question(
             history=history,
             prior_tool_results=prior_tool_results,
             prior_retrieved_chunks=prior_retrieved_chunks,
+            moderation_rules_path=(
+                None if settings.mongodb_enabled else MODERATION_RULES_PATH
+            ),
         )
     current_turn_state = dict(state)
     current_turn_state["tool_results"] = state.get("tool_results", [])[
@@ -534,8 +568,11 @@ async def _run_question(
         candidate_response.model_dump_json(),
         user.role,
         settings.data_dir,
-        settings.vector_store_path,
+        None if settings.mongodb_enabled else settings.vector_store_path,
         answer_text=candidate_response.answer,
+        path=(
+            None if settings.mongodb_enabled else MODERATION_RULES_PATH
+        ),
     )
     if (
         output_moderation.status == "redacted"
@@ -603,7 +640,7 @@ async def _run_question(
         role=user.role,
     )
     if response.report_filename is not None:
-        _register_report_access(response.report_filename, user)
+        _register_report_access(response.report_filename, user, settings)
     return response
 
 
@@ -816,6 +853,15 @@ def create_app() -> FastAPI:
                 status_code=503,
                 detail="Moderation is temporarily unavailable.",
             ) from exc
+        except PolicyError as exc:
+            LOGGER.error(
+                "Access policy service failed type=%s",
+                type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Access policy is temporarily unavailable.",
+            ) from exc
         except (GroqAPIError, OpenAIAPIError) as exc:
             LOGGER.warning(
                 "Model API request failed type=%s status=%s",
@@ -837,17 +883,13 @@ def create_app() -> FastAPI:
                 detail="The question could not be completed because a required service failed.",
             ) from exc
 
-    @application.get("/reports/{filename}", response_class=FileResponse)
+    @application.get("/reports/{filename}")
     def download_report(
         filename: str,
         user: UserAccount = Depends(get_current_user),
-    ) -> FileResponse:
-        """Serve a registered DOCX report to its owner or an administrator."""
+    ) -> Response:
+        """Stream a registered DOCX report from MongoDB to its owner/admin."""
         if not REPORT_FILENAME_PATTERN.fullmatch(filename):
-            raise HTTPException(status_code=404, detail="Report not found.")
-
-        report_path = _resolve_report_file(REPORTS_DIR / filename)
-        if report_path is None:
             raise HTTPException(status_code=404, detail="Report not found.")
 
         try:
@@ -863,10 +905,35 @@ def create_app() -> FastAPI:
         ):
             raise HTTPException(status_code=404, detail="Report not found.")
 
-        return FileResponse(
-            path=report_path,
+        try:
+            report_stream = _get_mongo_store().open_report(filename)
+        except (PyMongoError, ValueError) as exc:
+            LOGGER.error("Report MongoDB read failed type=%s", type(exc).__name__)
+            raise HTTPException(
+                status_code=503,
+                detail="Report storage is temporarily unavailable.",
+            ) from exc
+        if report_stream is None:
+            legacy_path = _resolve_report_file(REPORTS_DIR / filename)
+            if legacy_path is None:
+                raise HTTPException(status_code=404, detail="Report not found.")
+            return FileResponse(
+                path=legacy_path,
+                media_type=DOCX_MEDIA_TYPE,
+                filename=filename,
+            )
+
+        def stream_report() -> Any:
+            try:
+                while content := report_stream.read(1024 * 1024):
+                    yield content
+            finally:
+                report_stream.close()
+
+        return StreamingResponse(
+            stream_report(),
             media_type=DOCX_MEDIA_TYPE,
-            filename=filename,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     return application

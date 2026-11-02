@@ -1,6 +1,8 @@
 import { useState } from "react";
-
-import { downloadReport, isSafeReportFilename } from "../api/reportsApi.js";
+import {
+  downloadReport,
+  isSafeReportFilename,
+} from "../api/reportsApi.js";
 
 const REPORT_PATH_PATTERN =
   /(?:[A-Za-z]:[\\/]|\/|(?:\.{1,2}|reports)[\\/])[^\r\n"'<>]*?\.docx\b/i;
@@ -85,7 +87,6 @@ export function ReportNotice({ answer, reportFilename }) {
     return null;
   }
 
-  /** Download the report through the authenticated API client. */
   async function handleDownload() {
     setDownloadStatus("downloading");
     setDownloadError("");
@@ -102,7 +103,12 @@ export function ReportNotice({ answer, reportFilename }) {
     }
   }
 
-  const buttonLabel = downloadStatus === "complete" ? "Download again" : "Download";
+  const buttonLabel =
+    downloadStatus === "downloading"
+      ? "Downloading..."
+      : downloadStatus === "complete"
+        ? "Download again"
+        : "Download report";
 
   return (
     <section className="report-card" aria-label="Generated report">
@@ -124,7 +130,10 @@ export function ReportNotice({ answer, reportFilename }) {
         type="button"
         disabled={downloadStatus === "downloading"}
       >
-        {downloadStatus === "downloading" ? "Downloading..." : buttonLabel}
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <path d="M10 2.5v9m0 0 3.5-3.5M10 11.5 6.5 8M3.5 13v3.5h13V13" />
+        </svg>
+        <span>{buttonLabel}</span>
       </button>
       {downloadError ? (
         <p className="report-notice__error" role="alert">

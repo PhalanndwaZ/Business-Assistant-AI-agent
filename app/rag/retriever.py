@@ -12,6 +12,7 @@ from app.config import EMBEDDING_DIMENSIONS
 from app.policy.policy import AccessPolicy
 from app.rag.embeddings import MistralEmbedder
 from app.rag.vector_store import JsonVectorStore
+from app.mongodb import MongoStore
 
 
 class DocumentRetriever:
@@ -19,26 +20,57 @@ class DocumentRetriever:
 
     def __init__(
         self,
-        store_path: Path,
+        store_path: Path | None,
         embedding_model: str,
         embedder: MistralEmbedder,
         min_similarity: float,
         top_k: int,
+        *,
+        mongo_store: MongoStore | None = None,
     ) -> None:
         """Load vectors and refuse model, dimension, or limit mismatches."""
         if not 0.0 <= min_similarity <= 1.0:
             raise ValueError("min_similarity must be between 0 and 1.")
         if top_k < 1:
             raise ValueError("top_k must be at least 1.")
-        stored = JsonVectorStore(store_path).load()
-        if stored["embedding_model"] != embedding_model:
-            raise ValueError(
-                "Vector store embedding model does not match configuration: "
-                f"{stored['embedding_model']} vs {embedding_model}."
-            )
-        if stored["embedding_dimensions"] != EMBEDDING_DIMENSIONS:
-            raise ValueError("Vector store embedding dimensions do not match.")
-        self._chunks: list[dict[str, Any]] = stored["chunks"]
+        if mongo_store is not None:
+            if store_path is not None:
+                raise ValueError("Use either MongoDB or a JSON vector-store path.")
+            self._chunks = mongo_store.list_chunks()
+            for chunk in self._chunks:
+                if chunk.get("embedding_model") != embedding_model:
+                    raise ValueError(
+                        "MongoDB chunk embedding model does not match "
+                        f"configuration: {chunk.get('embedding_model')} vs "
+                        f"{embedding_model}."
+                    )
+                vector = chunk.get("embedding")
+                if (
+                    not isinstance(vector, list)
+                    or len(vector) != EMBEDDING_DIMENSIONS
+                    or any(
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or not np.isfinite(value)
+                        for value in vector
+                    )
+                ):
+                    raise ValueError(
+                        f"MongoDB chunk {chunk.get('chunk_id', '<unknown>')} "
+                        "has an invalid embedding vector."
+                    )
+        else:
+            if store_path is None:
+                raise ValueError("A JSON store path or MongoDB store is required.")
+            stored = JsonVectorStore(store_path).load()
+            if stored["embedding_model"] != embedding_model:
+                raise ValueError(
+                    "Vector store embedding model does not match configuration: "
+                    f"{stored['embedding_model']} vs {embedding_model}."
+                )
+            if stored["embedding_dimensions"] != EMBEDDING_DIMENSIONS:
+                raise ValueError("Vector store embedding dimensions do not match.")
+            self._chunks = stored["chunks"]
         self._matrix = (
             np.asarray([chunk["embedding"] for chunk in self._chunks], dtype=float)
             if self._chunks

@@ -27,6 +27,7 @@ from app.data_access.schema import (
     RELATIONSHIPS,
 )
 from app.config import PROJECT_ROOT
+from app.mongodb import MongoStore, load_access_policy
 from app.policy.context import MCPUserContext, PolicyAccessDenied, resolve_mcp_user
 from app.policy.filters import filter_fields, group_size_allowed
 from app.policy.policy import AccessPolicy
@@ -60,7 +61,11 @@ def get_policy() -> AccessPolicy:
     """Return the process-wide validated access policy."""
     global _policy
     if _policy is None:
-        _policy = AccessPolicy()
+        _policy = (
+            load_access_policy(MongoStore.from_environment())
+            if os.getenv("MONGODB_ENABLED", "false").casefold() == "true"
+            else AccessPolicy()
+        )
     return _policy
 
 

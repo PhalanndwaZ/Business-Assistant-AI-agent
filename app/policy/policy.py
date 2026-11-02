@@ -25,6 +25,18 @@ class AccessPolicy:
         except (OSError, json.JSONDecodeError) as exc:
             raise PolicyError(f"Could not load access policy from {path}: {exc}") from exc
         self._validate(data)
+        self._set_data(data)
+
+    @classmethod
+    def from_data(cls, data: Any) -> AccessPolicy:
+        """Create a validated policy from an already loaded MongoDB document."""
+        instance = cls.__new__(cls)
+        instance._validate(data)
+        instance._set_data(data)
+        return instance
+
+    def _set_data(self, data: dict[str, Any]) -> None:
+        """Retain the validated policy and its indexed rule sections."""
         self._data: dict[str, Any] = data
         self._roles: dict[str, Any] = data["roles"]
         self._levels: dict[str, int] = data["classification_levels"]

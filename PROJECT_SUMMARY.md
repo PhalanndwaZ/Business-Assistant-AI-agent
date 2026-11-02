@@ -50,17 +50,21 @@ flowchart LR
     MCP --> DOCS[Document-search MCP server]
     DATA --> JSON[Local JSON datasets]
     DATA --> PANDAS[Pandas analyses]
-    DOCS --> VS[Local JSON vector store]
+    DOCS --> MONGO[MongoDB documents, chunks, and policies]
     DOCS --> EMB[Mistral embeddings]
+    API --> REPORTS[MongoDB GridFS reports]
+    API --> DB[SQLite conversations, audit, and report ownership]
     G --> CHECK[Evidence checks and moderation]
     CHECK --> OUT[Answer, figures, sources, caveats]
-    API --> DB[SQLite conversations and audit log]
 ```
 
 The workflow selects from constrained MCP tools rather than executing
 arbitrary queries or code. Business analyses use approved datasets; document
-search uses retrieved passages. Evidence checks and moderation are applied
-before answers are returned.
+search uses retrieved passages, with MongoDB as the document and policy source
+when `MONGODB_ENABLED=true`. The existing in-process cosine ranking is
+preserved. Generated DOCX reports are stored in MongoDB GridFS; report
+ownership remains in SQLite. Evidence checks and moderation are applied before
+answers are returned.
 
 ## Tech stack
 
@@ -70,9 +74,9 @@ before answers are returned.
 | Agent workflow | LangGraph, LangChain |
 | Tool integration | Model Context Protocol (MCP) |
 | Business data | JSON, Pandas, NumPy |
-| Document search | Mistral embeddings, local JSON vector store |
+| Document search | Mistral embeddings, MongoDB documents/chunks, in-process cosine ranking |
 | Language models | Inception (primary), Groq (fallback) |
-| Persistence and authentication | SQLite, JWT, Argon2 |
+| Persistence and authentication | MongoDB, SQLite, JWT, Argon2 |
 | Web frontend | React, Vite, JavaScript |
 | Reports and charts | python-docx, Matplotlib |
 | Testing | pytest |

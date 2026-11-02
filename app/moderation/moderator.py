@@ -10,8 +10,10 @@ from typing import Any, Literal
 
 from app.config import PROJECT_ROOT
 from app.data_access.employee_loader import load_employee_records
+from app.mongodb import MongoStore, load_access_policy, load_moderation_rules
 from app.policy.policy import AccessPolicy
 from app.rag.vector_store import JsonVectorStore
+from pymongo.errors import PyMongoError
 
 MODERATION_RULES_PATH = (
     PROJECT_ROOT / "data" / "policy" / "moderation_rules.json"
@@ -40,14 +42,27 @@ class OutputModerationResult:
     reason_codes: tuple[str, ...] = ()
 
 
-def _load_rules(path: Path) -> dict[str, Any]:
+def _load_rules(path: Path | None) -> dict[str, Any]:
     """Load moderation configuration and reject malformed rules fail-closed."""
-    try:
-        rules: Any = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ModerationError(
-            f"Could not load moderation rules from {path}: {exc}"
-        ) from exc
+    if path is None:
+        try:
+            rules: Any = load_moderation_rules()
+        except (PyMongoError, ValueError) as exc:
+            raise ModerationError(
+                f"Could not load moderation rules from MongoDB: {exc}"
+            ) from exc
+    else:
+        try:
+            rules = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ModerationError(
+                f"Could not load moderation rules from {path}: {exc}"
+            ) from exc
+    return validate_moderation_rules(rules)
+
+
+def validate_moderation_rules(rules: Any) -> dict[str, Any]:
+    """Validate an in-memory moderation policy using the runtime rules."""
     if not isinstance(rules, dict):
         raise ModerationError("Moderation rules must be a JSON object.")
     input_rules = rules.get("input")
@@ -96,7 +111,7 @@ def _validate_check(check: dict[str, Any]) -> None:
 def check_input(
     question: str,
     role: str,
-    path: Path = MODERATION_RULES_PATH,
+    path: Path | None = MODERATION_RULES_PATH,
 ) -> ModerationDecision | None:
     """Refuse known unsafe or out-of-role requests before any model call."""
     if not isinstance(question, str) or not question.strip():
@@ -129,7 +144,7 @@ def check_input(
 
 def filter_retrieved_chunks(
     chunks: list[dict[str, Any]],
-    path: Path = MODERATION_RULES_PATH,
+    path: Path | None = MODERATION_RULES_PATH,
 ) -> tuple[list[dict[str, Any]], int]:
     """Remove retrieved chunks with instructions aimed at the assistant."""
     if not isinstance(chunks, list):
@@ -155,10 +170,10 @@ def moderate_output(
     content: str,
     role: str,
     data_dir: Path,
-    vector_store_path: Path,
+    vector_store_path: Path | None,
     *,
     answer_text: str | None = None,
-    path: Path = MODERATION_RULES_PATH,
+    path: Path | None = MODERATION_RULES_PATH,
 ) -> OutputModerationResult:
     """Detect sensitive values, prompt fragments, and forbidden document quotes."""
     rules = _load_rules(path)
@@ -214,7 +229,11 @@ def moderate_output(
         if _contains_prompt_fragment(content, prompt, prompt_min_words):
             return _redacted_output(notice, "M5")
 
-        policy = AccessPolicy()
+        policy = (
+            load_access_policy()
+            if path is None
+            else AccessPolicy()
+        )
         if not policy.can_access_field(role, "employees", "salary_cents"):
             if re.search(
                 r"\b(?:salary|salaries|compensation|employee pay)\b.{0,30}"
@@ -232,7 +251,11 @@ def moderate_output(
             quote_min_chars,
         )
         if quotes:
-            chunks = JsonVectorStore(vector_store_path).load()["chunks"]
+            chunks = (
+                MongoStore.from_environment().list_chunks()
+                if vector_store_path is None
+                else JsonVectorStore(vector_store_path).load()["chunks"]
+            )
             for chunk in chunks:
                 if not isinstance(chunk, dict):
                     raise ModerationError(
@@ -259,7 +282,7 @@ def moderate_output(
                     return _redacted_output(notice, "M6")
     except ModerationError:
         raise
-    except (OSError, ValueError) as exc:
+    except (OSError, PyMongoError, ValueError) as exc:
         raise ModerationError("Output moderation could not verify the response.") from exc
 
     return OutputModerationResult(status="ok", notice=None)

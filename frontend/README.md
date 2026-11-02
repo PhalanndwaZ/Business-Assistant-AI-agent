@@ -3,6 +3,15 @@
 Configure the repository root `.env` from `.env.example` and install the
 frontend dependencies once from this directory with `npm install`.
 
+For MongoDB mode, set `MONGODB_ENABLED=true`, configure `MONGODB_URI` with your
+MongoDB Atlas connection string, ensure Atlas Network Access allows your
+machine and the database user has access, then ingest the sample documents and
+policies from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.ingest_mongodb
+```
+
 Open two PowerShell terminals at the repository root:
 
 Backend:

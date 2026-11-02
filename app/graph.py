@@ -29,7 +29,11 @@ from app.services.evidence_check import (
     check_document_evidence,
     check_numeric_evidence,
 )
-from app.moderation.moderator import ModerationError, filter_retrieved_chunks
+from app.moderation.moderator import (
+    MODERATION_RULES_PATH,
+    ModerationError,
+    filter_retrieved_chunks,
+)
 from app.state import AnalystState, ToolResult
 
 LOGGER = logging.getLogger(__name__)
@@ -779,6 +783,7 @@ def build_graph(
     max_steps: int = DEFAULT_MAX_STEPS,
     max_retries: int = DEFAULT_MAX_RETRIES,
     system_prompt_path: Path | None = None,
+    moderation_rules_path: Path | None = MODERATION_RULES_PATH,
 ) -> Any:
     """Build the bounded agent graph with MCP calls and numeric evidence checks."""
     if max_steps < 1:
@@ -1048,7 +1053,8 @@ def build_graph(
                             "Retrieved document results have an invalid shape."
                         )
                     safe_passages, dropped_count = filter_retrieved_chunks(
-                        passages
+                        passages,
+                        moderation_rules_path,
                     )
                     if dropped_count:
                         tool_output = dict(tool_output)
@@ -1425,6 +1431,7 @@ async def answer_question(
     history: list[tuple[str, str]] | None = None,
     prior_tool_results: list[ToolResult] | None = None,
     prior_retrieved_chunks: list[dict[str, Any]] | None = None,
+    moderation_rules_path: Path | None = MODERATION_RULES_PATH,
 ) -> AnalystState:
     """Run a single question with a fresh state and no conversational memory."""
     if not question.strip():
@@ -1440,6 +1447,7 @@ async def answer_question(
         tool_client,
         max_steps,
         max_retries,
+        moderation_rules_path=moderation_rules_path,
     )
     history_messages = [
         HumanMessage(content=content)
@@ -1463,7 +1471,10 @@ async def answer_question(
             raise ModerationError(
                 "A historical document-search result has an invalid shape."
             )
-        safe_passages, dropped_count = filter_retrieved_chunks(passages)
+        safe_passages, dropped_count = filter_retrieved_chunks(
+            passages,
+            moderation_rules_path,
+        )
         if dropped_count:
             dropped_historical_results += dropped_count
             safe_result = dict(result)
@@ -1479,7 +1490,8 @@ async def answer_question(
             dropped_historical_results,
         )
     historical_chunks, dropped_count = filter_retrieved_chunks(
-        prior_retrieved_chunks or []
+        prior_retrieved_chunks or [],
+        moderation_rules_path,
     )
     if dropped_count:
         LOGGER.warning(

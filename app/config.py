@@ -62,6 +62,9 @@ class Settings:
     )
     inception_backoff_max_seconds: float = DEFAULT_INCEPTION_BACKOFF_MAX_SECONDS
     llm_call_timeout_seconds: float = DEFAULT_LLM_CALL_TIMEOUT_SECONDS
+    mongodb_enabled: bool = False
+    mongodb_uri: str = "mongodb://127.0.0.1:27017"
+    mongodb_database: str = "business_assistant"
 
 
 def _path_from_environment(name: str, default: str) -> Path:
@@ -136,6 +139,22 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         max_history_turns = int(
             os.getenv("MAX_HISTORY_TURNS", str(DEFAULT_MAX_HISTORY_TURNS))
         )
+        mongodb_enabled_value = os.getenv(
+            "MONGODB_ENABLED",
+            "false",
+        ).strip().casefold()
+        if mongodb_enabled_value not in {"true", "false"}:
+            raise ValueError("MONGODB_ENABLED must be true or false.")
+        mongodb_uri = os.getenv(
+            "MONGODB_URI",
+            "mongodb://127.0.0.1:27017",
+        ).strip()
+        mongodb_database = os.getenv(
+            "MONGODB_DATABASE",
+            "business_assistant",
+        ).strip()
+        if not mongodb_uri or not mongodb_database:
+            raise ValueError("MONGODB_URI and MONGODB_DATABASE are required.")
     except ValueError as exc:
         raise ConfigurationError(f"Invalid application setting: {exc}") from exc
 
@@ -192,6 +211,9 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
             "CONVERSATION_DB_PATH", "data/conversations.sqlite3"
         ),
         max_history_turns=max_history_turns,
+        mongodb_uri=mongodb_uri,
+        mongodb_enabled=mongodb_enabled_value == "true",
+        mongodb_database=mongodb_database,
         inception_api_key=inception_api_key,
         inception_base_url=os.getenv(
             "INCEPTION_BASE_URL",

@@ -13,12 +13,20 @@ import {
 
 /** Render an assistant answer, moderation status, charts, report, and evidence. */
 export function AssistantMessage({ content, response }) {
+  const reportFilename = getReportFilename(
+    content,
+    response?.report_filename,
+  );
+  const visibleAnswer = removeReportPathFromAnswer(
+    content,
+    response?.report_filename,
+  );
   const isRefused = response?.moderation?.status === "refused";
   const redactionNotice = getRedactionNotice(response?.moderation);
   const answerRepeatsNotice =
     redactionNotice &&
-    typeof content === "string" &&
-    content.trim() === redactionNotice.trim();
+    typeof visibleAnswer === "string" &&
+    visibleAnswer.trim() === redactionNotice.trim();
   const evidenceResponse =
     redactionNotice && Array.isArray(response?.caveats)
       ? {
@@ -30,14 +38,6 @@ export function AssistantMessage({ content, response }) {
           ),
         }
       : response;
-  const reportFilename = getReportFilename(
-    content,
-    response?.report_filename,
-  );
-  const visibleAnswer = removeReportPathFromAnswer(
-    content,
-    response?.report_filename,
-  );
 
   return (
     <article

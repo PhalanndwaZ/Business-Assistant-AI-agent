@@ -24,7 +24,7 @@ from app.auth.users import UserAccount, UserStoreError, authenticate_user
 from app.graph import answer_question
 from app.llm_factory import build_chat_model
 from app.mcp_client import AnalystMCPClient
-from app.moderation.moderator import check_input
+from app.moderation.moderator import MODERATION_RULES_PATH, check_input
 from app.policy.context import MCPUserContext
 
 LOGGER = logging.getLogger(__name__)
@@ -56,7 +56,12 @@ def _authenticate_cli_user() -> UserAccount:
 async def _answer(question: str) -> str:
     """Connect the primary/fallback model and MCP server for one question."""
     user = _authenticate_cli_user()
-    moderation_decision = check_input(question, user.role)
+    settings = load_settings()
+    moderation_decision = check_input(
+        question,
+        user.role,
+        path=None if settings.mongodb_enabled else MODERATION_RULES_PATH,
+    )
     if moderation_decision is not None:
         LOGGER.warning(
             "moderation event=input_refusal user_id=%s role=%s reason=%s",
@@ -65,7 +70,6 @@ async def _answer(question: str) -> str:
             moderation_decision.category,
         )
         return moderation_decision.response
-    settings = load_settings()
     model = build_chat_model(settings)
     async with AnalystMCPClient(
         settings,
@@ -79,6 +83,9 @@ async def _answer(question: str) -> str:
             mcp_client,
             settings.max_steps,
             settings.max_retries,
+            moderation_rules_path=(
+                None if settings.mongodb_enabled else MODERATION_RULES_PATH
+            ),
         )
     if os.getenv("PHASE5_TRACE") == "1":
         print(
