@@ -13,6 +13,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.types import CallToolResult, Tool
 
 from app.config import PROJECT_ROOT, Settings
+from app.mongodb import get_mongo_store, load_access_policy
 from app.policy.context import MCPUserContext
 from app.policy.policy import AccessPolicy
 
@@ -41,6 +42,9 @@ class BusinessDataMCPClient:
             "TMP": os.environ.get("TMP", ""),
             "DATA_DIR": str(self.settings.data_dir),
             "AS_OF_DATE": self.settings.as_of_date.isoformat(),
+            "MONGODB_ENABLED": str(self.settings.mongodb_enabled).lower(),
+            "MONGODB_URI": self.settings.mongodb_uri,
+            "MONGODB_DATABASE": self.settings.mongodb_database,
             "PYTHONPATH": str(PROJECT_ROOT),
         }
         parameters = StdioServerParameters(
@@ -112,6 +116,9 @@ class DocumentSearchMCPClient(BusinessDataMCPClient):
             "VECTOR_STORE_PATH": str(self.settings.vector_store_path),
             "MIN_SIMILARITY": str(self.settings.min_similarity),
             "TOP_K": str(self.settings.top_k),
+            "MONGODB_ENABLED": str(self.settings.mongodb_enabled).lower(),
+            "MONGODB_URI": self.settings.mongodb_uri,
+            "MONGODB_DATABASE": self.settings.mongodb_database,
             "PYTHONPATH": str(PROJECT_ROOT),
         }
         parameters = StdioServerParameters(
@@ -147,7 +154,16 @@ class AnalystMCPClient:
         if not user_context.user_id or not user_context.role:
             raise ValueError("MCP user context must include user ID and role.")
         self.user_context = user_context
-        self._policy = AccessPolicy()
+        self._policy = (
+            load_access_policy(
+                get_mongo_store(
+                    settings.mongodb_uri,
+                    settings.mongodb_database,
+                )
+            )
+            if settings.mongodb_enabled
+            else AccessPolicy()
+        )
         self._business_client = BusinessDataMCPClient(settings, user_context)
         self._document_client = DocumentSearchMCPClient(settings, user_context)
         self._tool_clients: dict[str, BusinessDataMCPClient] = {}

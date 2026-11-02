@@ -1,4 +1,4 @@
-"""MCP server exposing thresholded search over the JSON chunk store."""
+"""MCP server exposing thresholded search over MongoDB or legacy JSON chunks."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from app.config import load_settings
+from app.mongodb import get_mongo_store, load_access_policy
 from app.policy.context import MCPUserContext, PolicyAccessDenied, resolve_mcp_user
 from app.policy.policy import AccessPolicy
 from app.rag.embeddings import MistralEmbedder
@@ -21,7 +22,7 @@ _policy: AccessPolicy | None = None
 
 
 def get_retriever() -> DocumentRetriever:
-    """Load the vector store and its configured Mistral embedder once."""
+    """Load configured chunks and the Mistral embedder once per process."""
     global _retriever
     if _retriever is None:
         settings = load_settings(require_groq_api_key=False)
@@ -29,12 +30,18 @@ def get_retriever() -> DocumentRetriever:
             settings.mistral_api_key,
             settings.mistral_embedding_model,
         )
+        mongo_store = (
+            get_mongo_store(settings.mongodb_uri, settings.mongodb_database)
+            if settings.mongodb_enabled
+            else None
+        )
         _retriever = DocumentRetriever(
-            settings.vector_store_path,
+            None if mongo_store is not None else settings.vector_store_path,
             settings.mistral_embedding_model,
             embedder,
             settings.min_similarity,
             settings.top_k,
+            mongo_store=mongo_store,
         )
     return _retriever
 
@@ -43,7 +50,17 @@ def get_policy() -> AccessPolicy:
     """Return the process-wide validated access policy."""
     global _policy
     if _policy is None:
-        _policy = AccessPolicy()
+        settings = load_settings(require_groq_api_key=False)
+        _policy = (
+            load_access_policy(
+                get_mongo_store(
+                    settings.mongodb_uri,
+                    settings.mongodb_database,
+                )
+            )
+            if settings.mongodb_enabled
+            else AccessPolicy()
+        )
     return _policy
 
 

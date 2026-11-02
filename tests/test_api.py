@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import io
+import json
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,6 +22,7 @@ from app.auth.users import UserAccount
 from app.config import ConfigurationError, Settings
 from app.llm_factory import groq_client_options
 from app.llm_fallback import ProviderUnavailableError
+from app.mongodb import MongoStore
 from app.state import AnalystState
 
 TEST_SALES_USER = UserAccount(
@@ -44,6 +47,34 @@ TEST_ADMIN_USER = UserAccount(
     password_hash="$argon2id$test-hash",
 )
 
+class FakeMongoStore:
+    """Keep Mongo-backed policies and reports isolated from external services."""
+
+    def __init__(self) -> None:
+        self.reports: dict[str, bytes] = {}
+
+    def get_policy(self, policy_id: str) -> dict[str, Any]:
+        filename = (
+            "access_policy.json"
+            if policy_id == "access_control"
+            else "moderation_rules.json"
+        )
+        return json.loads(
+            (main.PROJECT_ROOT / "data" / "policy" / filename).read_text(
+                encoding="utf-8"
+            )
+        )
+
+    def list_chunks(self) -> list[dict[str, Any]]:
+        return []
+
+    def store_report(self, filename: str, path: Path) -> None:
+        self.reports[filename] = path.read_bytes()
+
+    def open_report(self, filename: str) -> io.BytesIO | None:
+        content = self.reports.get(filename)
+        return io.BytesIO(content) if content is not None else None
+
 
 @pytest.fixture(autouse=True)
 def isolate_audit_database(
@@ -55,6 +86,17 @@ def isolate_audit_database(
     monkeypatch.setenv(
         "REPORT_ACCESS_DB_PATH",
         str(tmp_path / "report_access.sqlite3"),
+    )
+    fake_mongo = FakeMongoStore()
+    monkeypatch.setattr(
+        main,
+        "_get_mongo_store",
+        lambda _settings=None: fake_mongo,
+    )
+    monkeypatch.setattr(
+        MongoStore,
+        "from_environment",
+        classmethod(lambda _cls: fake_mongo),
     )
 
 
@@ -161,6 +203,7 @@ def test_run_question_uses_the_same_graph_answer_as_the_cli(
         history: list[tuple[str, str]],
         prior_tool_results: list[dict[str, Any]],
         prior_retrieved_chunks: list[dict[str, object]],
+        moderation_rules_path: Path | None = None,
     ) -> AnalystState:
         assert observed["settings"] is settings
         assert _model is fake_model
@@ -352,6 +395,7 @@ def test_run_question_returns_current_turn_figures_not_historical_evidence(
         history: list[tuple[str, str]],
         prior_tool_results: list[dict[str, Any]],
         prior_retrieved_chunks: list[dict[str, object]],
+        moderation_rules_path: Path | None = None,
     ) -> AnalystState:
         observed["history"] = history
         observed["prior_tool_results"] = prior_tool_results
@@ -569,6 +613,7 @@ def test_download_report_serves_only_docx_files_inside_reports(
         TEST_SALES_USER.user_id,
         TEST_SALES_USER.role,
     )
+    main._get_mongo_store().store_report(filename, report_path)
     client = authenticated_client(monkeypatch)
 
     response = client.get(f"/reports/{filename}")
@@ -617,6 +662,7 @@ def test_report_downloads_are_limited_to_owner_or_admin(
         TEST_SALES_USER.user_id,
         TEST_SALES_USER.role,
     )
+    main._get_mongo_store().store_report(filename, reports_directory / filename)
 
     owner_response = client_for_user(TEST_SALES_USER).get(f"/reports/{filename}")
     other_user_response = client_for_user(TEST_HR_USER).get(f"/reports/{filename}")
@@ -650,6 +696,29 @@ def test_report_without_owner_record_is_not_downloadable(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Report not found."}
+
+
+def test_legacy_owned_report_remains_downloadable_from_local_storage(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Reports created before MongoDB migration retain their safe local path."""
+    reports_directory = tmp_path / "reports"
+    reports_directory.mkdir()
+    filename = "legacy-report-0123456789abcdef.docx"
+    report_path = reports_directory / filename
+    report_path.write_bytes(b"legacy report")
+    monkeypatch.setattr(main, "REPORTS_DIR", reports_directory)
+    main._get_report_access_store().register_report(
+        filename,
+        TEST_SALES_USER.user_id,
+        TEST_SALES_USER.role,
+    )
+
+    response = client_for_user(TEST_SALES_USER).get(f"/reports/{filename}")
+
+    assert response.status_code == 200
+    assert response.content == b"legacy report"
 
 
 def test_ask_rejects_missing_or_blank_question(monkeypatch: Any) -> None:
@@ -989,6 +1058,7 @@ def test_role_change_starts_a_fresh_conversation(
         history: list[tuple[str, str]],
         prior_tool_results: list[dict[str, Any]],
         prior_retrieved_chunks: list[dict[str, object]],
+        moderation_rules_path: Path | None = None,
     ) -> AnalystState:
         """Record incoming history and return a deterministic answer."""
         observed["history"] = history

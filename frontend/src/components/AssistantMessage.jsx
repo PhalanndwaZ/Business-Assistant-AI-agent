@@ -2,16 +2,16 @@ import { AnswerText } from "./AnswerText.jsx";
 import { ChartGrid } from "./ChartGrid.jsx";
 import { EvidencePanel } from "./EvidencePanel.jsx";
 import {
+  getRedactionNotice,
+  ModerationNotice,
+} from "./ModerationNotice.jsx";
+import {
   getReportFilename,
   removeReportPathFromAnswer,
   ReportNotice,
 } from "./ReportNotice.jsx";
-import {
-  getRedactionNotice,
-  ModerationNotice,
-} from "./ModerationNotice.jsx";
 
-/** Render an assistant answer followed by its current-turn evidence. */
+/** Render an assistant answer, moderation status, charts, report, and evidence. */
 export function AssistantMessage({ content, response }) {
   const reportFilename = getReportFilename(
     content,

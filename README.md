@@ -12,6 +12,7 @@ checks numeric and document claims before returning an answer.
 
 ## Contents
 
+- [Current application workflow guide](APPLICATION_WORKFLOW.md)
 - [Architecture](#architecture)
 - [LangGraph workflow](#langgraph-workflow)
 - [Setup and run](#setup-and-run)
@@ -41,21 +42,26 @@ flowchart LR
     DMCP --> PD[Pandas named analyses]
 
     MCPC <--> RMCP[Document-search MCP server]
-    RMCP --> VS[(JSON vector store)]
-    RMCP --> RET[Cosine similarity and threshold]
+    RMCP --> MONGO[(MongoDB documents, chunks, policies)]
+    RMCP --> RET[In-process cosine similarity and threshold]
     EMB[Mistral embeddings] --> RET
 
     G --> EC[Evidence checks]
     EC --> OUT[Answer, figures, sources, caveats]
     OUT --> U
+    API --> GRIDFS[(MongoDB GridFS reports)]
+    API --> SQLITE[(SQLite conversations, audit, report ownership)]
     EVAL[pytest and evaluation runner] -. checks .-> G
 ```
 
-The app uses local JSON files rather than a database. The business-data and
-document-search MCP servers run as local stdio subprocesses. The Inception
-model selects among discovered tools first; Groq is tried when Inception is
-unavailable. Neither model receives arbitrary code, file paths, or unrestricted
-queries to run.
+Business datasets and authentication users remain file-backed. With
+`MONGODB_ENABLED=true`, MongoDB stores document text, embedded chunks, and
+runtime access/moderation policies; generated DOCX reports are stored in
+GridFS. Conversations, audit events, and report ownership remain in SQLite.
+The business-data and document-search MCP servers run as local stdio
+subprocesses. The Inception model selects among discovered tools first; Groq
+is tried when Inception is unavailable. Neither model receives arbitrary code,
+file paths, or unrestricted queries to run.
 
 ## LangGraph workflow
 
@@ -99,8 +105,13 @@ Copy-Item .env.example .env
 ```
 
 Edit `.env` and supply `INCEPTION_API_KEY` or `GROQ_API_KEY`, plus
-`MISTRAL_API_KEY`. Inception is used first when its key is present; if not, the
-app logs a warning and uses Groq only. Keep `.env` private; do not commit keys.
+`MISTRAL_API_KEY`. Replace the `MONGODB_URI` placeholders with the Atlas
+connection string from your MongoDB Atlas cluster and your database-user
+credentials. In Atlas, add your current IP to Network Access and create a
+database user with appropriate permissions. URL-encode special characters in
+the username or password. Keep `.env` private; do not commit keys. Inception
+is used first when its key is present; if not, the app logs a warning and uses
+Groq only.
 The checked-in `.env.example` contains blank credentials and default settings:
 
 | Variable | Required | Default | Purpose |
@@ -127,19 +138,33 @@ The checked-in `.env.example` contains blank credentials and default settings:
 | `CONVERSATION_DB_PATH` | No | `data/conversations.sqlite3` | Local SQLite file for persistent API conversation history. |
 | `DATA_DIR` | No | `data/sample_data` | Directory containing the approved JSON datasets. |
 | `DOCUMENTS_DIR` | No | `data/documents` | Document files and their manifest. |
-| `VECTOR_STORE_PATH` | No | `data/vector_store/chunks.json` | Local embedded document-chunk store. |
+| `MONGODB_ENABLED` | No | `true` in `.env.example` | Use MongoDB for runtime document retrieval and access/moderation policies. |
+| `MONGODB_URI` | Yes, for MongoDB mode | Atlas SRV URI placeholder in `.env.example` | MongoDB Atlas connection URI; replace all placeholders with the cluster and database-user values. |
+| `MONGODB_DATABASE` | No | `business_assistant` | MongoDB database for documents, chunks, policies, and report files. |
+| `VECTOR_STORE_PATH` | No | `data/vector_store/chunks.json` | Legacy local vector store used only when `MONGODB_ENABLED=false`. |
 
 Transient Groq fallback errors use bounded exponential retries and honor a
 valid `Retry-After` response header. Retries cannot overcome an exhausted
 provider quota or billing limit; configure an available provider key or wait
 for its quota window to reset.
 
-The vector store is ignored by Git, so create it after a fresh clone before
-starting the API or CLI. Rebuild it after adding/changing documents:
+With MongoDB Atlas configured and reachable, and `MONGODB_ENABLED=true`, ingest the checked-in
+synthetic documents and policies before starting the API or CLI. This command
+uses the configured Mistral key to create document embeddings:
 
 ```powershell
-.\.venv\Scripts\python.exe -m app.rag.ingest
+.\.venv\Scripts\python.exe -m scripts.ingest_mongodb
 ```
+
+The script loads source text and metadata from `data/documents/manifest.json`,
+stores `access_policy.json` and `moderation_rules.json` in MongoDB, and can be
+rerun to refresh changed source documents. It intentionally does not ingest
+`users.json`; demo authentication remains file-backed. The two policy Markdown
+files and the additional synthetic seed documents are ingested as searchable
+documents. Document embeddings remain ranked by the existing in-process cosine
+retriever; this change does not require Atlas Vector Search. Generated DOCX
+reports are uploaded to MongoDB GridFS when created; report ownership metadata
+continues to use the existing SQLite store.
 
 Ask a live CLI question:
 
@@ -522,18 +547,17 @@ The response JSON has this shape:
 ```
 
 `report_filename` is optional and appears only when a report was successfully
-created inside the project `reports/` directory. Download it with
-`GET /reports/{filename}` using the same bearer token. The endpoint accepts
-only a single `.docx` filename and serves it only when the resolved file
-remains inside `reports/`; invalid, missing, or out-of-directory files return
-`404`.
+created. In MongoDB mode, its DOCX bytes are stored in GridFS; download it with
+`GET /reports/{filename}` using the same bearer token. Report ownership is
+checked against SQLite. Registered reports created by an older local-only
+version may still be served from the project `reports/` directory; invalid,
+unregistered, or inaccessible filenames return `404`.
 
 `answer` contains the final evidence-checked response. For report requests it
 states whether a report file was generated and includes its path only after a
 successful `generate_report` call. Files are written under the project
 `reports/` directory. `charts` contains chart specifications built only from
-successful analysis results or complete, successful department-grouped
-employee queries; the frontend renders these directly in the chat,
+successful analysis results; the frontend renders these directly in the chat,
 so chart requests do not create image files. A malformed optional chart in a
 report request is omitted so it cannot block creation of an otherwise valid
 report. `figures` contains successful analysis/query results from the current

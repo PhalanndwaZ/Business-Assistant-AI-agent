@@ -54,5 +54,29 @@
     "document_date": "2024-12-15",
     "department": "hr",
     "classification": "restricted"
+  },
+  {
+    "document_id": "reporting-standards-policy",
+    "file": "reporting_standards_policy.md",
+    "document_type": "policy",
+    "document_date": "2024-01-01",
+    "department": "general",
+    "classification": "internal"
+  },
+  {
+    "document_id": "sales-review-notes-2024-12-20",
+    "file": "sales_review_notes_2024-12-20.md",
+    "document_type": "meeting_notes",
+    "document_date": "2024-12-20",
+    "department": "sales",
+    "classification": "internal"
+  },
+  {
+    "document_id": "report-review-policy",
+    "file": "report_review_policy.md",
+    "document_type": "policy",
+    "document_date": "2024-01-01",
+    "department": "general",
+    "classification": "internal"
   }
 ]

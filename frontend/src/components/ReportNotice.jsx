@@ -16,7 +16,7 @@ function findReportPath(answer) {
   return answer.match(REPORT_PATH_PATTERN)?.[0]?.trim() || null;
 }
 
-/** Prefer the structured filename and retain answer parsing for older fixtures. */
+/** Prefer a safe API filename and retain path parsing for older responses. */
 export function getReportFilename(answer, reportFilename) {
   if (isSafeReportFilename(reportFilename)) {
     return reportFilename;
@@ -27,7 +27,7 @@ export function getReportFilename(answer, reportFilename) {
     return null;
   }
   const filename = reportPath.split(/[\\/]/).at(-1);
-  return isSafeReportFilename(filename) ? filename : null;
+  return filename && isSafeReportFilename(filename) ? filename : null;
 }
 
 /** Remove the raw report path from prose when the download card displays it. */
@@ -82,6 +82,7 @@ export function ReportNotice({ answer, reportFilename }) {
   const [downloadStatus, setDownloadStatus] = useState("idle");
   const [downloadError, setDownloadError] = useState("");
   const filename = getReportFilename(answer, reportFilename);
+
   if (!filename) {
     return null;
   }

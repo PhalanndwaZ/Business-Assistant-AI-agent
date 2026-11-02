@@ -95,6 +95,37 @@ def test_rag_settings_do_not_require_the_unused_groq_key(
     assert settings.mistral_api_key == "test-mistral-key"
 
 
+def test_load_settings_supports_mongodb_runtime_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MongoDB mode is explicitly enabled and has stable connection defaults."""
+    monkeypatch.setattr(app.config, "load_dotenv", lambda *args, **kwargs: None)
+    monkeypatch.setenv("GROQ_API_KEY", "test-groq-key")
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-mistral-key")
+    monkeypatch.setenv("MONGODB_ENABLED", "true")
+    monkeypatch.setenv("MONGODB_URI", "mongodb://localhost:27017")
+    monkeypatch.setenv("MONGODB_DATABASE", "test_app")
+
+    settings = load_settings()
+
+    assert settings.mongodb_enabled is True
+    assert settings.mongodb_uri == "mongodb://localhost:27017"
+    assert settings.mongodb_database == "test_app"
+
+
+def test_load_settings_rejects_invalid_mongodb_toggle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An invalid backend toggle cannot silently select a storage source."""
+    monkeypatch.setattr(app.config, "load_dotenv", lambda *args, **kwargs: None)
+    monkeypatch.setenv("GROQ_API_KEY", "test-groq-key")
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-mistral-key")
+    monkeypatch.setenv("MONGODB_ENABLED", "sometimes")
+
+    with pytest.raises(ConfigurationError, match="MONGODB_ENABLED"):
+        load_settings()
+
+
 def test_load_settings_rejects_invalid_similarity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
