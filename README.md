@@ -617,10 +617,11 @@ role's employee-field permissions, so HR-authorized employee details are not
 redacted solely because they contain an employee ID.
 For HR users with salary-field access, `query_business_data` supports the
 restricted `sum_salary_cents` aggregation grouped only by department. Results
-contain department payroll totals in integer cents, not individual salaries;
-these values are displayed as South African rand in the user interface.
-roles without salary access cannot invoke this aggregation. Ask for a chart of
-"total earnings by department" to render those supported totals as bars.
+contain department payroll totals in integer cents, not individual salaries.
+The user interface presents those totals in South African rand (R), like other
+money values in answers, reports, charts, and figures. Roles without salary
+access cannot invoke this aggregation. Ask for a chart of "total earnings by
+department" to render those supported totals as bars.
 
 ### `POST /ask`
 
@@ -686,7 +687,8 @@ report. `figures` contains successful analysis/query results from the current
 request only; prior-turn evidence remains available internally for follow-up
 questions but is not repeated in each response. `sources` lists current-turn
 tool and document names; `caveats` contains current-turn assumptions, evidence
-limitations, and workflow errors.
+limitations, and workflow errors. Monetary values in the figure payload remain
+integer cents internally; the frontend formats them as South African rand (R).
 
 Completed user/assistant turns are persisted in the SQLite database at
 `CONVERSATION_DB_PATH`. The default location is
