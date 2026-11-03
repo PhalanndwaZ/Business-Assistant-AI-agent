@@ -1,0 +1,14 @@
+[
+  {
+    "name": "tone",
+    "question": "Is the response polite and clear?"
+  },
+  {
+    "name": "no_invented_cause",
+    "question": "Does the response avoid inventing a cause without evidence?"
+  },
+  {
+    "name": "next_step",
+    "question": "Does the response include a suggested next step?"
+  }
+]

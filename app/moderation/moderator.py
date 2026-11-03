@@ -218,11 +218,12 @@ def moderate_output(
                 "An output moderation rule contains an invalid pattern."
             ) from exc
 
+    moderation_text = answer_text if answer_text is not None else content
     try:
         policy = AccessPolicy()
         for check in checks:
             for pattern in check["patterns"]:
-                for match in re.finditer(pattern, content, re.IGNORECASE):
+                for match in re.finditer(pattern, moderation_text, re.IGNORECASE):
                     if _is_permitted_employee_contact(
                         match.group(),
                         role,
@@ -233,20 +234,30 @@ def moderate_output(
                     return _redacted_output(notice, "M5")
 
         prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
-        if _contains_prompt_fragment(content, prompt, prompt_min_words):
+        prompt_check_content = answer_text if answer_text is not None else content
+        if _contains_prompt_fragment(
+            prompt_check_content,
+            prompt,
+            prompt_min_words,
+        ):
             return _redacted_output(notice, "M5")
 
-        policy = AccessPolicy()
+        if (
+            not policy.can_access_field(role, "employees", "employee_id")
+            and EMPLOYEE_ID_PATTERN.search(moderation_text)
+        ):
+            return _redacted_output(notice, "M5")
+
         if not policy.can_access_field(role, "employees", "salary_cents"):
             if re.search(
                 r"\b(?:salary|salaries|compensation|employee pay)\b.{0,30}"
                 r"\$?\s?\d[\d,]*(?:\.\d{1,2})?\s?[kKmM]?\b",
-                content,
+                moderation_text,
                 re.IGNORECASE,
             ):
                 return _redacted_output(notice, "M5")
             employees = load_employee_records(data_dir)
-            if _contains_restricted_salary(content, employees):
+            if _contains_restricted_salary(moderation_text, employees):
                 return _redacted_output(notice, "M5")
 
         quotes = _quoted_passages(

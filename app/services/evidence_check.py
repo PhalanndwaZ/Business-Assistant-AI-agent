@@ -11,7 +11,7 @@ from typing import Any
 from app.state import ToolResult
 
 NUMBER_PATTERN = re.compile(
-    r"(?:(?<![\w.])|(?<=[Rr]))[−‑+-]?\d+(?:,\d{3})*(?:\.\d+)?%?"
+    r"(?:(?<![\w.,])|(?<=[Rr]))[−‑+-]?\d+(?:,\d{3})*(?:\.\d+)?%?"
 )
 SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<!\d)[.!?](?!\d)|\n")
 MONEY_CENT_KEYS = frozenset(
@@ -109,6 +109,8 @@ def _field_category(field_path: str) -> str:
         for key in ("percent", "percentage", "_pct", "growth_rate")
     ):
         return "percentage"
+    if "share_of_customers" in normalized_path:
+        return "ratio"
     if any(
         key in normalized_path
         for key in ("salary", "payroll", "earnings", "wages", "compensation")
@@ -134,6 +136,8 @@ def _field_category(field_path: str) -> str:
         for key in (
             "order_count",
             "customer_count",
+            ".customers",
+            "avg_orders",
             "total_matches",
             "quantity",
             "units",
@@ -184,6 +188,17 @@ def _collect_numbers(
                         value_field,
                     )
                 )
+            if value_field.startswith("share_of_"):
+                percentage = float(value) * 100
+                if math.isfinite(percentage):
+                    numbers.append(
+                        NumericEvidence(
+                            percentage,
+                            "percentage",
+                            "percentage",
+                            value_field,
+                        )
+                    )
         return numbers
     if isinstance(value, str):
         for match in NUMBER_PATTERN.finditer(value):
@@ -230,16 +245,53 @@ def _claim_category(
         following_text,
         maxsplit=1,
     )[0]
-    if re.search(
-        r"\b(customer|product|order)\s+(?:id\s*)?#?\s*$",
-        preceding_text,
+    if match.group().endswith("%") or re.match(
+        r"\s*(?:\\?%|percent(?:age)?\b)",
+        unit_following_text,
         re.IGNORECASE,
     ):
-        return None, None
-    if re.search(r"\brevenue_cents\s*=\s*$", preceding_text, re.IGNORECASE):
+        return "percentage", "percentage"
+    if re.search(r"\brevenue_cents\b\s*[=:of]+\s*$", preceding_text, re.IGNORECASE):
         return "revenue", "cents"
-    if re.search(r"\b(?:top|first|last)\s*$", preceding_text, re.IGNORECASE):
-        return "count", None
+    sentence_context = preceding_text[-60:] + following_text[:60]
+    if re.search(
+        r"\b(?:revenue\s+share|share\s+(?:of\s+)?revenue)\b",
+        sentence_context,
+        re.IGNORECASE,
+    ):
+        return "revenue", "revenue"
+    count_terms = (
+        r"(?:customers?|orders?|employees?|products?|items?|units?|"
+        r"records?|days?|weeks?)"
+    )
+    if re.search(
+        r"\b(?:revenue\s+share|share\s+(?:of\s+)?revenue)\b",
+        preceding_text[-40:] + following_text[:40],
+        re.IGNORECASE,
+    ):
+        return "revenue", "revenue"
+    share_ratio_prefix = re.search(
+        r"\b(?:customer\s+share|share\s+of\s+customers?|share_of_customers)"
+        r"\s*(?:(?:is|of|=|:)\s*)?$",
+        preceding_text[-50:],
+        re.IGNORECASE,
+    )
+    share_ratio_suffix = re.match(
+        r"\s*(?:(?:is|equals?)\s+)?(?:the\s+)?"
+        r"(?:customer\s+share|share\s+of\s+customers?|share_of_customers)\b",
+        following_text[:50],
+        re.IGNORECASE,
+    )
+    if share_ratio_prefix or share_ratio_suffix:
+        return "ratio", "ratio"
+    is_calendar_day = bool(
+        re.match(r"^\s*days?\b", following_text, re.IGNORECASE)
+        and MONTH_PATTERN.search(preceding_text)
+    )
+    has_explicit_currency = bool(
+        re.search(r"(?:[$€£]\s*|(?<!\w)[Rr]\s*)$", preceding_text)
+        or re.match(r"^\s*(?:dollars?|usd|cents?|¢)\b", unit_following_text, re.IGNORECASE)
+    )
     date_start = max(0, match.start() - 10)
     date_end = min(len(draft_answer), match.end() + 10)
     for date_match in ISO_DATE_PATTERN.finditer(draft_answer, date_start, date_end):
@@ -281,6 +333,33 @@ def _claim_category(
                 re.IGNORECASE,
             ):
                 return "date", None
+    if (
+        not is_calendar_day
+        and not has_explicit_currency
+        and
+        re.search(rf"\b{count_terms}\b(?:s)?\b", preceding_text[-20:], re.IGNORECASE)
+    ) or (
+        not is_calendar_day
+        and not has_explicit_currency
+        and re.match(rf"^\s*(?:average\s+)?{count_terms}\b", following_text, re.IGNORECASE)
+    ):
+        return "count", None
+    if re.match(
+        r"\s+(?:average\s+)?orders?\b",
+        following_text,
+        re.IGNORECASE,
+    ):
+        return "count", None
+    if re.search(
+        r"\b(customer|product|order)\s+(?:id\s*)?#?\s*$",
+        preceding_text,
+        re.IGNORECASE,
+    ):
+        return None, None
+    if re.search(r"\brevenue_cents\s*=\s*$", preceding_text, re.IGNORECASE):
+        return "revenue", "cents"
+    if re.search(r"\b(?:top|first|last)\s*$", preceding_text, re.IGNORECASE):
+        return "count", None
     unit = None
     if match.group().endswith("%") or re.match(
         r"\s*(?:\\?%|percent(?:age)?\b)",
@@ -299,6 +378,8 @@ def _claim_category(
         unit = "dollars"
     elif re.search(r"\bcents?\b", unit_following_text, re.IGNORECASE):
         unit = "cents"
+        if re.search(r"\brevenue\b|\bsales\b", preceding_text, re.IGNORECASE):
+            return "revenue", unit
     if unit == "percentage":
         return "percentage", unit
     sentence_start = 0
@@ -451,7 +532,9 @@ def _claim_matches_number(
 ) -> bool:
     """Match exact values, or explicit downward-change magnitudes."""
     preceding_text = draft_answer[max(0, match.start() - 60) : match.start()]
-    is_rand = preceding_text.rstrip().endswith(("R", "r"))
+    is_rand = bool(
+        re.search(r"(?<!\w)[Rr]\s*$", preceding_text)
+    )
     has_negative_rand_prefix = bool(
         re.search(r"[-−‑]\s*[Rr]\s*$", preceding_text)
     )

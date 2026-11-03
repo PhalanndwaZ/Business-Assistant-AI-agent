@@ -48,5 +48,105 @@
     "product_id": "P010",
     "name": "Standing Desk",
     "category": "Furniture"
+  },
+  {
+    "product_id": "P011",
+    "name": "USB-C Cable",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P012",
+    "name": "Laptop Sleeve",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P013",
+    "name": "Monitor Stand",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P014",
+    "name": "Portable SSD",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P015",
+    "name": "Bluetooth Speaker",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P016",
+    "name": "Desk Microphone",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P017",
+    "name": "Document Scanner",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P018",
+    "name": "Planner Pad",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P019",
+    "name": "File Organizer",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P020",
+    "name": "Whiteboard Set",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P021",
+    "name": "Paper Shredder",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P022",
+    "name": "Task Chair",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P023",
+    "name": "Office Table",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P024",
+    "name": "Storage Cabinet",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P025",
+    "name": "Monitor Arm",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P026",
+    "name": "Tablet Stand",
+    "category": "Accessories"
+  },
+  {
+    "product_id": "P027",
+    "name": "Power Bank",
+    "category": "Electronics"
+  },
+  {
+    "product_id": "P028",
+    "name": "Presentation Remote",
+    "category": "Office Supplies"
+  },
+  {
+    "product_id": "P029",
+    "name": "Footrest",
+    "category": "Furniture"
+  },
+  {
+    "product_id": "P030",
+    "name": "Cable Tray",
+    "category": "Accessories"
   }
 ]

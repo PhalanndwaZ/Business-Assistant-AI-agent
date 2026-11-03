@@ -59,12 +59,12 @@ def test_chart_renderer_writes_openable_png_with_formatted_labels(
 
     labels = [label for label in observed_labels if label.startswith("R")]
     assert labels == [
-        "R198,500",
-        "R203,100",
-        "R207,800",
-        "R211,400",
-        "R209,318",
-        "R184,200",
+        "R198,500.00",
+        "R203,100.00",
+        "R207,800.00",
+        "R211,400.00",
+        "R209,318.00",
+        "R184,200.00",
     ]
 
 

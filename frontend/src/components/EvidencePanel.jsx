@@ -5,7 +5,11 @@ import { SourceChips } from "./SourceChips.jsx";
 /** Display only evidence sections that contain data for this response. */
 export function EvidencePanel({ response }) {
   const caveats = Array.isArray(response?.caveats) ? response.caveats : [];
-  const sources = Array.isArray(response?.sources) ? response.sources : [];
+  const sources = Array.isArray(response?.source_metadata)
+    ? response.source_metadata
+    : Array.isArray(response?.sources)
+      ? response.sources
+      : [];
   const figures = Array.isArray(response?.figures) ? response.figures : [];
 
   if (caveats.length === 0 && sources.length === 0 && figures.length === 0) {

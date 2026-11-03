@@ -107,6 +107,16 @@ def client_for_user(user: UserAccount) -> TestClient:
     return TestClient(application)
 
 
+def test_draft_routes_are_not_registered() -> None:
+    """The removed draft feature has no remaining HTTP endpoints."""
+    application = main.create_app()
+
+    assert not any(
+        route.path == "/drafts" or route.path.startswith("/drafts/")
+        for route in application.routes
+    )
+
+
 def authenticated_client(
     monkeypatch: Any,
     user_id: str = "user-sales-demo",
@@ -513,6 +523,10 @@ def test_ask_returns_same_answer_and_supporting_workflow_data(
         ],
         "charts": [],
         "sources": ["run_analysis:period_change", "search_documents", "management_report_2024-12.md"],
+        "source_metadata": [],
+        "evidence_chunks": [
+            {"document_name": "management_report_2024-12.md"}
+        ],
         "caveats": [
             "Only completed orders are included.",
             "Document-derived statements are limited to retrieved passages and may be incomplete or outdated.",
@@ -539,10 +553,14 @@ def test_response_fields_includes_generated_report_filename(
             "final_answer": f"Report file: {report_path}",
             "tool_results": [
                 {
+                    "call_id": "current-report",
                     "tool_name": "generate_report",
                     "success": True,
                     "result": {"path": str(report_path)},
                 }
+            ],
+            "workflow_trace": [
+                {"event": "tool_call", "call_id": "current-report"}
             ],
         }
     )
@@ -563,6 +581,23 @@ def test_response_fields_includes_generated_report_filename(
         }
     )
     assert response.report_filename is None
+
+    historical_report_response = main._response_fields(
+        {
+            "tool_results": [
+                {
+                    "call_id": "old-report",
+                    "tool_name": "generate_report",
+                    "success": True,
+                    "result": {"path": str(report_path)},
+                }
+            ],
+            "workflow_trace": [
+                {"event": "tool_call", "call_id": "current-analysis"}
+            ],
+        }
+    )
+    assert historical_report_response.report_filename is None
 
 
 def test_ask_includes_report_filename_when_present(
@@ -980,6 +1015,74 @@ def test_ask_returns_404_for_another_users_conversation(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Conversation not found."}
+
+
+def test_ask_accepts_uploaded_document_uuid_ids(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """UUID parsing preserves the hex IDs used by uploaded-document storage."""
+    settings = Settings(
+        groq_api_key="test",
+        mistral_api_key="test",
+        groq_model="test-model",
+        mistral_embedding_model="test-embedding",
+        as_of_date=date(2025, 1, 15),
+        min_similarity=0.84,
+        top_k=4,
+        max_rows=100,
+        max_steps=8,
+        max_retries=2,
+        data_dir=Path("data/sample_data"),
+        documents_dir=Path("data/documents"),
+        vector_store_path=Path("data/vector_store/chunks.json"),
+        conversation_db_path=tmp_path / "conversations.sqlite3",
+    )
+    monkeypatch.setattr(main, "load_settings", lambda: settings)
+    monkeypatch.setattr(main, "_record_audit", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        main,
+        "check_input",
+        lambda *_args: type(
+            "ModerationDecision",
+            (),
+            {"category": "test", "response": "Question refused."},
+        )(),
+    )
+
+    conversation_id = UUID("00000000-0000-0000-0000-000000000044")
+    document_id = "ec69277b18ae44ac8f2385d486b67955"
+    main.ConversationStore(settings.conversation_db_path).claim_conversation(
+        conversation_id,
+        TEST_SALES_USER.user_id,
+        TEST_SALES_USER.role,
+    )
+    main.UploadStore(settings.conversation_db_path).add(
+        document_id=document_id,
+        conversation_id=str(conversation_id),
+        user_id=TEST_SALES_USER.user_id,
+        name="sales-context-test.md",
+        extension="md",
+        pages=1,
+        chunks=[
+            {
+                "chunk_id": f"{document_id}-chunk-0001",
+                "text": "Test context.",
+                "embedding": [1.0, 0.0],
+            }
+        ],
+    )
+
+    response = asyncio.run(
+        main._run_question(
+            "Check the uploaded context.",
+            conversation_id,
+            TEST_SALES_USER,
+            document_ids=[UUID(hex=document_id)],
+        )
+    )
+
+    assert response.answer == "Question refused."
 
 
 def test_role_change_starts_a_fresh_conversation(

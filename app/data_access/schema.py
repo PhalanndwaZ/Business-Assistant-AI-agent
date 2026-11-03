@@ -95,6 +95,17 @@ BUSINESS_GLOSSARY = {
     ),
     "order_date": "ISO 8601 calendar date on which an order was placed.",
     "as_of_date": "Configured date used to resolve relative date questions.",
+    "rfm": "Recency, frequency, and monetary scores used to describe customer buying patterns.",
+    "segment": "A first-match customer group defined by its RFM pattern and plain-name meaning.",
+    "at_risk": "A descriptive label for customers who used to buy often but recently went quiet.",
+    "concentration": "How much revenue is carried by the largest products or product groups.",
+    "hhi": "Herfindahl-Hirschman Index; a sum of squared revenue shares used to describe concentration.",
+    "pareto": "Revenue ranked from largest to smallest and viewed against cumulative share.",
+    "class_a": "The smallest set of ranked products reaching the configured 80 percent cumulative share.",
+    "class_b": "Products between the Class A boundary and the configured second portfolio band.",
+    "class_c": "Products outside the Class A and Class B portfolio bands.",
+    "long_tail": "Products that contribute a small share of total revenue.",
+    "dormant": "Products with catalog records but no completed-order sales in the selected window.",
 }
 
 AVAILABLE_ANALYSES = (
@@ -105,6 +116,8 @@ AVAILABLE_ANALYSES = (
     "top_customers",
     "trend",
     "outliers",
+    "customer_segments",
+    "product_portfolio",
 )
 
 ANALYSIS_PARAMETERS = {
@@ -150,5 +163,19 @@ ANALYSIS_PARAMETERS = {
             "granularity": "day, week, or month; default month",
         },
         "metric_values": ["revenue", "orders", "units"],
+    },
+    "customer_segments": {
+        "required": [],
+        "optional": {
+            "start": "inclusive ISO start date; defaults from the configured window",
+            "end": "inclusive ISO end date; defaults to AS_OF_DATE",
+        },
+    },
+    "product_portfolio": {
+        "required": ["start", "end"],
+        "optional": {
+            "level": "product or category; default product",
+            "top_n": "positive integer, default 10",
+        },
     },
 }

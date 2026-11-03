@@ -16,20 +16,20 @@ from app.reporting.formatting import (
 @pytest.mark.parametrize(
     ("cents", "expected"),
     [
-        (18_420_000, "R184,200"),
-        (3_140_000, "R31,400"),
-        (-2_511_800, "-R25,118"),
-        (1_842_049, "R18,420"),
-        (1_842_050, "R18,421"),
-        (-1_842_050, "-R18,421"),
-        (0, "R0"),
+        (18_420_000, "R184,200.00"),
+        (3_140_000, "R31,400.00"),
+        (-2_511_800, "-R25,118.00"),
+        (1_842_049, "R18,420.49"),
+        (1_842_050, "R18,420.50"),
+        (-1_842_050, "-R18,420.50"),
+        (0, "R0.00"),
     ],
 )
 def test_money_converts_cents_to_rounded_rand(
     cents: int,
     expected: str,
 ) -> None:
-    """Money is interpreted as cents and rounded to whole rand."""
+    """Money is interpreted as cents and formatted to two Rand decimals."""
     assert format_money(cents) == expected
 
 
@@ -51,7 +51,7 @@ def test_text_is_returned_unchanged() -> None:
 
 def test_generic_formatter_dispatches_by_format() -> None:
     """The shared formatter selects the requested display function."""
-    assert format_value(18_420_000, "money") == "R184,200"
+    assert format_value(18_420_000, "money") == "R184,200.00"
     assert format_value(-12.04, "percent") == "-12.0%"
     assert format_value(1200, "integer") == "1,200"
     assert format_value("Sales", "text") == "Sales"

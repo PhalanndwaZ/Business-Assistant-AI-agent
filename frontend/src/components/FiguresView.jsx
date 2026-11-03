@@ -185,6 +185,9 @@ function AnalysisFigure({ figure }) {
         rows={data.slice(0, MAX_PREVIEW_ROWS)}
         totalRows={data.length}
       />
+      {["customer_segments", "product_portfolio"].includes(figure.analysis) ? (
+        <p className="figure-empty">Segment and portfolio rows are shown in the table above.</p>
+      ) : null}
       {data.length > MAX_PREVIEW_ROWS ? (
         <p className="figure-empty">
           Showing the first {MAX_PREVIEW_ROWS} of {data.length} results.

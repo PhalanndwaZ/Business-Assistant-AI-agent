@@ -1,0 +1,26 @@
+{
+  "blocked_fields": [
+    "draft_body",
+    "customer_name",
+    "customer_email",
+    "customer_phone",
+    "employee_name",
+    "employee_email",
+    "salary",
+    "payroll",
+    "compensation",
+    "uploaded_text",
+    "document_text",
+    "card_number",
+    "authorization",
+    "api_key",
+    "password",
+    "token",
+    "secret",
+    "email",
+    "phone",
+    "user_id",
+    "user_email"
+  ],
+  "placeholder": "[REDACTED]"
+}

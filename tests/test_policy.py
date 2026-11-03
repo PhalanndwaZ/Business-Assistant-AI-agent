@@ -54,6 +54,10 @@ def test_tool_analysis_and_role_access(policy: AccessPolicy) -> None:
     assert policy.can_run_analysis("manager", "decline_risk")
     assert not policy.can_run_analysis("hr", "decline_risk")
     assert policy.can_run_analysis("hr", "headcount")
+    assert policy.can_run_analysis("sales", "customer_segments")
+    assert policy.can_run_analysis("sales", "product_portfolio")
+    assert not policy.can_run_analysis("hr", "customer_segments")
+    assert policy.can_use_tool("hr", "upload_document")
     assert not policy.can_use_tool("unknown", "query_business_data")
 
 

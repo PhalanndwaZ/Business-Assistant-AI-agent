@@ -61,7 +61,7 @@ The agent builds this JSON object from its tool results and passes it to `genera
   "findings": [
     {
       "finding": "Revenue fell 12.0% in November.",
-      "evidence": "October R209,318 to November R184,200, down R25,118.",
+      "evidence": "October R209,318.00 to November R184,200.00, down R25,118.00.",
       "action": "Check stock and delivery records for November before drawing conclusions.",
       "caveat": "The management report mentions supply delays. The data does not show that they caused the fall.",
       "source_refs": ["call_4"]
@@ -110,8 +110,8 @@ Pydantic models for Section 3 with the limits and the "all four parts of a findi
 Check: a valid object loads; objects with a missing caveat, too many findings, or an unknown format name are rejected with a clear message.
 
 **Step 2: Formatters** (`app/reporting/formatting.py`)
-`money` (cents to South African rand, displayed with `R` and thousands separators), `percent` (one decimal, signed where needed), `integer`, `text`.
-Check: tests for 18420000 cents to `R184,200`, -12.04 to `-12.0%`, and rounding edge cases.
+`money` (cents to South African rand, displayed with `R`, thousands separators, and two decimal places), `percent` (one decimal, signed where needed), `integer`, `text`.
+Check: tests for 18420000 cents to `R184,200.00`, -12.04 to `-12.0%`, and rounding edge cases.
 
 **Step 3: Chart helper** (`app/reporting/charts.py`)
 Takes the chart section and writes a PNG. Bars in light blue, the last bar in dark blue when `highlight_last` is true, value labels above bars, no y-axis, no top or right border.

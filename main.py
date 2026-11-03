@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import re
@@ -12,8 +13,8 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from groq import APIError as GroqAPIError
 from openai import APIError as OpenAIAPIError
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -29,15 +30,17 @@ from app.auth.tokens import (
     load_signing_secret,
 )
 from app.auth.users import UserAccount, UserStoreError, authenticate_user
+from app.rag.embeddings import MistralEmbedder
+from app.uploads import UploadError, UploadService, UploadStore
 from app.audit_log import AuditLog
+from evaluation.langfuse_setup.tracing import build_workflow_trace, send_trace
 from app.chart_specs import build_chart_specs
 from app.config import ConfigurationError, PROJECT_ROOT, Settings, load_settings
 from app.conversation_store import (
     ConversationOwnershipError,
     ConversationStore,
 )
-from app.graph import answer_question
-from app.mongodb import MongoStore, get_mongo_store
+from app.graph import _current_tool_results, answer_question
 from app.llm_factory import build_chat_model
 from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
@@ -68,6 +71,7 @@ class AskRequest(BaseModel):
 
     question: str = Field(min_length=1)
     conversation_id: UUID | None = None
+    document_ids: list[UUID] = Field(default_factory=list)
 
     @field_validator("question")
     @classmethod
@@ -94,8 +98,11 @@ class AskResponse(BaseModel):
     figures: list[dict[str, Any]]
     charts: list[dict[str, Any]] = Field(default_factory=list)
     sources: list[str]
+    source_metadata: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_chunks: list[dict[str, Any]] = Field(default_factory=list)
     caveats: list[str]
     report_filename: str | None = None
+    report_data: dict[str, Any] | None = None
     moderation: ModerationInfo
 
 
@@ -258,6 +265,10 @@ def _response_fields(
     caveats: list[str] = []
     document_sources: set[str] = set()
     report_filename: str | None = None
+    report_data: dict[str, Any] | None = None
+    current_call_ids = {
+        result.get("call_id") for result in _current_tool_results(state)
+    }
 
     for tool_result in state.get("tool_results", []):
         if not tool_result.get("success"):
@@ -297,17 +308,37 @@ def _response_fields(
         elif tool_name == "search_documents":
             sources.append("search_documents")
         elif tool_name == "generate_report" and report_filename is None:
+            if (
+                "workflow_trace" in state
+                and tool_result.get("call_id") not in current_call_ids
+            ):
+                continue
             report_path = result.get("path")
             if isinstance(report_path, str):
                 resolved_report = _resolve_report_file(Path(report_path))
                 if resolved_report is not None:
                     report_filename = resolved_report.name
+            report_object = result.get("report")
+            if isinstance(report_object, dict):
+                report_data = report_object
 
+    source_metadata_by_key: dict[str, dict[str, Any]] = {}
     for chunk in state.get("retrieved_chunks", []):
         if isinstance(chunk, dict):
             document_name = chunk.get("document_name")
             if isinstance(document_name, str):
                 document_sources.add(document_name)
+            if isinstance(document_name, str):
+                origin = chunk.get("origin")
+                if origin in {"company", "uploaded"}:
+                    page_value = chunk.get("page_number")
+                    metadata = {
+                        "document_name": document_name,
+                        "origin": origin,
+                        "page": page_value if isinstance(page_value, (int, float)) else None,
+                    }
+                    key = f"{origin}:{document_name}:{metadata['page']}"
+                    source_metadata_by_key[key] = metadata
     sources.extend(sorted(document_sources))
     if document_sources:
         caveats.append(
@@ -334,6 +365,8 @@ def _response_fields(
             "figures": [],
             "charts": [],
             "sources": [],
+            "source_metadata": [],
+            "evidence_chunks": [],
             "caveats": [moderation_info.notice or GENERIC_REDACTION_NOTICE],
             "moderation": moderation_info,
         }
@@ -344,11 +377,23 @@ def _response_fields(
             "figures": figures,
             "charts": charts,
             "sources": list(dict.fromkeys(sources)),
+            "source_metadata": list(source_metadata_by_key.values()),
+            "evidence_chunks": [
+                {
+                    key: chunk[key]
+                    for key in ("document_name", "origin", "page_number", "text")
+                    if isinstance(chunk, dict) and key in chunk
+                }
+                for chunk in state.get("retrieved_chunks", [])
+                if isinstance(chunk, dict)
+            ],
             "caveats": list(dict.fromkeys(caveats)),
             "moderation": moderation_info,
         }
         if report_filename is not None:
             response_fields["report_filename"] = report_filename
+        if report_data is not None:
+            response_fields["report_data"] = report_data
 
     return AskResponse(
         **response_fields,
@@ -454,13 +499,49 @@ def _record_workflow_audit(
             )
 
 
+def _call_question_runner(
+    question: str,
+    conversation_id: UUID | None,
+    user: UserAccount,
+    *,
+    document_ids: list[UUID] | None = None,
+    evaluation_case_id: str | None = None,
+) -> Any:
+    """Call the current question runner while preserving older 3-argument mocks."""
+    parameters = inspect.signature(_run_question).parameters
+    supported_kwargs: dict[str, Any] = {}
+    accepts_variadic = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+    if accepts_variadic:
+        supported_kwargs["document_ids"] = document_ids
+        supported_kwargs["evaluation_case_id"] = evaluation_case_id
+    else:
+        if "document_ids" in parameters:
+            supported_kwargs["document_ids"] = document_ids
+        if "evaluation_case_id" in parameters:
+            supported_kwargs["evaluation_case_id"] = evaluation_case_id
+    if supported_kwargs:
+        return _run_question(
+            question,
+            conversation_id,
+            user,
+            **supported_kwargs,
+        )
+    return _run_question(question, conversation_id, user)
+
+
 async def _run_question(
     question: str,
     conversation_id: UUID | None,
     user: UserAccount,
+    document_ids: list[UUID] | None = None,
+    evaluation_case_id: str | None = None,
 ) -> AskResponse:
     """Run one question through the same model, MCP tools, and graph as the CLI."""
     settings: Settings = load_settings()
+    document_ids = document_ids or []
     store = ConversationStore(settings.conversation_db_path)
     active_conversation_id = conversation_id or uuid4()
     identity = store.claim_conversation(
@@ -491,11 +572,20 @@ async def _run_question(
             user_id=user.user_id,
         )
 
-    moderation_decision = check_input(
-        question,
-        user.role,
-        path=None if settings.mongodb_enabled else MODERATION_RULES_PATH,
-    )
+    if document_ids:
+        upload_store = UploadStore(settings.conversation_db_path)
+        selected_ids = [document_id.hex for document_id in document_ids]
+        if not upload_store.owns_documents(
+            str(active_conversation_id),
+            selected_ids,
+            user.user_id,
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found.",
+            )
+
+    moderation_decision = check_input(question, user.role)
     if moderation_decision is not None:
         LOGGER.warning(
             "moderation event=input_refusal user_id=%s role=%s reason=%s",
@@ -534,11 +624,35 @@ async def _run_question(
         return response
 
     model = build_chat_model(settings)
-    async with AnalystMCPClient(
+    mcp_client = AnalystMCPClient(
         settings,
         MCPUserContext(user.user_id, user.role),
-    ) as mcp_client:
+    )
+    if hasattr(mcp_client, "set_document_context"):
+        mcp_client.set_document_context(
+            conversation_id=str(active_conversation_id),
+            document_ids=[document_id.hex for document_id in document_ids],
+        )
+    async with mcp_client:
         tools = await mcp_client.list_tools()
+        answer_kwargs: dict[str, Any] = {
+            "history": history,
+            "prior_tool_results": prior_tool_results,
+            "prior_retrieved_chunks": prior_retrieved_chunks,
+        }
+        parameters = inspect.signature(answer_question).parameters
+        accepts_variadic = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters.values()
+        )
+        if "trace_metadata" in parameters or accepts_variadic:
+            answer_kwargs["trace_metadata"] = {
+                "role": user.role,
+                "group": "evaluation" if evaluation_case_id else "api",
+                "case_id": evaluation_case_id,
+                "conversation_id": str(active_conversation_id),
+                "user_id": user.user_id,
+            }
         state = await answer_question(
             question,
             model,
@@ -546,12 +660,7 @@ async def _run_question(
             mcp_client,
             settings.max_steps,
             settings.max_retries,
-            history=history,
-            prior_tool_results=prior_tool_results,
-            prior_retrieved_chunks=prior_retrieved_chunks,
-            moderation_rules_path=(
-                None if settings.mongodb_enabled else MODERATION_RULES_PATH
-            ),
+            **answer_kwargs,
         )
     current_turn_state = dict(state)
     current_turn_state["tool_results"] = state.get("tool_results", [])[
@@ -640,7 +749,26 @@ async def _run_question(
         role=user.role,
     )
     if response.report_filename is not None:
-        _register_report_access(response.report_filename, user, settings)
+        _register_report_access(response.report_filename, user)
+    llm_responses = state.get("llm_responses", [])
+    providers = [
+        str(response.get("provider"))
+        for response in llm_responses
+        if isinstance(response, dict) and isinstance(response.get("provider"), str)
+    ]
+    send_trace(
+        build_workflow_trace(
+            state,
+            role=user.role,
+            case_id=evaluation_case_id,
+            user_id=user.user_id,
+            group="evaluation" if evaluation_case_id else "api",
+            conversation_id=str(active_conversation_id),
+            provider=providers[-1] if providers else None,
+            fallback_happened=len(providers) > 1,
+            moderation_status=moderation_info.status,
+        )
+    )
     return response
 
 
@@ -748,6 +876,70 @@ def create_app() -> FastAPI:
             role=user.role,
         )
 
+    def upload_service() -> UploadService:
+        """Construct the configured upload service for one request."""
+        settings = load_settings(require_groq_api_key=False)
+        store = UploadStore(settings.conversation_db_path)
+        embedder = MistralEmbedder(
+            settings.mistral_api_key,
+            settings.mistral_embedding_model,
+        )
+        return UploadService(store, embedder)
+
+    @application.post("/documents")
+    async def upload_document(
+        file: UploadFile = File(...),
+        conversation_id: UUID | None = Form(None),
+        user: UserAccount = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        """Create or use a conversation and ingest one owned document."""
+        settings = load_settings(require_groq_api_key=False)
+        conversation_store = ConversationStore(settings.conversation_db_path)
+        selected_id = conversation_id or uuid4()
+        try:
+            conversation_store.claim_conversation(
+                selected_id,
+                user.user_id,
+                user.role,
+            )
+            data = await file.read()
+            result = upload_service().ingest(
+                filename=file.filename or "document",
+                data=data,
+                conversation_id=str(selected_id),
+                user_id=user.user_id,
+            )
+            return {"conversation_id": str(selected_id), **result}
+        except ConversationOwnershipError as exc:
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        except UploadError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @application.get("/conversations/{conversation_id}/documents")
+    def list_documents(
+        conversation_id: UUID,
+        user: UserAccount = Depends(get_current_user),
+    ) -> list[dict[str, object]]:
+        """List documents in one owned conversation."""
+        settings = load_settings(require_groq_api_key=False)
+        store = UploadStore(settings.conversation_db_path)
+        if not store.own_conversation(str(conversation_id), user.user_id):
+            raise HTTPException(status_code=404, detail="Conversation not found.")
+        return store.list(str(conversation_id), user.user_id)
+
+    @application.delete("/conversations/{conversation_id}/documents/{document_id}")
+    def delete_document(
+        conversation_id: UUID,
+        document_id: UUID,
+        user: UserAccount = Depends(get_current_user),
+    ) -> dict[str, str]:
+        """Delete an owned document and its embedded chunks."""
+        settings = load_settings(require_groq_api_key=False)
+        store = UploadStore(settings.conversation_db_path)
+        if not store.delete(str(conversation_id), document_id.hex, user.user_id):
+            raise HTTPException(status_code=404, detail="Document not found.")
+        return {"status": "deleted", "document_id": document_id.hex}
+
     @application.get("/audit", response_model=list[AuditEventResponse])
     def read_audit(
         limit: int = Query(default=50, ge=1, le=500),
@@ -782,6 +974,7 @@ def create_app() -> FastAPI:
         """Answer a question with evidence-backed figures, sources, and caveats."""
         enforce_rate_limit(request, user.username)
         request_started = time.perf_counter()
+        evaluation_case_id = request.headers.get("X-Evaluation-Case-ID")
         try:
             _record_audit(
                 user_id=user.user_id,
@@ -797,10 +990,12 @@ def create_app() -> FastAPI:
                 reason_code="request_started",
                 question=payload.question,
             )
-            response = await _run_question(
+            response = await _call_question_runner(
                 payload.question,
                 payload.conversation_id,
                 user,
+                document_ids=payload.document_ids or None,
+                evaluation_case_id=evaluation_case_id,
             )
             _record_audit(
                 user_id=user.user_id,

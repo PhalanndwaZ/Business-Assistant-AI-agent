@@ -415,7 +415,7 @@ def _run_analysis(
         "tool=run_analysis duration_ms=%.2f analysis=%s result_rows=%d period=%s",
         (time.monotonic() - started_at) * 1000,
         analysis_name,
-        len(result["data"]),
+        len(result.get("data", result.get("items", result.get("segments", [])))),
         result.get("period"),
     )
     return result
@@ -478,7 +478,11 @@ def _generate_report(
         LOGGER.exception("Report generation failed filename=%s", filename)
         return {"error": f"Report generation failed: {exc}"}
 
-    return {"path": str(output_path), "warnings": []}
+    return {
+        "path": str(output_path),
+        "report": report.model_dump(mode="json"),
+        "warnings": [],
+    }
 
 
 def _report_filename(report: ReportObject) -> str:
@@ -567,13 +571,18 @@ def run_analysis(
 @server.tool()
 def generate_report(
     ctx: Context,
-    report: dict[str, Any],
+    report: ReportObject,
     tool_results_by_ref: dict[str, ToolResult] | None = None,
 ) -> dict[str, Any]:
     """Create a DOCX only when its figures validate against cited tool results."""
+    report_data = (
+        report.model_dump(mode="json")
+        if isinstance(report, ReportObject)
+        else report
+    )
     return _generate_report(
         resolve_mcp_user(ctx),
-        report,
+        report_data,
         tool_results_by_ref,
     )
 

@@ -135,6 +135,17 @@ def test_grouped_four_digit_rand_amount_is_not_mistaken_for_a_year() -> None:
     assert issues == []
 
 
+def test_customer_count_after_preposition_for_is_not_treated_as_rand() -> None:
+    """A count after 'for' is not classified as Rand by its trailing letter."""
+    is_valid, issues = check_numeric_evidence(
+        "Segments account for 60 customers.",
+        _result({"customers_counted": 60}),
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
 def test_order_count_cannot_support_revenue_in_cents() -> None:
     """A matching count value cannot be misrepresented as a money amount."""
     is_valid, issues = check_numeric_evidence(
@@ -254,6 +265,81 @@ def test_numeric_failure_lists_compared_tool_evidence() -> None:
     assert "Number '50'" in issues[0]
     assert "Compared against:" in issues[0]
     assert "50 (count/count)" in issues[0]
+
+
+def test_customer_segment_counts_revenue_shares_and_ratios_are_supported() -> None:
+    result = _result(
+        {
+            "status": "ok",
+            "customers_counted": 60,
+            "segments": [
+                {
+                    "name": "Best customers",
+                    "customers": 17,
+                    "share_of_customers": 0.283333,
+                    "revenue_cents": 8993282,
+                    "share_of_revenue": 0.233974,
+                    "avg_orders": 9.0,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The analysis counted 60 customers. Best customers contains 17 customers "
+        "(28.3333%) and generated $89,932.82, representing 23.3974% of revenue "
+        "with 9 average orders.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_customer_share_ratio_is_not_mistaken_for_a_customer_count() -> None:
+    result = _result(
+        {
+            "segments": [
+                {
+                    "customers": 17,
+                    "share_of_customers": 0.283333,
+                    "revenue_cents": 11_829_476,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The segment has 17 customers, a customer share of 0.283333, "
+        "and revenue of $118,294.76.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_segment_revenue_cents_and_share_fields_are_not_counts() -> None:
+    result = _result(
+        {
+            "segments": [
+                {
+                    "customers": 12,
+                    "revenue_cents": 8993282,
+                    "share_of_revenue": 0.233974,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The segment has 12 customers, revenue_cents of 8,993,282, "
+        "and a revenue share of 0.233974.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
 
 
 def test_non_numeric_response_does_not_require_business_numeric_evidence() -> None:

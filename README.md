@@ -26,7 +26,85 @@ checks numeric and document claims before returning an answer.
 - [Phase 10: question-level evaluation](#phase-10-question-level-evaluation)
 - [Phase 11: HTTP API](#phase-11-http-api)
 
+## Evaluation and Langfuse quick start
+
+Use these commands from a clean checkout to validate the app, run one slice of the evaluation, and inspect traces.
+
+### Full test suite
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
+python -m pytest -q
+```
+
+### One file or one group of tests
+
+```powershell
+python -m pytest -q tests/test_graph.py
+python -m pytest -q tests/test_evaluation.py -k segments
+python -m pytest -q tests/test_judge.py
+```
+
+### One evaluation case or case subset
+
+The project’s evaluation runner is schema-driven and can be filtered by group or case ID from Python. For a quick run, load the current cases and only execute a subset:
+
+```powershell
+python -c "from pathlib import Path; from evaluation.runner.loader import load_cases; from evaluation.runner.runner import subset_cases; cases = load_cases(Path('evaluation/questions.py')); print(cases)"
+```
+
+If you are validating a specific case set in code, keep the filter narrow and pass the subset into `run_case(...)` or `run_exit_code(...)` from `evaluation.runner.runner`.
+
+### Generate the evaluation report
+
+```powershell
+python -m evaluation.evaluate
+python -m evaluation.evaluate --live
+python -m evaluation.evaluate --live --deep-eval
+```
+
+The command writes a Markdown report under `evaluation/reports/` and prints a short summary in the terminal. Open the newest file in that directory to review the verdict, group pass rates, regressions, and failure list.
+
+### Read the Langfuse report
+
+Start the local Langfuse stack:
+
+```powershell
+docker compose -f docker-compose.langfuse.yml up -d
+```
+
+Then set the keys in `.env` (or keep the blank placeholders from `.env.example` and fill them in) and enable tracing:
+
+```powershell
+$env:TRACING_ENABLED = 'true'
+$env:LANGFUSE_PUBLIC_KEY = 'your-public-key'
+$env:LANGFUSE_SECRET_KEY = 'your-secret-key'
+$env:LANGFUSE_HOST = 'http://localhost:3000'
+```
+
+Open `http://localhost:3000` and inspect the trace for the latest request. A trace should show the case ID, role, group, provider, fallback status, conversation ID, and the masked workflow metadata. If `TRACING_ENABLED=false`, the app keeps the same behavior but sends nothing to Langfuse.
+
 ## Architecture
+
+## Added analyst features
+
+- Customer segments and product portfolios are available as constrained
+  analyses and reports.
+- Users can attach PDF, DOCX, TXT, and MD documents to a conversation. Uploads
+  are limited to 10 MB each and five documents per conversation.
+- Documents are isolated by authenticated user and conversation, and can be
+  selected for retrieval in individual questions.
+- Uploaded document text is untrusted input. It is not independent evidence,
+  and its claims are attributed to the document rather than treated as verified
+  business figures.
+
+Provider attribution is retained in response metadata for figures and model
+answers, so an evaluation report can identify the provider that produced each
+result.
 
 ```mermaid
 flowchart LR
@@ -81,9 +159,9 @@ flowchart TD
     FINAL --> END
 ```
 
-Each question starts with fresh graph state. Unsupported drafts are retried
+Each question starts with fresh graph state. Unsupported answers are retried
 within the configured limit; if the evidence check still fails, the graph
-fails closed instead of presenting the draft as factual. Successful tool
+fails closed instead of presenting unsupported claims as factual. Successful tool
 results and relevant caveats remain available to the CLI/API response.
 
 ## Setup and run
@@ -375,7 +453,7 @@ uncertain or not established. Retrieved text is untrusted input; instructions
 inside a document are never followed. If search returns no relevant passage,
 the agent must say it cannot answer from the available sources.
 If the model still cannot produce a verifiable document answer after bounded
-retries, the graph discards that draft and returns only exact,
+retries, the graph discards that answer and returns only exact,
 question-relevant sentences from retrieved chunks, labelled as source data.
 For combined period-change questions, it also includes the allowlisted,
 verbatim analysis values and date ranges; it does not recalculate the figures.
@@ -459,8 +537,14 @@ $env:JWT_SECRET_KEY = & .\.venv\Scripts\python.exe -c "import secrets; print(sec
 
 The token expires after 30 minutes. Demo credentials are stored as Argon2id
 hashes in `data/policy/users.json`; the plaintext passwords are not stored in
-the repository. The four demo usernames and generated passwords are provided
-in the development handover, not in this README.
+the repository. Local development credentials:
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Sales | `sales.demo` | `SalesDemo123!` |
+| HR | `hr.demo` | `HrDemo123!` |
+| Manager | `manager.demo` | `ManagerDemo123!` |
+| Admin | `admin.demo` | `AdminDemo123!` |
 
 ### `POST /auth/login` and `GET /me`
 

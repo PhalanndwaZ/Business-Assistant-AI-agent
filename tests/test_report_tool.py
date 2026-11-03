@@ -61,7 +61,7 @@ def test_generate_report_creates_report_with_valid_sources(
 
     document = Document(str(report_path))
     assert len(document.tables) == 3
-    assert "R184,200" in document.tables[0].cell(0, 0).text
+    assert "R184,200.00" in document.tables[0].cell(0, 0).text
     assert document.inline_shapes
 
 
@@ -126,7 +126,8 @@ def test_generate_report_rejects_unsupported_evidence_without_creating_file(
 
     assert "error" in result
     assert "key_figures[0]" in result["error"]
-    assert "199,000" in result["error"]
+    assert "19900000" in result["error"]
+    assert "unit='cents'" in result["error"]
     assert not reports_dir.exists()
 
 

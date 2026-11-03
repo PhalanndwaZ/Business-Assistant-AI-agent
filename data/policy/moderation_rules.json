@@ -92,7 +92,7 @@
   },
   "output": {
     "notice": "Some content was withheld because of your access level.",
-    "system_prompt_min_words": 10,
+    "system_prompt_min_words": 32,
     "restricted_quote_min_chars": 20,
     "checks": [
       {

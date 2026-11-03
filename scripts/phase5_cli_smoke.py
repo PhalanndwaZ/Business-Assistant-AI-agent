@@ -262,9 +262,6 @@ def _write_report(
             "tool_calls": [
                 event for event in trace if event.get("event") == "tool_call"
             ],
-            "drafts": [
-                event for event in trace if event.get("event") == "model_response"
-            ],
             "evidence_checks": [
                 event for event in trace if event.get("event") == "evidence_check"
             ],

@@ -1,0 +1,51 @@
+{
+  "min_customers": 30,
+  "window_months": 12,
+  "new_days": 60,
+  "top_customers": 10,
+  "segments": [
+    {
+      "name": "New",
+      "meaning": "Customers who placed their first order recently.",
+      "suggested_next_step": "Welcome the customer and help them get a successful first experience.",
+      "owner_role": "sales"
+    },
+    {
+      "name": "Best customers",
+      "meaning": "Customers who buy recently, frequently, and with high value.",
+      "suggested_next_step": "Recognize their value and maintain a proactive account relationship.",
+      "owner_role": "sales"
+    },
+    {
+      "name": "Loyal",
+      "meaning": "Customers who buy regularly and recently.",
+      "suggested_next_step": "Keep the relationship active with relevant service and offers.",
+      "owner_role": "sales"
+    },
+    {
+      "name": "At risk",
+      "meaning": "Customers who used to buy often but have gone quiet.",
+      "suggested_next_step": "Review the account history and contact the customer to understand what changed.",
+      "owner_role": "sales"
+    },
+    {
+      "name": "Lost",
+      "meaning": "Customers who have been quiet for a long time and never bought often.",
+      "suggested_next_step": "Choose carefully between a low-cost reactivation attempt and closing the account.",
+      "owner_role": "sales"
+    },
+    {
+      "name": "Occasional",
+      "meaning": "Customers who do not fit a more specific segment.",
+      "suggested_next_step": "Look for useful purchase patterns and encourage repeat buying where relevant.",
+      "owner_role": "sales"
+    }
+  ],
+  "rules": [
+    {"segment": "New", "first_order_within_days": 60},
+    {"segment": "Best customers", "r": {"min": 4}, "f": {"min": 4}, "m": {"min": 4}},
+    {"segment": "Loyal", "r": {"min": 3}, "f": {"min": 3}},
+    {"segment": "At risk", "r": {"max": 2}, "f": {"min": 3}},
+    {"segment": "Lost", "r": {"exact": 1}, "f": {"max": 2}}
+  ]
+}

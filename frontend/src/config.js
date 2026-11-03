@@ -11,7 +11,6 @@ export const SHOW_DEMO_ACCOUNTS =
 /** Demo usernames shown in the optional login help panel; passwords are omitted. */
 export const DEMO_USERNAMES = [
   "sales.demo",
-  "newuser.demo",
   "hr.demo",
   "manager.demo",
   "admin.demo",

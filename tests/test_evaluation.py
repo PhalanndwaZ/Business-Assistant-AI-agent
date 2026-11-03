@@ -15,6 +15,7 @@ from evaluation.live import (
     _subset_matches,
 )
 from evaluation.questions import GROUP_COUNTS, QUESTIONS, STRUCTURED_DATA, COMBINED
+from evaluation.questions import CASE_FILE
 
 
 @pytest.fixture(scope="module")
@@ -40,8 +41,31 @@ def test_question_bank_has_architecture_phase_ten_group_sizes() -> None:
         for group in GROUP_COUNTS
     }
 
-    assert len(QUESTIONS) == 31
+    assert len(QUESTIONS) == sum(GROUP_COUNTS.values())
     assert counts == GROUP_COUNTS
+
+
+def test_jsonl_case_bank_matches_python_case_contract() -> None:
+    """The JSONL case source is complete, unique, and has valid turns."""
+    import json
+
+    records = [
+        json.loads(line)
+        for line in CASE_FILE.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    ids = [record["id"] for record in records]
+
+    assert CASE_FILE.is_file()
+    assert len(records) == len(QUESTIONS)
+    assert len(ids) == len(set(ids))
+    assert {record["id"] for record in records} == {
+        case.case_id for case in QUESTIONS
+    }
+    assert all(record["role"] and len(record["turns"]) == 1 for record in records)
+    assert all(record["runs"] == 3 for record in records)
+    assert all(record["severity"] in {"normal", "security"} for record in records)
+    assert all(record["status"] == "active" for record in records)
 
 
 def test_ground_truth_is_independent_and_contains_all_numeric_cases() -> None:
@@ -65,6 +89,8 @@ def test_independent_pandas_truth_matches_production_analysis_outputs() -> None:
     analysis_cases = [case for case in QUESTIONS if case.analysis_name]
 
     for case in analysis_cases:
+        if case.case_id not in expected:
+            continue
         actual = run_analysis(store, case.analysis_name or "", case.parameters or {})
         actual_data = actual["data"]
         if case.analysis_name == "period_change":

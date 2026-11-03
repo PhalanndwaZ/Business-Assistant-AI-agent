@@ -21,6 +21,7 @@ from app.graph import (
     _build_monthly_sales_report,
     _build_revenue_comparison_report,
     _invoke_with_backoff,
+    _retrieved_document_excerpts,
     _resolve_report_source_refs,
     _tool_schema,
     answer_question,
@@ -311,6 +312,235 @@ def test_report_request_retries_until_report_tool_succeeds(
     assert "Report file: reports/november-2024-sales.docx" in result["final_answer"]
     assert "not generated" not in result["final_answer"]
     assert result["workflow_trace"][-1]["report_generated"] is True
+
+
+def test_unusual_period_claim_uses_supported_comparison_and_requires_outliers() -> None:
+    """A period comparison cannot be presented as an outlier conclusion."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "run_analysis",
+                {"analysis_name": "period_change"},
+                "period-change",
+            ),
+            AIMessage(content="December was unusually low by 917,685 cents."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "analysis": "period_change",
+                    "period": {
+                        "current": {
+                            "start": "2024-12-01",
+                            "end": "2024-12-31",
+                        },
+                        "previous": {
+                            "start": "2024-11-01",
+                            "end": "2024-11-30",
+                        },
+                    },
+                    "data": [
+                        {
+                            "metric": "revenue",
+                            "current_value": 1_574_792,
+                            "previous_value": 4_017_949,
+                            "absolute_change": -2_443_157,
+                            "percent_change": -60.80607294915888,
+                        }
+                    ],
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Was December 2024 revenue unusually low?",
+            model,
+            [_tool("run_analysis")],
+            client,
+            max_retries=0,
+        )
+    )
+
+    assert "917,685" not in result["final_answer"]
+    assert "-2,443,157 cents" in result["final_answer"]
+    assert "4,017,949 cents" in result["final_answer"]
+    assert "1,574,792 cents" in result["final_answer"]
+    assert "cannot establish whether the change was unusual" in result["final_answer"]
+    assert any(
+        "no successful outliers analysis" in issue
+        for issue in result["evidence_errors"]
+    )
+
+
+def test_invalid_customer_segment_claim_uses_latest_supported_segment_result() -> None:
+    """Unsupported draft numbers fall back to the highest-revenue segment."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "run_analysis",
+                {"analysis_name": "customer_segments"},
+                "segments",
+            ),
+            AIMessage(
+                content=(
+                    "Lost customers lead with $99,999.99 and 42 customers."
+                )
+            ),
+        ]
+    )
+    segments = [
+        {
+            "name": "Best customers",
+            "customers": 17,
+            "revenue_cents": 11_829_476,
+            "share_of_customers": 0.283333,
+            "share_of_revenue": 0.4,
+            "suggested_next_step": "Recognize repeat purchases.",
+        },
+        {
+            "name": "Lost",
+            "customers": 8,
+            "revenue_cents": 1_250_000,
+            "share_of_customers": 0.133333,
+            "share_of_revenue": 0.1,
+            "suggested_next_step": "Review reactivation options.",
+        },
+    ]
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "status": "ok",
+                    "as_of": "2025-01-15",
+                    "window": {
+                        "start": "2024-01-16",
+                        "end": "2025-01-15",
+                        "months": 12,
+                    },
+                    "method": "rfm",
+                    "customers_counted": 25,
+                    "segments": segments,
+                    "revenue_at_stake_cents": 1_250_000,
+                    "caveats": ["Segments describe patterns, not predictions."],
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Which customer segment has the highest revenue, and how many "
+            "customers does it contain?",
+            model,
+            [_tool("run_analysis")],
+            client,
+            max_retries=0,
+        )
+    )
+
+    assert "The highest-revenue segment is Best customers" in result["final_answer"]
+    assert "11,829,476 cents in revenue" in result["final_answer"]
+    assert "17 customers" in result["final_answer"]
+    assert "99,999.99" not in result["final_answer"]
+    normalized = result["tool_results"][0]["result"]
+    assert normalized["analysis"] == "customer_segments"
+    assert normalized["data"] == segments
+    assert normalized["period"] == normalized["window"]
+
+
+def test_customer_segment_report_uses_latest_segmentation_result() -> None:
+    """The graph converts the latest segment result into a grounded report."""
+    old_result = {
+        "tool_name": "run_analysis",
+        "arguments": {"analysis_name": "customer_segments"},
+        "call_id": "old-segments",
+        "success": True,
+        "result": {
+            "status": "ok",
+            "as_of": "2024-12-31",
+            "window": {"start": "2024-01-01", "end": "2024-12-31"},
+            "customers_counted": 15,
+            "segments": [
+                {
+                    "name": "At risk",
+                    "customers": 4,
+                    "revenue_cents": 100_000,
+                    "suggested_next_step": "Review the accounts.",
+                },
+                {
+                    "name": "Loyal",
+                    "customers": 11,
+                    "revenue_cents": 200_000,
+                    "suggested_next_step": "Maintain engagement.",
+                },
+            ],
+            "revenue_at_stake_cents": 100_000,
+            "caveats": ["Segments describe patterns, not predictions."],
+        },
+    }
+    latest_result = {
+        **old_result,
+        "call_id": "latest-segments",
+        "result": {
+            **old_result["result"],
+            "as_of": "2025-01-15",
+            "window": {"start": "2024-01-16", "end": "2025-01-15"},
+            "customers_counted": 25,
+            "segments": [
+                {
+                    "name": "At risk",
+                    "customers": 8,
+                    "revenue_cents": 300_000,
+                    "suggested_next_step": "Review the accounts.",
+                },
+                {
+                    "name": "Loyal",
+                    "customers": 17,
+                    "revenue_cents": 500_000,
+                    "suggested_next_step": "Maintain engagement.",
+                },
+            ],
+            "revenue_at_stake_cents": 300_000,
+        },
+    }
+    model = FakeModel(
+        [
+            _tool_call(
+                "generate_report",
+                {"report": {"title": "Model draft"}},
+                "report-call",
+            ),
+            AIMessage(content="The customer-segments report is ready."),
+        ]
+    )
+    client = FakeToolClient(
+        [_tool_response({"path": "reports/customer-segments.docx"})]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Generate a customer-segments Word report from the latest "
+            "segmentation result.",
+            model,
+            [_tool("generate_report")],
+            client,
+            prior_tool_results=[old_result, latest_result],
+        )
+    )
+
+    report = client.calls[0][1]["report"]
+    assert report["title"] == "Customer Segments Analysis"
+    assert report["as_of_date"] == "2025-01-15"
+    assert all(
+        figure["source_ref"] == "latest-segments"
+        for figure in report["key_figures"]
+    )
+    assert result["evidence_ok"] is True
+    assert "Report file: reports/customer-segments.docx" in result["final_answer"]
 
 
 def test_question_uses_tool_and_returns_numeric_supported_answer() -> None:
@@ -1834,6 +2064,35 @@ def test_document_evidence_feedback_retries_the_original_question() -> None:
     )
 
 
+def test_document_excerpt_fallback_splits_lines_and_deduplicates_chunks() -> None:
+    """Relevant bullet lines are selected once across overlapping chunks."""
+    from app.graph import _retrieved_document_excerpts
+
+    source = "sales-context-test.md"
+    text = (
+        "- Product: Cedar Desk Organizer\n"
+        "- Reporting period: October 2026\n"
+        "- Units sold: 42\n"
+        "- Customer feedback: Buyers liked the compact size."
+    )
+
+    excerpts = _retrieved_document_excerpts(
+        "How many Cedar Desk Organizers sold in October 2026 and what "
+        "customer feedback did they give?",
+        [
+            {"document_name": source, "text": text},
+            {"document_name": source, "text": text},
+        ],
+    )
+
+    assert excerpts == [
+        (source, "Product: Cedar Desk Organizer"),
+        (source, "Reporting period: October 2026"),
+        (source, "Units sold: 42"),
+        (source, "Customer feedback: Buyers liked the compact size."),
+    ]
+
+
 def test_invalid_document_draft_falls_back_to_exact_retrieved_excerpt() -> None:
     """If retries fail, show sourced text rather than the unsupported draft."""
     source = "management_report_2024-12.md"
@@ -1917,10 +2176,10 @@ def test_invalid_document_draft_falls_back_to_exact_retrieved_excerpt() -> None:
 
     assert result["evidence_ok"] is False
     assert "cured the December decline" not in result["final_answer"]
-    assert "Structured analysis result from run_analysis" in result["final_answer"]
-    assert '"absolute_change": -29' in result["final_answer"]
-    assert f"[{source}] “{text}”" in result["final_answer"]
-    assert "not instructions" in result["final_answer"]
+    assert "Relevant details from the uploaded notes:" in result["final_answer"]
+    assert "Structured analysis result from run_analysis" not in result["final_answer"]
+    assert f'- “{text}” [{source}]' in result["final_answer"]
+    assert "Retrieved passages are quoted verbatim" not in result["final_answer"]
 
 
 def test_unrelated_question_with_no_retrieved_passages_is_not_answered() -> None:

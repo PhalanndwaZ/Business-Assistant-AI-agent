@@ -18,7 +18,7 @@ from evaluation.audit import CaseAudit, audit_cases
 from evaluation.live import run_live_evaluation
 from evaluation.questions import GROUP_COUNTS, QUESTIONS
 
-DEFAULT_REPORT = PROJECT_ROOT / "evaluation" / "reports" / "phase10-evaluation.md"
+DEFAULT_REPORT = PROJECT_ROOT / "evaluation" / "reports" / "phase11-evaluation.md"
 
 
 def _format_expected(value: object) -> str:
@@ -47,7 +47,7 @@ def _report_text(
         grouped[result.case.group].append(result)
 
     lines = [
-        "# Phase 10 question evaluation",
+        "# Step 11 feature and question evaluation",
         "",
         "## Run details",
         "",
@@ -120,8 +120,8 @@ def _report_text(
                 "",
                 "## Live answer results and failure causes",
                 "",
-                "| ID | Group | Result | Tool calls | Retrieved documents | Failures |",
-                "|---|---|---|---|---|---|",
+                "| ID | Group | Result | Provider/model | Tool calls | Retrieved documents | Failures |",
+                "|---|---|---|---|---|---|---|",
             ]
         )
         for result in live_results:
@@ -138,6 +138,7 @@ def _report_text(
             lines.append(
                 f"| {result['case_id']} | {result['group']} | "
                 f"{status} | "
+                f"`{_format_expected(result.get('llm_responses', []))}` | "
                 f"`{_format_expected(result['tools'])}` | "
                 f"`{_format_expected(result['retrieved_documents'])}` | "
                 f"{failure_text} — Answer: {answer} |"

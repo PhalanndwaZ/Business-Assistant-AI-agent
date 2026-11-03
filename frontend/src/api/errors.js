@@ -14,12 +14,13 @@ const TIMEOUT_MESSAGE = "The request took too long. Please try again.";
 /** Create a safe error object for API failures without exposing response text. */
 export class ApiRequestError extends Error {
   /** Store the user-facing message and the failure category for later handling. */
-  constructor(message, { kind, status = null, retryAfter = null } = {}) {
+  constructor(message, { kind, status = null, retryAfter = null, detail = null } = {}) {
     super(message);
     this.name = "ApiRequestError";
     this.kind = kind;
     this.status = status;
     this.retryAfter = retryAfter;
+    this.detail = detail;
   }
 }
 
@@ -94,5 +95,5 @@ export function normalizeApiError({
     });
   }
 
-  return new ApiRequestError(message, { kind, status, retryAfter });
+  return new ApiRequestError(message, { kind, status, retryAfter, detail });
 }

@@ -60,12 +60,14 @@ def validate_report_evidence(
 
     for index, figure in enumerate(report.key_figures, start=1):
         if figure.format == "text":
-            value = str(figure.value)
+            content = str(figure.value)
+        elif figure.format == "money":
+            content = f"{figure.label} {figure.value} cents"
         else:
-            value = format_value(figure.value, figure.format)
+            content = format_value(figure.value, figure.format)
         check_section(
             f"key_figures[{index - 1}] {figure.label!r}",
-            value,
+            content,
             [figure.source_ref],
         )
 
@@ -78,7 +80,9 @@ def validate_report_evidence(
                 report.chart.title,
                 *report.chart.x,
                 *(
-                    f"Revenue {format_value(value, report.chart.value_format)}"
+                    f"Revenue {value} cents"
+                    if report.chart.value_format == "money"
+                    else format_value(value, report.chart.value_format)
                     for value in report.chart.y
                 ),
             ]
@@ -99,6 +103,10 @@ def validate_report_evidence(
                     continue
                 if value_format == "text":
                     row_parts.append(str(value))
+                elif value_format == "money":
+                    row_parts.append(
+                        f"{table.columns[column_index]} {value} cents"
+                    )
                 else:
                     row_parts.append(
                         f"{table.columns[column_index]} "
@@ -111,18 +119,12 @@ def validate_report_evidence(
             )
 
     for index, finding in enumerate(report.findings):
-        check_section(
-            f"findings[{index}]",
-            " ".join(
-                (
-                    finding.finding,
-                    finding.evidence,
-                    finding.action,
-                    finding.caveat,
-                )
-            ),
-            finding.source_refs,
-        )
+        for field_name in ("finding", "evidence", "action", "caveat"):
+            check_section(
+                f"findings[{index}].{field_name}",
+                getattr(finding, field_name),
+                finding.source_refs,
+            )
 
     for index, note in enumerate(report.notes, start=1):
         check_section(f"notes[{index}]", note)

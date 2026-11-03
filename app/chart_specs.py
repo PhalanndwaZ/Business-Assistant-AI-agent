@@ -149,7 +149,79 @@ def _chart_for_analysis(
         return _comparison_chart(result, tool_result, index)
     if analysis == "trend":
         return _trend_chart(result, tool_result, index)
+    if analysis == "product_portfolio":
+        return _product_portfolio_chart(result, tool_result, index)
+    if analysis == "customer_segments":
+        return _customer_segment_chart(result, tool_result, index)
     return None
+
+
+def _product_portfolio_chart(
+    result: dict[str, Any],
+    tool_result: ToolResult,
+    index: int,
+) -> ChartSpec | None:
+    """Build a revenue ranking for the complete ranked product portfolio."""
+    items = result.get("items")
+    if not isinstance(items, list) or not items:
+        return None
+    label_key = "category" if result.get("level") == "category" else "product_id"
+    series = [
+        {"label": str(item.get(label_key)), "value": item["revenue_cents"]}
+        for item in items
+        if isinstance(item, dict)
+        and isinstance(item.get("revenue_cents"), int)
+    ]
+    if not series:
+        return None
+    call_id = tool_result.get("call_id")
+    result_id = call_id if isinstance(call_id, str) else f"analysis-{index}"
+    return {
+        "id": result_id,
+        "type": "ranking_bars",
+        "title": "Product portfolio revenue",
+        "subtitle": "Completed orders · integer cents",
+        "unit": "money_cents",
+        "series": series,
+        "highlight": series[0]["label"],
+        "annotations": [],
+        "source": {"analysis": "product_portfolio", "result_id": result_id, "as_of": result.get("as_of", "")},
+        "alt_text": "Horizontal bars ranking portfolio revenue.",
+    }
+
+
+def _customer_segment_chart(
+    result: dict[str, Any],
+    tool_result: ToolResult,
+    index: int,
+) -> ChartSpec | None:
+    """Build a customer segment revenue ranking."""
+    segments = result.get("segments")
+    if not isinstance(segments, list) or not segments:
+        return None
+    series = [
+        {"label": segment["name"], "value": segment["revenue_cents"]}
+        for segment in segments
+        if isinstance(segment, dict)
+        and isinstance(segment.get("name"), str)
+        and isinstance(segment.get("revenue_cents"), int)
+    ]
+    if not series:
+        return None
+    call_id = tool_result.get("call_id")
+    result_id = call_id if isinstance(call_id, str) else f"analysis-{index}"
+    return {
+        "id": result_id,
+        "type": "ranking_bars",
+        "title": "Revenue by customer segment",
+        "subtitle": "Completed orders · integer cents",
+        "unit": "money_cents",
+        "series": series,
+        "highlight": max(series, key=lambda item: item["value"])["label"],
+        "annotations": [],
+        "source": {"analysis": "customer_segments", "result_id": result_id, "as_of": result.get("as_of", "")},
+        "alt_text": "Horizontal bars ranking revenue across customer segments.",
+    }
 
 
 def _chart_source(
