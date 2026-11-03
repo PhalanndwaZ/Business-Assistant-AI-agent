@@ -1,8 +1,0 @@
-{
-  "drafts_per_conversation_per_hour": 10,
-  "drafts_per_user_per_day": 30,
-  "allowed_digit_placeholders": ["3pm"],
-  "visible_status_line": "Draft, not sent. Review before using.",
-  "forbidden_promises": ["discount", "price", "delivery date", "refund", "guarantee"],
-  "forbidden_pressure": ["must act", "last chance", "or else", "you failed", "blame"]
-}

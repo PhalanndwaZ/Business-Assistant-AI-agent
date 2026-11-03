@@ -39,7 +39,7 @@ This makes five live CLI requests through Inception first, with Groq fallback,
 spaces them by 65 seconds to reduce token-per-minute rate-limit failures, and writes the answers and
 pass/fail checks to `evaluation/reports/phase5-cli-smoke.md`. It also writes
 one JSONL trace record per question to
-`evaluation/reports/phase5-cli-trace.jsonl`, including model drafts, tool
+`evaluation/reports/phase5-cli-trace.jsonl`, including model responses, tool
 arguments, raw and parsed tool results, and evidence verdicts with the
 compared numeric candidates. Run a single case with `--case 3` to debug Q3
 without repeating all five requests. The script compares results with figures

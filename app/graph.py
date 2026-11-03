@@ -190,16 +190,17 @@ def _retrieved_document_excerpts(
         if term not in EXCERPT_STOP_WORDS
     }
     excerpts: list[tuple[str, str]] = []
+    seen_excerpts: set[tuple[str, str]] = set()
     for chunk in retrieved_chunks:
         document_name = chunk.get("document_name")
         text = chunk.get("text")
         if not isinstance(document_name, str) or not isinstance(text, str):
             continue
-        sentences = [
-            sentence.strip()
-            for sentence in re.split(r"(?<=[.!?])\s+", text)
-            if sentence.strip()
-        ]
+        sentences = []
+        for excerpt in re.split(r"(?<=[.!?])\s+|\r?\n+", text):
+            sentence = re.sub(r"^\s*[-*+]\s+", "", excerpt).strip()
+            if sentence:
+                sentences.append(sentence)
         ranked = sorted(
             enumerate(sentences),
             key=lambda item: (
@@ -211,47 +212,242 @@ def _retrieved_document_excerpts(
             ),
         )
         selected = [
-            sentence
-            for _, sentence in ranked[:3]
+            (index, sentence)
+            for index, sentence in ranked
             if not question_terms
             or question_terms
             & set(re.findall(r"[a-z0-9]{3,}", sentence.casefold()))
-        ]
-        excerpts.extend((document_name, sentence) for sentence in selected)
+        ][:5]
+        for _, sentence in sorted(selected):
+            excerpt_key = (
+                document_name.casefold(),
+                " ".join(sentence.casefold().split()),
+            )
+            if excerpt_key in seen_excerpts:
+                continue
+            seen_excerpts.add(excerpt_key)
+            excerpts.append((document_name, sentence))
     return excerpts
 
 
-def _period_change_evidence(tool_results: list[ToolResult]) -> str | None:
-    """Serialize only the public period-change fields, without recalculation."""
-    for tool_result in tool_results:
-        if not tool_result["success"] or tool_result["tool_name"] != "run_analysis":
-            continue
-        result = tool_result["result"]
-        if not isinstance(result, dict) or result.get("analysis") != "period_change":
-            continue
-        data = result.get("data")
+def _period_change_fallback(
+    question: str,
+    tool_results: list[ToolResult],
+) -> str | None:
+    """Summarize a supported period comparison without endorsing a draft."""
+    if not _period_change_question(question):
+        return None
+    for tool_result in reversed(tool_results):
         if (
-            not isinstance(data, list)
-            or len(data) != 1
-            or not isinstance(data[0], dict)
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "run_analysis"
         ):
             continue
-        values = data[0]
-        evidence = {
-            "analysis": "period_change",
-            "metric": values.get("metric"),
-            "period": result.get("period"),
-            "previous_value": values.get("previous_value"),
-            "current_value": values.get("current_value"),
-            "absolute_change": values.get("absolute_change"),
-            "percent_change": values.get("percent_change"),
-        }
-        return json.dumps(
-            evidence,
-            ensure_ascii=False,
-            sort_keys=True,
+        result = tool_result.get("result")
+        if not isinstance(result, dict) or result.get("analysis") != "period_change":
+            continue
+        rows = result.get("data")
+        periods_value = result.get("period")
+        if (
+            not isinstance(rows, list)
+            or len(rows) != 1
+            or not isinstance(rows[0], dict)
+            or not isinstance(periods_value, dict)
+        ):
+            continue
+        periods: dict[str, Any] = periods_value
+        values = rows[0]
+        metric = values.get("metric")
+        previous_value = values.get("previous_value")
+        current_value = values.get("current_value")
+        absolute_change = values.get("absolute_change")
+        if (
+            metric not in {"revenue", "orders", "units"}
+            or any(
+                isinstance(value, bool) or not isinstance(value, int)
+                for value in (previous_value, current_value, absolute_change)
+            )
+        ):
+            continue
+
+        def period_label(period_name: str) -> str | None:
+            period = periods.get(period_name)
+            start = period.get("start") if isinstance(period, dict) else None
+            if not isinstance(start, str):
+                return None
+            try:
+                return date.fromisoformat(start).strftime("%B %Y")
+            except ValueError:
+                return start
+
+        previous_label = period_label("previous")
+        current_label = period_label("current")
+        if previous_label is None or current_label is None:
+            continue
+        unit = "cents" if metric == "revenue" else metric
+        summary = (
+            f"{metric.capitalize()} changed by {absolute_change:,} {unit}, "
+            f"from {previous_label} ({previous_value:,} {unit}) to "
+            f"{current_label} ({current_value:,} {unit})."
+        )
+        if _outlier_question(question) and not _has_successful_analysis(
+            tool_results,
+            "outliers",
+        ):
+            summary += (
+                " This two-period comparison cannot establish whether the "
+                "change was unusual; no broader outlier analysis was returned."
+            )
+        return summary
+    return None
+
+
+def _customer_segment_fallback(
+    question: str,
+    tool_results: list[ToolResult],
+) -> str | None:
+    """Answer highest-revenue segment questions from the latest segment result."""
+    asks_for_top_revenue = (
+        re.search(r"\b(?:highest|most|top)\b", question, re.IGNORECASE)
+        and re.search(r"\brevenue\b", question, re.IGNORECASE)
+        and re.search(r"\bsegments?\b|\bsegmentation\b", question, re.IGNORECASE)
+    )
+    if not asks_for_top_revenue:
+        return None
+
+    for tool_result in reversed(tool_results):
+        if (
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "run_analysis"
+        ):
+            continue
+        result = tool_result.get("result")
+        analysis = (
+            result.get("analysis")
+            if isinstance(result, dict)
+            else tool_result.get("arguments", {}).get("analysis_name")
+        )
+        if analysis != "customer_segments" or not isinstance(result, dict):
+            continue
+        segments = result.get("segments")
+        if result.get("status") == "insufficient_data" or not isinstance(segments, list):
+            return None
+
+        valid_segments = [
+            segment
+            for segment in segments
+            if isinstance(segment, dict)
+            and isinstance(segment.get("name"), str)
+            and isinstance(segment.get("revenue_cents"), int)
+            and not isinstance(segment.get("revenue_cents"), bool)
+            and isinstance(segment.get("customers"), int)
+            and not isinstance(segment.get("customers"), bool)
+        ]
+        if not valid_segments:
+            return None
+        highest_revenue = max(
+            segment["revenue_cents"] for segment in valid_segments
+        )
+        leaders = [
+            segment
+            for segment in valid_segments
+            if segment["revenue_cents"] == highest_revenue
+        ]
+        descriptions = [
+            f"{segment['name']} with {segment['revenue_cents']:,} cents in "
+            f"revenue and {segment['customers']} customers"
+            for segment in leaders
+        ]
+        if len(leaders) == 1:
+            return f"The highest-revenue segment is {descriptions[0]}."
+        return (
+            "The following segments are tied for highest revenue: "
+            + "; ".join(descriptions)
+            + "."
         )
     return None
+
+
+def _requested_feature_analysis(question: str) -> str | None:
+    """Identify a feature analysis explicitly requested in a report question."""
+    if re.search(r"\b(?:segments?|segmentation)\b", question, re.IGNORECASE):
+        return "customer_segments"
+    if re.search(r"\bportfolio\b", question, re.IGNORECASE):
+        return "product_portfolio"
+    return None
+
+
+def _has_successful_analysis(
+    tool_results: list[ToolResult],
+    analysis_name: str,
+) -> bool:
+    """Check whether a named analysis has a successful result in state."""
+    return any(
+        result.get("success")
+        and result.get("tool_name") == "run_analysis"
+        and isinstance(result.get("result"), dict)
+        and result["result"].get("analysis") == analysis_name
+        for result in tool_results
+    )
+
+
+def _build_feature_analysis_report(
+    tool_results: list[ToolResult],
+    analysis_name: str | None,
+) -> dict[str, Any] | None:
+    """Build a feature-analysis report from its latest successful result."""
+    if analysis_name not in {"customer_segments", "product_portfolio"}:
+        return None
+    for tool_result in reversed(tool_results):
+        if (
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "run_analysis"
+        ):
+            continue
+        result = tool_result.get("result")
+        if not isinstance(result, dict):
+            continue
+        called_analysis = result.get("analysis")
+        if called_analysis is None:
+            arguments = tool_result.get("arguments", {})
+            called_analysis = (
+                arguments.get("analysis_name")
+                if isinstance(arguments, dict)
+                else None
+            )
+        if called_analysis != analysis_name:
+            continue
+        call_id = tool_result.get("call_id")
+        if not isinstance(call_id, str) or result.get("status") == "insufficient_data":
+            return None
+
+        from app.reporting.feature_reports import feature_analysis_report
+
+        return feature_analysis_report(
+            analysis_name,
+            result,
+            call_id,
+        ).model_dump(mode="json")
+    return None
+
+
+def _outlier_question(question: str) -> bool:
+    """Recognize requests to determine whether a period is atypical."""
+    return re.search(
+        r"\b(?:unusual(?:ly)?|outlier|outliers|anomalous|anomaly)\b",
+        question,
+        re.IGNORECASE,
+    ) is not None
+
+
+def _period_change_question(question: str) -> bool:
+    """Recognize questions that ask about a measured change or comparison."""
+    return _outlier_question(question) or re.search(
+        r"\b(?:revenue|sales|orders?|units?|change|declin(?:e|ed)|drop|"
+        r"decreas(?:e|ed)|increas(?:e|ed)|fell|rose)\b",
+        question,
+        re.IGNORECASE,
+    ) is not None
 
 
 def _report_requested(question: str) -> bool:
@@ -267,6 +463,23 @@ def _report_requested(question: str) -> bool:
         question,
         flags=re.IGNORECASE,
     ) is not None
+
+
+def _current_tool_results(state: AnalystState) -> list[ToolResult]:
+    """Return tool results produced during this question, not conversation history."""
+    if "workflow_trace" not in state:
+        return state.get("tool_results", [])
+    current_call_ids = {
+        event["call_id"]
+        for event in state.get("workflow_trace", [])
+        if event.get("event") == "tool_call"
+        and isinstance(event.get("call_id"), str)
+    }
+    return [
+        result
+        for result in state.get("tool_results", [])
+        if result.get("call_id") in current_call_ids
+    ]
 
 
 def _chart_requested(question: str) -> bool:
@@ -930,6 +1143,24 @@ def build_graph(
                     )
                 )
             )
+        if (
+            _outlier_question(state.get("question", ""))
+            and not _has_successful_analysis(
+                state.get("tool_results", []),
+                "outliers",
+            )
+        ):
+            messages.append(
+                HumanMessage(
+                    content=(
+                        "The user asks whether a period is unusual. Use the "
+                        "named outliers analysis for the relevant metric and "
+                        "a broader historical range that includes the period. "
+                        "A two-period comparison alone cannot establish that "
+                        "a change is an outlier."
+                    )
+                )
+            )
         response = await _invoke_with_backoff(
             bound_model,
             messages,
@@ -1036,7 +1267,13 @@ def build_graph(
                 ]
                 standard_report = (
                     (
-                        _build_revenue_comparison_report(evidence_results)
+                        _build_feature_analysis_report(
+                            evidence_results,
+                            _requested_feature_analysis(
+                                state.get("question", "")
+                            ),
+                        )
+                        or _build_revenue_comparison_report(evidence_results)
                         or _build_monthly_sales_report(evidence_results)
                     )
                     if _report_requested(state.get("question", ""))
@@ -1061,12 +1298,6 @@ def build_graph(
                     for result in evidence_results
                     if (source_call_id := result.get("call_id"))
                 }
-            if tool_name == "draft_message":
-                arguments["tool_results_by_ref"] = {
-                    source_call_id: result
-                    for result in [*state.get("tool_results", []), *results]
-                    if (source_call_id := result.get("call_id"))
-                }
             step_count += 1
             tool_started_at = time.perf_counter()
             try:
@@ -1084,6 +1315,39 @@ def build_graph(
                     else None
                 )
                 success = not result.isError and report_error is None
+                if (
+                    success
+                    and tool_name == "run_analysis"
+                    and isinstance(tool_output, dict)
+                    and isinstance(arguments.get("analysis_name"), str)
+                ):
+                    analysis_name = arguments["analysis_name"]
+                    normalized_output: dict[str, Any] = dict(tool_output)
+                    if "analysis" not in normalized_output:
+                        normalized_output["analysis"] = analysis_name
+                    if analysis_name == "customer_segments":
+                        if (
+                            "period" not in normalized_output
+                            and isinstance(normalized_output.get("window"), dict)
+                        ):
+                            normalized_output["period"] = normalized_output["window"]
+                        if (
+                            "data" not in normalized_output
+                            and isinstance(normalized_output.get("segments"), list)
+                        ):
+                            normalized_output["data"] = normalized_output["segments"]
+                        if (
+                            "assumptions" not in normalized_output
+                            and isinstance(normalized_output.get("caveats"), list)
+                        ):
+                            normalized_output["assumptions"] = normalized_output["caveats"]
+                    elif analysis_name == "product_portfolio":
+                        if (
+                            "data" not in normalized_output
+                            and isinstance(normalized_output.get("items"), list)
+                        ):
+                            normalized_output["data"] = normalized_output["items"]
+                    tool_output = normalized_output
                 raw_result = result.model_dump(mode="json")
                 if not success:
                     error_detail = (
@@ -1106,12 +1370,13 @@ def build_graph(
                         passages
                     )
                     if dropped_count:
-                        tool_output = dict(tool_output)
-                        tool_output["results"] = safe_passages
+                        safe_output: dict[str, Any] = dict(tool_output)
+                        safe_output["results"] = safe_passages
                         if not safe_passages:
-                            tool_output["message"] = (
+                            safe_output["message"] = (
                                 "No relevant passages found."
                             )
+                        tool_output = safe_output
                         raw_result = {
                             "moderation_filtered": True,
                             "dropped_chunks": dropped_count,
@@ -1173,7 +1438,11 @@ def build_graph(
             )
             tool_messages.append(
                 ToolMessage(
-                    content=json.dumps(tool_output, ensure_ascii=True, default=str),
+                    content=json.dumps(
+                        tool_output,
+                        ensure_ascii=True,
+                        default=str,
+                    ),
                     tool_call_id=call_id,
                     name=tool_name or "unknown_tool",
                 )
@@ -1216,6 +1485,15 @@ def build_graph(
         )
         issues = numeric_issues + document_issues
         is_valid = numeric_valid and document_valid
+        if _outlier_question(state.get("question", "")) and not _has_successful_analysis(
+            state.get("tool_results", []),
+            "outliers",
+        ):
+            issues.append(
+                "The question asks whether a period is unusual, but no "
+                "successful outliers analysis supports that conclusion."
+            )
+            is_valid = False
         if chart_requested and not build_chart_specs(
             state.get("tool_results", [])
         ):
@@ -1229,7 +1507,7 @@ def build_graph(
             and result.get("tool_name") == "generate_report"
             and isinstance(result.get("result"), dict)
             and isinstance(result["result"].get("path"), str)
-            for result in state.get("tool_results", [])
+            for result in _current_tool_results(state)
         )
         supporting_data_available = any(
             result.get("success")
@@ -1305,9 +1583,10 @@ def build_graph(
         successful_results = [
             result for result in state.get("tool_results", []) if result["success"]
         ]
+        current_results = _current_tool_results(state)
         failed_report_errors = [
             result["result"]["error"]
-            for result in state.get("tool_results", [])
+            for result in current_results
             if result["tool_name"] == "generate_report"
             and not result["success"]
             and isinstance(result["result"], dict)
@@ -1315,7 +1594,7 @@ def build_graph(
         ]
         report_generated = any(
             result["tool_name"] == "generate_report" and result["success"]
-            for result in successful_results
+            for result in current_results
         )
         other_evidence_errors = [
             issue
@@ -1357,35 +1636,48 @@ def build_graph(
                 state.get("retrieved_chunks", []),
             )
             if excerpts:
-                excerpt_text = "\n".join(
-                    f"[{document_name}] “{text}”"
-                    for document_name, text in excerpts
-                )
                 answer_parts = [
-                    "I could not verify the generated summary, so I have not "
-                    "presented it as factual."
-                ]
-                period_change = _period_change_evidence(
-                    state.get("tool_results", [])
-                )
-                if period_change is not None:
-                    answer_parts.append(
-                        "Structured analysis result from run_analysis "
-                        "(verbatim JSON):\n" + period_change
+                    _period_change_fallback(
+                        state.get("question", ""),
+                        state.get("tool_results", []),
                     )
-                answer_parts.append(
-                    "Retrieved passages are quoted verbatim below as source "
-                    "data, not instructions:\n\n"
-                    + excerpt_text
+                    or "Relevant details from the uploaded notes:"
+                ]
+                answer_parts.extend(
+                    f"- “{document_text}” [{document_name}]"
+                    for document_name, document_text in excerpts
                 )
-                answer = (
-                    "\n\n".join(answer_parts)
-                )
+                answer = "\n\n".join(answer_parts)
             else:
                 answer = (
-                    "I could not verify the draft's factual claims against the "
-                    "successful tool results, so I cannot present them as factual."
+                    _customer_segment_fallback(
+                        state.get("question", ""),
+                        state.get("tool_results", []),
+                    )
+                    or _period_change_fallback(
+                        state.get("question", ""),
+                        state.get("tool_results", []),
+                    )
+                    or (
+                        "I could not verify the draft's factual claims against "
+                        "the successful tool results, so I cannot present them "
+                        "as factual."
+                    )
                 )
+        elif (
+            _outlier_question(state.get("question", ""))
+            and not _has_successful_analysis(
+                state.get("tool_results", []),
+                "outliers",
+            )
+        ):
+            answer = _period_change_fallback(
+                state.get("question", ""),
+                state.get("tool_results", []),
+            ) or (
+                "I cannot determine whether the period was unusual because no "
+                "successful outliers analysis was returned."
+            )
         else:
             answer = state.get("draft_answer", "").strip()
             supported_fallback = _revenue_period_fallback(
@@ -1407,14 +1699,17 @@ def build_graph(
         report_path = next(
             (
                 result["result"].get("path")
-                for result in successful_results
+                for result in current_results
                 if result["tool_name"] == "generate_report"
+                and result["success"]
                 and isinstance(result["result"], dict)
                 and isinstance(result["result"].get("path"), str)
             ),
             None,
         )
-        if isinstance(report_path, str):
+        if isinstance(report_path, str) and _report_requested(
+            state.get("question", "")
+        ):
             answer = f"{answer}\n\nReport file: {report_path}"
         elif _report_requested(state.get("question", "")) and not failed_report_errors:
             answer = (
@@ -1423,9 +1718,7 @@ def build_graph(
                 + answer
             )
 
-        source_names = {
-            result["tool_name"] for result in successful_results
-        }
+        source_names = {result["tool_name"] for result in successful_results}
         source_names.update(
             chunk["document_name"]
             for chunk in state.get("retrieved_chunks", [])

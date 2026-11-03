@@ -10,11 +10,10 @@ from app.reporting.models import ReportFormat
 
 
 def format_money(value: int | float) -> str:
-    """Convert integer cents to whole South African rand with grouping."""
+    """Convert integer cents to South African rand with two decimal places."""
     amount = _decimal_number(value, "money") / Decimal(100)
-    rounded = amount.copy_abs().quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    sign = "-" if amount < 0 else ""
-    return f"{sign}R{rounded:,.0f}"
+    rounded = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"R{rounded:,.2f}" if rounded >= 0 else f"-R{abs(rounded):,.2f}"
 
 
 def format_percent(value: int | float) -> str:

@@ -244,7 +244,7 @@ class UploadStore:
         placeholders = ""
         parameters: list[object] = [conversation_id, user_id]
         if document_ids:
-            placeholders = " AND document_id IN ({})".format(
+            placeholders = " AND chunks.document_id IN ({})".format(
                 ",".join("?" for _ in document_ids)
             )
             parameters.extend(document_ids)

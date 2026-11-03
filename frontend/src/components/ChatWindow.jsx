@@ -7,7 +7,6 @@ import { RecentConversations } from "./RecentConversations.jsx";
 import { SessionNotice } from "./SessionNotice.jsx";
 import { UserMenu } from "./UserMenu.jsx";
 import { STARTER_QUESTIONS_BY_ROLE } from "../config.js";
-import { DraftCard } from "./DraftCard.jsx";
 import { DocumentsPanel } from "./DocumentsPanel.jsx";
 
 /** Compose the conversation sidebar, message area, and question input. */
@@ -32,9 +31,6 @@ export function ChatWindow({
   onAttachDocument,
   onRemoveDocument,
   documentError,
-  drafts = [],
-  draftsError,
-  onSaveDraft,
 }) {
   const questionInputRef = useRef(null);
   const recentSidebarRef = useRef(null);
@@ -256,15 +252,6 @@ export function ChatWindow({
               onCancel={cancel}
               onRetry={retry}
             />
-            {drafts.length > 0 || draftsError ? (
-              <section className="draft-panel" aria-label="Message drafts">
-                <h2>Message drafts</h2>
-                {draftsError ? <p role="alert">{draftsError}</p> : null}
-                {drafts.map((draft) => (
-                  <DraftCard key={draft.draft_id} draft={draft} onSave={onSaveDraft} />
-                ))}
-              </section>
-            ) : null}
             {documents.length > 0 ? (
               <DocumentsPanel
                 disabled={loading}

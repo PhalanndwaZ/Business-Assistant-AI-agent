@@ -37,7 +37,7 @@ def _report() -> ReportObject:
                 },
             ],
             "summary": [
-                "Revenue for November 2024 was R184,200, down 12.0% from October."
+                "Revenue for November 2024 was R184,200.00, down 12.0% from October."
             ],
             "chart": {
                 "title": "Monthly revenue, Jun to Nov 2024",
@@ -61,14 +61,14 @@ def _report() -> ReportObject:
             "findings": [
                 {
                     "finding": "Revenue fell 12.0% in November.",
-                    "evidence": "October R209,318 to November R184,200, down R25,118.",
+                    "evidence": "October R209,318.00 to November R184,200.00, down R25,118.00.",
                     "action": "Check stock and delivery records.",
                     "caveat": "The report mentions supply delays but does not prove cause.",
                     "source_refs": ["call_2", "call_4"],
                 },
                 {
                     "finding": "Five products make up 66.3% of November revenue.",
-                    "evidence": "Top five total R122,100 of R184,200.",
+                    "evidence": "The top five total R122,100.00 of R184,200.00.",
                     "action": "Confirm stock levels for the five products.",
                     "caveat": "Completed orders only; one month of data.",
                     "source_refs": ["call_3"],
@@ -196,7 +196,8 @@ def test_altered_key_figure_is_rejected_and_names_the_claim() -> None:
 
     assert len(issues) == 1
     assert "key_figures[0]" in issues[0]
-    assert "199,000" in issues[0]
+    assert "19900000" in issues[0]
+    assert "unit='cents'" in issues[0]
     assert "Compared against:" in issues[0]
 
 

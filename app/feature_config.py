@@ -11,8 +11,6 @@ from app.config import PROJECT_ROOT
 FEATURE_CONFIG_NAMES = (
     "segments.json",
     "portfolio.json",
-    "draft_purposes.json",
-    "drafts.json",
     "uploads.json",
 )
 
@@ -36,11 +34,9 @@ def validate_feature_configs() -> dict[str, dict[str, Any]]:
     required_names = (
         "segments.json",
         "portfolio.json",
-        "draft_purposes.json",
         "uploads.json",
     )
     configs = {name: load_feature_config(name) for name in required_names}
-    load_feature_config("drafts.json")
     segments = configs["segments.json"]
     if (
         not isinstance(segments.get("min_customers"), int)
@@ -56,19 +52,6 @@ def validate_feature_configs() -> dict[str, dict[str, Any]]:
         or not isinstance(portfolio.get("observations"), list)
     ):
         raise ValueError("portfolio.json has invalid portfolio settings.")
-    purposes = configs["draft_purposes.json"]
-    for purpose, settings in purposes.items():
-        if (
-            not isinstance(purpose, str)
-            or not isinstance(settings, dict)
-            or not isinstance(settings.get("allowed_roles"), list)
-            or not isinstance(settings.get("allowed_result_types"), list)
-            or not isinstance(settings.get("required_fields"), list)
-            or not isinstance(settings.get("max_words"), int)
-            or not isinstance(settings.get("allowed_tones"), list)
-            or not isinstance(settings.get("template"), str)
-        ):
-            raise ValueError("draft_purposes.json has an invalid purpose.")
     uploads = configs["uploads.json"]
     required_positive = (
         "max_file_bytes",

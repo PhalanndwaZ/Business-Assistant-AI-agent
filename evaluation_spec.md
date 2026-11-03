@@ -35,7 +35,7 @@ Read the existing code, the README and the current benchmark first, then tell me
 | Login, roles, demo users | The runner logs in as each role. |
 | `POST /ask` response: `answer`, `conversation_id`, `figures`, `sources`, `caveats`, `charts`, `moderation` | The runner asserts on these fields, not on prose. |
 | Provider fallback (Inception primary, Groq fallback) | The result records which provider answered. |
-| The new tools from the features spec: `customer_segments`, `product_portfolio`, `draft_message`, document upload | Covered by the new case groups. If they are not built yet, the cases for them are written but marked `pending`. |
+| The new features from the features spec: `customer_segments`, `product_portfolio`, document upload | Covered by the new case groups. |
 
 Step 0 reports on each of these.
 
@@ -46,7 +46,7 @@ Step 0 reports on each of these.
 3. **Repeat runs.** A model can pass once and fail the next time. Each case runs several times and reports a pass rate.
 4. **Separate errors from failures.** A timeout or a rate limit is an error, not a wrong answer.
 5. **Pin the conditions.** Same dataset, same as-of date, low temperature, and the provider recorded.
-6. **Security cases weigh more.** A failure in isolation, access, injection or the no-send rule fails the whole run, whatever the overall pass rate.
+6. **Security cases weigh more.** A failure in isolation, access or injection fails the whole run, whatever the overall pass rate.
 7. **Traces must not leak.** What goes to Langfuse is masked. If masking fails, a placeholder is sent, not the original.
 8. **Config over code.** Case files, thresholds and masking rules are data files.
 9. **Evaluation never changes the app's behaviour.** Tracing can be switched off with one setting and the app must work the same.
@@ -58,7 +58,7 @@ flowchart TD
     G[Golden data: expected_answers.py] --> T1[Layer 1: tool tests, no LLM]
     C[Case files .jsonl] --> RN[Runner]
     RN --> LG[Login per role]
-    LG --> API[POST /ask, uploads, drafts]
+    LG --> API[POST /ask, uploads]
     API --> APP[Agent: LangGraph, tools, moderation]
     APP --> RESP[Structured response]
     RESP --> A2[Layer 2: behaviour assertions]
@@ -98,7 +98,7 @@ One JSON object per line (`.jsonl`) so the runner can loop over files. Fields:
 | Field | Meaning |
 |---|---|
 | `id` | Unique, stable, e.g. `seg-001` |
-| `group` | `access`, `moderation`, `charts`, `decline`, `segments`, `portfolio`, `drafts`, `documents`, `reports`, `chains`, `core` |
+| `group` | `access`, `moderation`, `charts`, `decline`, `segments`, `portfolio`, `documents`, `reports`, `chains`, `core` |
 | `role` | Which demo user to log in as |
 | `setup` | Optional steps before the question: uploads, earlier turns, a second user |
 | `turns` | One or more questions, in order, in the same conversation |
@@ -306,10 +306,9 @@ Check: I can run the full evaluation from a clean checkout using only the README
 | Decline risk | 8 to 10 | Normal month, clear decline, partial period, short history, no explanation (analyst referral and no cause) |
 | Segments | 8 to 10 | Each segment, a window change, a restricted role, names hidden by policy, a small set |
 | Portfolio | 8 to 10 | Concentration, movers, dormant, new and dropped, category level, a "why" question with no invented cause |
-| Drafts | 10 to 12 | Each purpose, digit guard, fallback, forbidden promise, wrong role, foreign result ID, no send route |
 | Documents | 12 to 15 | Upload rules, isolation, injection text, quote check, claim versus data, "not covered", delete |
 | Reports | 4 to 5 | Context section present with a source, omitted when nothing is relevant, analyst referral kept |
-| Chains | 6 to 8 | Upload then ask, segments then draft, portfolio then "why", user switch, refusal then valid follow-up |
+| Chains | 6 to 8 | Upload then ask, portfolio then "why", user switch, refusal then valid follow-up |
 
 I will write the full cases with you group by group. Security cases first.
 
@@ -318,7 +317,7 @@ I will write the full cases with you group by group. Security cases first.
     eval/
       cases/            core.jsonl, access.jsonl, moderation.jsonl, charts.jsonl,
                         decline.jsonl, segments.jsonl, portfolio.jsonl,
-                        drafts.jsonl, documents.jsonl, reports.jsonl, chains.jsonl
+                        documents.jsonl, reports.jsonl, chains.jsonl
       fixtures/         good_note.txt, injection.txt, sensitive.txt, empty_scan.pdf
       golden/           expected_answers.py (extended), regenerate_golden.py
       tool_tests/       test_<analysis>.py
@@ -401,7 +400,6 @@ Values marked † are filled in by the generator. Nothing here is real data.
     Failures
     - seg-007 (segments, sales): no_extra_numbers failed.
       Expected only figures from the tool result; "†" not found.
-    - drf-004 (drafts, sales): draft_digit_guard failed. Body contained "†".
 
     Change since last run
     - Newly failing: †

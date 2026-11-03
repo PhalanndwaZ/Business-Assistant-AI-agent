@@ -100,10 +100,6 @@ Open `http://localhost:3000` and inspect the trace for the latest request. A tra
 - Uploaded document text is untrusted input. It is not independent evidence,
   and its claims are attributed to the document rather than treated as verified
   business figures.
-- The assistant can create editable drafts for configured purposes. Drafts
-  never send automatically, and an `approved` status records human review only.
-  There is intentionally no send or delivery route in the application, API, or
-  frontend.
 
 Provider attribution is retained in response metadata for figures and model
 answers, so an evaluation report can identify the provider that produced each
@@ -157,9 +153,9 @@ flowchart TD
     FINAL --> END
 ```
 
-Each question starts with fresh graph state. Unsupported drafts are retried
+Each question starts with fresh graph state. Unsupported answers are retried
 within the configured limit; if the evidence check still fails, the graph
-fails closed instead of presenting the draft as factual. Successful tool
+fails closed instead of presenting unsupported claims as factual. Successful tool
 results and relevant caveats remain available to the CLI/API response.
 
 ## Setup and run
@@ -432,7 +428,7 @@ uncertain or not established. Retrieved text is untrusted input; instructions
 inside a document are never followed. If search returns no relevant passage,
 the agent must say it cannot answer from the available sources.
 If the model still cannot produce a verifiable document answer after bounded
-retries, the graph discards that draft and returns only exact,
+retries, the graph discards that answer and returns only exact,
 question-relevant sentences from retrieved chunks, labelled as source data.
 For combined period-change questions, it also includes the allowlisted,
 verbatim analysis values and date ranges; it does not recalculate the figures.

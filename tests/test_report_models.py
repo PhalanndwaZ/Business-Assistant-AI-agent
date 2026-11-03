@@ -35,7 +35,7 @@ def _sample_report() -> dict[str, object]:
             },
         ],
         "summary": [
-            "November revenue was R184,200, down 12.0% from October.",
+            "November revenue was R184,200.00, down 12.0% from October.",
         ],
         "chart": {
             "title": "Monthly revenue, Jun to Nov 2024",
@@ -57,14 +57,14 @@ def _sample_report() -> dict[str, object]:
         "findings": [
             {
                 "finding": "Revenue fell 12.0% in November.",
-                "evidence": "October R209,318 to November R184,200, down R25,118.",
+                "evidence": "October R209,318.00 to November R184,200.00, down R25,118.00.",
                 "action": "Check stock and delivery records for November.",
                 "caveat": "The report mentions supply delays but does not prove cause.",
                 "source_refs": ["call_3"],
             },
             {
                 "finding": "Five products make up 66.3% of November revenue.",
-                "evidence": "Top five total R122,100 of R184,200.",
+                "evidence": "Top five total R122,100.00 of R184,200.00.",
                 "action": "Confirm stock levels for the five products.",
                 "caveat": "Completed orders only; one month of data.",
                 "source_refs": ["call_4"],

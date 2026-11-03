@@ -6,11 +6,10 @@ function formatValue(value, format) {
     return String(value);
   }
   if (format === "money") {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: numeric % 1 === 0 ? 0 : 2,
-    }).format(numeric);
+    return `R${new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(numeric / 100)}`;
   }
   if (format === "percent") {
     return `${new Intl.NumberFormat("en-US", {

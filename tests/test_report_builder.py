@@ -50,7 +50,7 @@ def report() -> ReportObject:
                 },
             ],
             "summary": [
-                "November revenue was R184,200, down 12.0% from October."
+                "November revenue was R184,200.00, down 12.0% from October."
             ],
             "chart": {
                 "title": "Monthly revenue, Jun to Nov 2024",
@@ -75,14 +75,14 @@ def report() -> ReportObject:
             "findings": [
                 {
                     "finding": "Revenue fell 12.0% in November.",
-                    "evidence": "October R209,318 to November R184,200.",
+                    "evidence": "October R209,318.00 to November R184,200.00.",
                     "action": "Check stock and delivery records.",
                     "caveat": "One month of data does not prove cause.",
                     "source_refs": ["call_3"],
                 },
                 {
                     "finding": "Five products make up 66.3% of revenue.",
-                    "evidence": "The top five total R122,100 of R184,200.",
+                    "evidence": "The top five total R122,100.00 of R184,200.00.",
                     "action": "Confirm stock levels for those products.",
                     "caveat": "Completed orders only.",
                     "source_refs": ["call_4"],
@@ -121,9 +121,9 @@ def test_builder_creates_editable_report_with_required_structure(
         "Sources and notes",
     ]
     assert len(document.tables) == 3
-    assert "R184,200" in document.tables[0].cell(0, 0).text
+    assert "R184,200.00" in document.tables[0].cell(0, 0).text
     assert "-12.0%" in document.tables[0].cell(0, 1).text
-    assert "R31,400" in document.tables[1].cell(1, 2).text
+    assert "R31,400.00" in document.tables[1].cell(1, 2).text
     assert document.tables[1].cell(1, 0).paragraphs[0].alignment == (
         WD_ALIGN_PARAGRAPH.RIGHT
     )
@@ -131,7 +131,7 @@ def test_builder_creates_editable_report_with_required_structure(
         "Revenue fell 12.0% in November."
     )
     assert document.tables[2].cell(1, 1).text == (
-        "October R209,318 to November R184,200."
+        "October R209,318.00 to November R184,200.00."
     )
 
     findings_heading = next(

@@ -10,6 +10,5 @@ def test_feature_configs_load_and_validate() -> None:
     assert set(configs) == {
         "segments.json",
         "portfolio.json",
-        "draft_purposes.json",
         "uploads.json",
     }

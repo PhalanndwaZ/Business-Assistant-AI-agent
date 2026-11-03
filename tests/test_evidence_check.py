@@ -135,6 +135,17 @@ def test_grouped_four_digit_rand_amount_is_not_mistaken_for_a_year() -> None:
     assert issues == []
 
 
+def test_customer_count_after_preposition_for_is_not_treated_as_rand() -> None:
+    """A count after 'for' is not classified as Rand by its trailing letter."""
+    is_valid, issues = check_numeric_evidence(
+        "Segments account for 60 customers.",
+        _result({"customers_counted": 60}),
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
 def test_order_count_cannot_support_revenue_in_cents() -> None:
     """A matching count value cannot be misrepresented as a money amount."""
     is_valid, issues = check_numeric_evidence(
@@ -278,6 +289,29 @@ def test_customer_segment_counts_revenue_shares_and_ratios_are_supported() -> No
         "The analysis counted 60 customers. Best customers contains 17 customers "
         "(28.3333%) and generated $89,932.82, representing 23.3974% of revenue "
         "with 9 average orders.",
+        result,
+    )
+
+    assert is_valid is True
+    assert issues == []
+
+
+def test_customer_share_ratio_is_not_mistaken_for_a_customer_count() -> None:
+    result = _result(
+        {
+            "segments": [
+                {
+                    "customers": 17,
+                    "share_of_customers": 0.283333,
+                    "revenue_cents": 11_829_476,
+                }
+            ],
+        }
+    )
+
+    is_valid, issues = check_numeric_evidence(
+        "The segment has 17 customers, a customer share of 0.283333, "
+        "and revenue of $118,294.76.",
         result,
     )
 

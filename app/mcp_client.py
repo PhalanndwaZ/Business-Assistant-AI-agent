@@ -233,6 +233,4 @@ class AnalystMCPClient:
                 arguments["conversation_id"] = self.conversation_id
             if self.document_ids:
                 arguments["document_ids"] = self.document_ids
-        if tool_name == "draft_message" and self.conversation_id:
-            arguments["conversation_id"] = self.conversation_id
         return await client.call_tool(tool_name, arguments)

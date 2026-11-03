@@ -10,6 +10,8 @@ from app.reporting.feature_reports import (
     product_portfolio_report,
 )
 from app.reporting.charts import render_revenue_chart
+from app.reporting.validate import validate_report_evidence
+from app.state import ToolResult
 
 
 def test_feature_analysis_results_convert_to_report_objects() -> None:
@@ -42,6 +44,53 @@ def test_feature_analysis_results_convert_to_report_objects() -> None:
 
     assert len(product_portfolio_report(portfolio, "call-portfolio").key_figures) >= 3
     assert len(customer_segments_report(segments, "call-segments").tables) == 1
+
+
+def test_customer_segment_report_uses_supported_revenue_and_rand_format() -> None:
+    """Segment report claims validate against exact source values and use Rand."""
+    result = {
+        "as_of": "2025-01-15",
+        "window": {"start": "2024-01-16", "end": "2025-01-15"},
+        "customers_counted": 60,
+        "segments": [
+            {
+                "name": "Best customers",
+                "customers": 17,
+                "revenue_cents": 38_437_200,
+                "suggested_next_step": "Recognize repeat purchases.",
+            },
+            {
+                "name": "At risk",
+                "customers": 8,
+                "revenue_cents": 500_000,
+                "suggested_next_step": "Review the accounts.",
+            },
+            {
+                "name": "Lost",
+                "customers": 5,
+                "revenue_cents": 200_000,
+                "suggested_next_step": "Review inactive accounts.",
+            },
+        ],
+        "revenue_at_stake_cents": 700_000,
+        "caveats": ["Segments describe patterns, not predictions."],
+    }
+    source_result: ToolResult = {
+        "tool_name": "run_analysis",
+        "arguments": {"analysis_name": "customer_segments"},
+        "result": result,
+        "success": True,
+    }
+
+    report = customer_segments_report(result, "segments-call")
+
+    assert report.key_figures[1].label == "Best customers revenue"
+    assert "R5,000" in report.findings[0].finding
+    assert "R7,000" in report.findings[1].evidence
+    assert validate_report_evidence(
+        report,
+        {"segments-call": source_result},
+    ) == []
 
 
 def test_feature_portfolio_report_opens_as_word_document(tmp_path: Path) -> None:

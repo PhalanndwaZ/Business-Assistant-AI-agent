@@ -13,6 +13,7 @@ from app.reporting.models import (
     ReportTable,
     ReportContextItem,
 )
+from app.reporting.formatting import format_money
 
 MAX_CONTEXT_QUOTE = 280
 
@@ -131,10 +132,14 @@ def customer_segments_report(
     """Build a customer segment report from one validated analysis result."""
     window = result["window"]
     segments = result["segments"]
-    revenue_total = sum(segment["revenue_cents"] for segment in segments)
     at_risk = next(
         (segment for segment in segments if segment["name"] == "At risk"),
         {"customers": 0, "revenue_cents": 0},
+    )
+    highest_revenue_segment = max(
+        segments,
+        key=lambda segment: segment["revenue_cents"],
+        default={"name": "No segment", "revenue_cents": 0},
     )
     revenue_at_stake = result.get(
         "revenue_at_stake_cents",
@@ -150,7 +155,12 @@ def customer_segments_report(
         as_of_date=date.fromisoformat(result["as_of"]),
         key_figures=[
             KeyFigure(label="Customers counted", value=result["customers_counted"], format="integer", source_ref=source_ref),
-            KeyFigure(label="Segment revenue", value=revenue_total, format="money", source_ref=source_ref),
+            KeyFigure(
+                label=f"{highest_revenue_segment['name']} revenue",
+                value=highest_revenue_segment["revenue_cents"],
+                format="money",
+                source_ref=source_ref,
+            ),
             KeyFigure(label="At-risk revenue", value=at_risk["revenue_cents"], format="money", source_ref=source_ref),
         ],
         summary=[
@@ -179,7 +189,10 @@ def customer_segments_report(
         ],
         findings=[
             Finding(
-                finding=f"At risk customers hold {at_risk['revenue_cents']} cents of window revenue.",
+                finding=(
+                    f"At risk customers hold "
+                    f"{format_money(at_risk['revenue_cents'])} of window revenue."
+                ),
                 evidence=f"{at_risk['customers']} customers meet the configured quiet-but-frequent pattern.",
                 action=at_risk["suggested_next_step"],
                 caveat="A descriptive segment label does not predict whether a customer will leave.",
@@ -187,7 +200,10 @@ def customer_segments_report(
             ),
             Finding(
                 finding=f"Segments account for {result['customers_counted']} customers.",
-                evidence=f"Revenue at stake across at-risk and lost customers is {revenue_at_stake} cents.",
+                evidence=(
+                    "Revenue at stake across at-risk and lost customers is "
+                    f"{format_money(revenue_at_stake)}."
+                ),
                 action=at_risk.get("suggested_next_step", "Review the configured segment actions."),
                 caveat="Revenue at stake is descriptive and excludes customers outside those configured segments.",
                 source_refs=[source_ref],

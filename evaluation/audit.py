@@ -18,7 +18,6 @@ from evaluation.questions import (
     UNANSWERABLE,
     CUSTOMER_SEGMENTS,
     PRODUCT_PORTFOLIO,
-    DRAFT_MESSAGES,
     DOCUMENT_CONTEXT,
     REPORT_CONTEXT,
     CONVERSATION_CHAINS,
@@ -156,7 +155,6 @@ def audit_cases(
         if case.group in {
             CUSTOMER_SEGMENTS,
             PRODUCT_PORTFOLIO,
-            DRAFT_MESSAGES,
             DOCUMENT_CONTEXT,
             REPORT_CONTEXT,
             CONVERSATION_CHAINS,

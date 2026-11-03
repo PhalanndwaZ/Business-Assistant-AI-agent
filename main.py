@@ -31,8 +31,6 @@ from app.auth.tokens import (
 from app.auth.users import UserAccount, UserStoreError, authenticate_user
 from app.rag.embeddings import MistralEmbedder
 from app.uploads import UploadError, UploadService, UploadStore
-from app.drafts.draft_store import DraftStore
-from app.drafts.guard import check_draft_content
 from app.audit_log import AuditLog
 from evaluation.langfuse_setup.tracing import build_workflow_trace, send_trace
 from app.chart_specs import build_chart_specs
@@ -41,7 +39,7 @@ from app.conversation_store import (
     ConversationOwnershipError,
     ConversationStore,
 )
-from app.graph import answer_question
+from app.graph import _current_tool_results, answer_question
 from app.llm_factory import build_chat_model
 from app.llm_fallback import ProviderUnavailableError
 from app.mcp_client import AnalystMCPClient
@@ -80,14 +78,6 @@ class AskRequest(BaseModel):
         if not normalized:
             raise ValueError("question must not be blank.")
         return normalized
-
-
-class DraftPatchRequest(BaseModel):
-    """Editable fields accepted for a stored draft."""
-
-    subject: str | None = None
-    body: str | None = None
-    status: str | None = None
 
 
 class ModerationInfo(BaseModel):
@@ -250,6 +240,9 @@ def _response_fields(
     document_sources: set[str] = set()
     report_filename: str | None = None
     report_data: dict[str, Any] | None = None
+    current_call_ids = {
+        result.get("call_id") for result in _current_tool_results(state)
+    }
 
     for tool_result in state.get("tool_results", []):
         if not tool_result.get("success"):
@@ -289,6 +282,11 @@ def _response_fields(
         elif tool_name == "search_documents":
             sources.append("search_documents")
         elif tool_name == "generate_report" and report_filename is None:
+            if (
+                "workflow_trace" in state
+                and tool_result.get("call_id") not in current_call_ids
+            ):
+                continue
             report_path = result.get("path")
             if isinstance(report_path, str):
                 resolved_report = _resolve_report_file(Path(report_path))
@@ -550,7 +548,7 @@ async def _run_question(
 
     if document_ids:
         upload_store = UploadStore(settings.conversation_db_path)
-        selected_ids = [str(document_id) for document_id in document_ids]
+        selected_ids = [document_id.hex for document_id in document_ids]
         if not upload_store.owns_documents(
             str(active_conversation_id),
             selected_ids,
@@ -607,7 +605,7 @@ async def _run_question(
     if hasattr(mcp_client, "set_document_context"):
         mcp_client.set_document_context(
             conversation_id=str(active_conversation_id),
-            document_ids=[str(document_id) for document_id in document_ids],
+            document_ids=[document_id.hex for document_id in document_ids],
         )
     async with mcp_client:
         tools = await mcp_client.list_tools()
@@ -933,54 +931,6 @@ def create_app() -> FastAPI:
                 detail="Audit logging is temporarily unavailable.",
             ) from exc
         return [AuditEventResponse(**event) for event in events]
-
-    @application.get("/drafts")
-    async def list_drafts(
-        conversation_id: UUID,
-        user: UserAccount = Depends(get_current_user),
-    ) -> list[dict[str, object]]:
-        """List drafts owned by the authenticated user in one conversation."""
-        store = DraftStore(load_settings(require_groq_api_key=False).conversation_db_path)
-        return store.list(str(conversation_id), user.user_id)
-
-    @application.get("/drafts/{draft_id}")
-    async def get_draft(
-        draft_id: str,
-        user: UserAccount = Depends(get_current_user),
-    ) -> dict[str, object]:
-        """Return one draft only to its owner."""
-        store = DraftStore(load_settings(require_groq_api_key=False).conversation_db_path)
-        draft = store.get(draft_id, user.user_id)
-        if draft is None:
-            raise HTTPException(status_code=404, detail="Draft not found.")
-        return draft
-
-    @application.patch("/drafts/{draft_id}")
-    async def edit_draft(
-        draft_id: str,
-        payload: DraftPatchRequest,
-        user: UserAccount = Depends(get_current_user),
-    ) -> dict[str, object]:
-        """Update a draft and rerun output content checks for edited text."""
-        store = DraftStore(load_settings(require_groq_api_key=False).conversation_db_path)
-        draft = store.get(draft_id, user.user_id)
-        if draft is None:
-            raise HTTPException(status_code=404, detail="Draft not found.")
-        edited_body = payload.body if payload.body is not None else str(draft["body"])
-        facts_used = draft["facts_used"]
-        warnings = check_draft_content(edited_body, facts_used, user.role)
-        updated = store.update(
-            draft_id,
-            user.user_id,
-            subject=payload.subject,
-            body=payload.body,
-            status=payload.status,
-            warnings=warnings,
-        )
-        if updated is None:
-            raise HTTPException(status_code=404, detail="Draft not found.")
-        updated["warnings"] = warnings
-        return updated
 
     @application.post(
         "/ask",
