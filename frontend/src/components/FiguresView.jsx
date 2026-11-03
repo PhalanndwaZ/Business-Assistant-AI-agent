@@ -230,7 +230,12 @@ export function FiguresView({ figures }) {
 
   return (
     <details className="figures-view">
-      <summary>Figures ({figures.length})</summary>
+      <summary>
+        <span>Figures and analysis</span>
+        <span className="figures-view__count">
+          {figures.length} {figures.length === 1 ? "result" : "results"}
+        </span>
+      </summary>
       <ol className="figure-list">{figureItems}</ol>
     </details>
   );

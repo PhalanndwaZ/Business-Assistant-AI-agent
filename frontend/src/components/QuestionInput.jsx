@@ -23,6 +23,10 @@ export function QuestionInput({
   /** Update the draft as the user types. */
   function handleChange(event) {
     setValue(event.target.value);
+    event.target.style.height = "auto";
+    event.target.style.height = `${Math.min(event.target.scrollHeight, 128)}px`;
+    event.target.style.overflowY =
+      event.target.scrollHeight > 128 ? "auto" : "hidden";
   }
 
   /** Submit on Enter while preserving a newline for Shift+Enter. */
@@ -46,10 +50,23 @@ export function QuestionInput({
     }
     onSend(question);
     setValue("");
+    if (inputRef && "current" in inputRef && inputRef.current) {
+      inputRef.current.style.height = "";
+      inputRef.current.style.overflowY = "";
+    }
   }
 
   return (
     <form className="question-form" onSubmit={handleSubmit}>
+      <div className="question-form__heading">
+        <span className="question-form__heading-mark" aria-hidden="true">
+          ✦
+        </span>
+        <span>Ask a question</span>
+        <span className="question-form__heading-hint">
+          About your business data
+        </span>
+      </div>
       <label className="visually-hidden" htmlFor="question-input">
         Ask a business question
       </label>
@@ -61,9 +78,9 @@ export function QuestionInput({
           disabled={disabled}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Ask a question about your business data..."
+          placeholder="Ask about revenue, customers, or trends..."
           ref={inputRef}
-          rows={2}
+          rows={1}
           value={value}
         />
         <button
@@ -74,32 +91,34 @@ export function QuestionInput({
           Send
         </button>
       </div>
-      {onAttachDocument ? (
-        <DocumentPanel
-          disabled={disabled}
-          documents={documents}
-          error={documentError}
-          onAttach={onAttachDocument}
-          onRemove={onRemoveDocument}
-        />
-      ) : null}
-      <div className="question-form__meta">
-        <span id="question-input-help">
-          Enter to send · Shift+Enter for a new line
-        </span>
-        {showCharacterCount ? (
-          <span
-            id="question-input-count"
-            className={
-              value.length > QUESTION_LENGTH_LIMIT
-                ? "question-form__count question-form__count--over"
-                : "question-form__count"
-            }
-          >
-            <span className="visually-hidden">Question length: </span>
-            {value.length}/{QUESTION_LENGTH_LIMIT}
-          </span>
+      <div className="question-form__footer">
+        {onAttachDocument ? (
+          <DocumentPanel
+            disabled={disabled}
+            documents={documents}
+            error={documentError}
+            onAttach={onAttachDocument}
+            onRemove={onRemoveDocument}
+          />
         ) : null}
+        <div className="question-form__meta">
+          <span id="question-input-help">
+            Enter to send · Shift+Enter for a new line
+          </span>
+          {showCharacterCount ? (
+            <span
+              id="question-input-count"
+              className={
+                value.length > QUESTION_LENGTH_LIMIT
+                  ? "question-form__count question-form__count--over"
+                  : "question-form__count"
+              }
+            >
+              <span className="visually-hidden">Question length: </span>
+              {value.length}/{QUESTION_LENGTH_LIMIT}
+            </span>
+          ) : null}
+        </div>
       </div>
     </form>
   );

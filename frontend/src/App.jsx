@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import "./styles/tokens.css";
 import "./styles/app.css";
 
@@ -53,6 +55,7 @@ function AuthenticatedChat({
   pendingQuestion,
   onClearPendingQuestion,
 }) {
+  const [darkMode, setDarkMode] = useState(readSavedTheme);
   const conversation = useConversation(user.user_id);
   const documents = useDocuments(
     user.user_id,
@@ -60,6 +63,27 @@ function AuthenticatedChat({
     conversation.adoptConversation,
   );
   const drafts = useDrafts(conversation.conversationId);
+
+  useEffect(
+    function applyAndSaveTheme() {
+      const theme = darkMode ? "dark" : "light";
+      document.documentElement.dataset.theme = theme;
+      try {
+        window.localStorage.setItem("business-analyst-ai:theme", theme);
+      } catch (error) {
+        if (import.meta.env?.DEV) {
+          console.error("Could not save appearance preference", {
+            errorType: error?.name || "UnknownError",
+          });
+        }
+      }
+
+      return function clearAppliedTheme() {
+        delete document.documentElement.dataset.theme;
+      };
+    },
+    [darkMode],
+  );
 
   return (
     <ChatWindow
@@ -73,8 +97,24 @@ function AuthenticatedChat({
       onSaveDraft={drafts.save}
       user={user}
       onLogout={onLogout}
+      darkMode={darkMode}
+      onToggleDarkMode={() => setDarkMode((enabled) => !enabled)}
       pendingQuestion={pendingQuestion}
       onClearPendingQuestion={onClearPendingQuestion}
     />
   );
+}
+
+/** Restore the appearance preference, using the light theme if storage is unavailable. */
+function readSavedTheme() {
+  try {
+    return window.localStorage.getItem("business-analyst-ai:theme") === "dark";
+  } catch (error) {
+    if (import.meta.env?.DEV) {
+      console.error("Could not read appearance preference", {
+        errorType: error?.name || "UnknownError",
+      });
+    }
+    return false;
+  }
 }
