@@ -57,7 +57,7 @@ function getPairSeries(series, defaultUnit) {
 
 function getValueAxisLabel(unit) {
   if (unit === "money_cents") {
-    return "Value (cents)";
+    return "Value (R)";
   }
   return typeof unit === "string" && unit ? `Value (${unit})` : "Value";
 }
@@ -122,6 +122,9 @@ function PairMetricChart({ altText, highlight, metric }) {
             </XAxis>
             <YAxis
               tick={{ fill: "var(--color-text-muted)", fontSize: 10 }}
+              tickFormatter={(value) =>
+                formatChartValue(value, metric.unit)
+              }
               type="number"
             >
               <Label

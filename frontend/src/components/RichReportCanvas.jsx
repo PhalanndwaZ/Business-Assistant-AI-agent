@@ -1,15 +1,14 @@
 import { useEffect, useId, useRef } from "react";
 
+import { formatChartValue } from "../charts/chartFormat.js";
+
 function formatValue(value, format) {
   const numeric = typeof value === "number" ? value : null;
   if (numeric === null) {
     return String(value);
   }
   if (format === "money") {
-    return `R${new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(numeric / 100)}`;
+    return formatChartValue(numeric, "money_cents");
   }
   if (format === "percent") {
     return `${new Intl.NumberFormat("en-US", {

@@ -66,7 +66,7 @@ def _department_employee_chart(
         else "Headcount by department"
     )
     subtitle = (
-        "Total salary · integer cents"
+        "Total salary · shown in South African rand (R)"
         if aggregate == "sum_salary_cents"
         else "Employee count · grouped by department"
     )
@@ -180,7 +180,7 @@ def _product_portfolio_chart(
         "id": result_id,
         "type": "ranking_bars",
         "title": "Product portfolio revenue",
-        "subtitle": "Completed orders · integer cents",
+        "subtitle": "Completed orders · shown in South African rand (R)",
         "unit": "money_cents",
         "series": series,
         "highlight": series[0]["label"],
@@ -214,7 +214,7 @@ def _customer_segment_chart(
         "id": result_id,
         "type": "ranking_bars",
         "title": "Revenue by customer segment",
-        "subtitle": "Completed orders · integer cents",
+        "subtitle": "Completed orders · shown in South African rand (R)",
         "unit": "money_cents",
         "series": series,
         "highlight": max(series, key=lambda item: item["value"])["label"],
@@ -247,12 +247,15 @@ def _period_subtitle(result: dict[str, Any]) -> str:
     """Describe the exact period returned by an analysis."""
     period = result.get("period")
     if not isinstance(period, dict):
-        return "Completed orders · money in cents"
+        return "Completed orders · shown in South African rand (R)"
     start = period.get("start")
     end = period.get("end")
     if isinstance(start, str) and isinstance(end, str):
-        return f"{start} to {end} · Completed orders · money in cents"
-    return "Completed orders · money in cents"
+        return (
+            f"{start} to {end} · Completed orders · "
+            "shown in South African rand (R)"
+        )
+    return "Completed orders · shown in South African rand (R)"
 
 
 def _ranking_chart(

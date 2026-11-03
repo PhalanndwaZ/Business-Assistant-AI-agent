@@ -84,7 +84,8 @@ def _result(
         "assumptions": assumptions
         or [
             "Only completed orders are included.",
-            "Revenue is quantity multiplied by unit price in integer cents.",
+            "Revenue is calculated internally in integer cents and presented "
+            "in South African rand (R).",
         ],
     }
 
@@ -257,7 +258,8 @@ def period_change(
         "assumptions": [
             "Only completed orders are included.",
             "A zero previous value has no defined percentage change.",
-            "Revenue is returned in integer cents.",
+            "Revenue is presented in South African rand (R); calculations use "
+            "integer cents internally.",
         ],
     }
 
@@ -343,7 +345,8 @@ def trend(
         [
             "Slope is the least-squares linear fit across observed periods.",
             "Only completed orders are included.",
-            "Revenue, when selected, is measured in integer cents.",
+            "Revenue, when selected, is presented in South African rand (R); "
+            "calculations use integer cents internally.",
         ],
     )
 

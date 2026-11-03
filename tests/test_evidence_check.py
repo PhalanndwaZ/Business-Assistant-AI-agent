@@ -62,7 +62,7 @@ def test_employee_count_is_not_misclassified_by_nearby_revenue() -> None:
 
 
 def test_department_payroll_sum_supports_payroll_currency_claim() -> None:
-    """A salary sum supports its exact payroll amount in dollars."""
+    """A salary sum supports its exact payroll amount in Rand."""
     result: list[ToolResult] = [
         {
             "tool_name": "query_business_data",
@@ -85,7 +85,7 @@ def test_department_payroll_sum_supports_payroll_currency_claim() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "HR total earnings were $123,456.78.",
+        "HR total earnings were R123,456.78.",
         result,
     )
 
@@ -105,7 +105,7 @@ def test_employee_count_cannot_support_payroll_claim() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Total payroll was $5.",
+        "Total payroll was R5.",
         result,
     )
 
@@ -113,15 +113,26 @@ def test_employee_count_cannot_support_payroll_claim() -> None:
     assert "metric='payroll'" in issues[0]
 
 
-def test_revenue_cents_can_be_formatted_as_dollars() -> None:
-    """Integer cents support the exact dollar-formatted equivalent."""
+def test_revenue_cents_can_be_formatted_as_rand() -> None:
+    """Integer cents support the exact Rand-formatted equivalent."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue was $50.00.",
+        "Revenue was R50.00.",
         _result({"revenue_cents": 5000}),
     )
 
     assert is_valid is True
     assert issues == []
+
+
+def test_currency_claims_in_dollars_are_rejected() -> None:
+    """Monetary claims must use Rand even when the dollar amount is supported."""
+    is_valid, issues = check_numeric_evidence(
+        "Revenue was $50.00.",
+        _result({"revenue_cents": 5000}),
+    )
+
+    assert is_valid is False
+    assert "South African rand (R)" in issues[0]
 
 
 def test_grouped_four_digit_rand_amount_is_not_mistaken_for_a_year() -> None:
@@ -160,7 +171,7 @@ def test_order_count_cannot_support_revenue_in_cents() -> None:
 def test_unit_price_cannot_support_total_revenue_claim() -> None:
     """A matching unit price is not evidence for an aggregate revenue claim."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue was $50.00.",
+        "Revenue was R50.00.",
         _result({"unit_price_cents": 5000}),
     )
 
@@ -171,7 +182,7 @@ def test_unit_price_cannot_support_total_revenue_claim() -> None:
 def test_revenue_cannot_support_cost_claim() -> None:
     """Revenue evidence cannot be relabeled as a cost figure."""
     is_valid, issues = check_numeric_evidence(
-        "Cost was $50.00.",
+        "Cost was R50.00.",
         _result({"revenue_cents": 5000}),
     )
 
@@ -182,7 +193,7 @@ def test_revenue_cannot_support_cost_claim() -> None:
 def test_metric_context_is_scoped_to_each_number() -> None:
     """A nearby revenue claim cannot lend evidence to a separate cost claim."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue was $50.00, while cost was $50.00.",
+        "Revenue was R50.00, while cost was R50.00.",
         _result({"revenue_cents": 5000}),
     )
 
@@ -223,7 +234,7 @@ def test_revenue_context_applies_to_change_later_in_same_sentence() -> None:
 
     is_valid, issues = check_numeric_evidence(
         "Revenue fell 60.8% from November to December 2024, from "
-        "$40,179.49 to $15,747.92; the decrease was $24,431.57.",
+        "R40,179.49 to R15,747.92; the decrease was R24,431.57.",
         result,
     )
 
@@ -234,7 +245,7 @@ def test_revenue_context_applies_to_change_later_in_same_sentence() -> None:
 def test_metric_context_does_not_cross_sentence_boundaries() -> None:
     """A metric in a previous sentence cannot classify a later currency claim."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue was $50.00. Cost was $50.00.",
+        "Revenue was R50.00. Cost was R50.00.",
         _result({"revenue_cents": 5000}),
     )
 
@@ -257,12 +268,12 @@ def test_count_cannot_support_percentage_claim() -> None:
 def test_numeric_failure_lists_compared_tool_evidence() -> None:
     """An evidence failure names both the unsupported claim and candidates."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue was 50 cents.",
+        "Revenue was R50.01.",
         _result({"order_count": 50, "revenue_cents": 5000}),
     )
 
     assert is_valid is False
-    assert "Number '50'" in issues[0]
+    assert "Number '50.01'" in issues[0]
     assert "Compared against:" in issues[0]
     assert "50 (count/count)" in issues[0]
 
@@ -287,7 +298,7 @@ def test_customer_segment_counts_revenue_shares_and_ratios_are_supported() -> No
 
     is_valid, issues = check_numeric_evidence(
         "The analysis counted 60 customers. Best customers contains 17 customers "
-        "(28.3333%) and generated $89,932.82, representing 23.3974% of revenue "
+        "(28.3333%) and generated R89,932.82, representing 23.3974% of revenue "
         "with 9 average orders.",
         result,
     )
@@ -311,7 +322,7 @@ def test_customer_share_ratio_is_not_mistaken_for_a_customer_count() -> None:
 
     is_valid, issues = check_numeric_evidence(
         "The segment has 17 customers, a customer share of 0.283333, "
-        "and revenue of $118,294.76.",
+        "and revenue of R118,294.76.",
         result,
     )
 
@@ -333,7 +344,7 @@ def test_segment_revenue_cents_and_share_fields_are_not_counts() -> None:
     )
 
     is_valid, issues = check_numeric_evidence(
-        "The segment has 12 customers, revenue_cents of 8,993,282, "
+        "The segment has 12 customers, revenue of R89,932.82, "
         "and a revenue share of 0.233974.",
         result,
     )
@@ -424,7 +435,7 @@ def test_reported_year_is_supported_by_analysis_period() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Furniture generated the most revenue in 2024, at $245,324.74 "
+        "Furniture generated the most revenue in 2024, at R245,324.74 "
         "(period ending Dec 31).",
         result,
     )
@@ -481,7 +492,7 @@ def test_iso_period_dates_do_not_become_count_claims() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Revenue was $245,324.74 for 2024-01-01 through 2024-12-31.",
+        "Revenue was R245,324.74 for 2024-01-01 through 2024-12-31.",
         result,
     )
 
@@ -518,7 +529,7 @@ def test_date_followed_by_comma_is_not_parsed_as_count() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Revenue was 1,971,966 cents for 2024\u201111\u201130, "
+        "Revenue was R19,719.66 for 2024\u201111\u201130, "
         "which includes completed orders.",
         result,
     )
@@ -561,10 +572,10 @@ def test_period_revenue_and_percent_change_keep_their_own_metrics() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "**Completed-order revenue (cents)**\n\n"
+        "**Completed-order revenue (R)**\n\n"
         "| Period | Revenue |\n"
-        "| November 2024 | 4,017,949 |\n"
-        "| December 2024 | 1,574,792 |\n\n"
+        "| November 2024 | R40,179.49 |\n"
+        "| December 2024 | R15,747.92 |\n\n"
         "**Percentage change (December vs. November)**\n"
         "-60.80607294915888\u202f%",
         result,
@@ -574,8 +585,8 @@ def test_period_revenue_and_percent_change_keep_their_own_metrics() -> None:
     assert issues == []
 
 
-def test_revenue_cents_field_reference_and_conversion_constant_are_valid() -> None:
-    """Explicit revenue_cents references and divide-by-100 are not extra claims."""
+def test_internal_cent_conversion_can_be_explained_with_rand_output() -> None:
+    """Internal cents may be explained while output amounts remain in Rand."""
     result: list[ToolResult] = [
         {
             "tool_name": "run_analysis",
@@ -593,9 +604,8 @@ def test_revenue_cents_field_reference_and_conversion_constant_are_valid() -> No
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "The analysis returns revenue_cents = 1,345,428 for the leading "
-        "customer. Converting cents to dollars (divide by 100) gives "
-        "$13,454.28.",
+        "Revenue is calculated internally in cents and displayed in Rand. "
+        "Revenue was R13,454.28.",
         result,
     )
 
@@ -639,7 +649,7 @@ def test_unicode_hyphens_in_dates_match_analysis_period() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Revenue was 24532474 cents for 2024\u201101\u201101 through "
+        "Revenue was R245,324.74 for 2024\u201101\u201101 through "
         "2024\u201112\u201131.",
         result,
     )
@@ -662,7 +672,7 @@ def test_currency_claim_is_not_misclassified_by_nearby_unit_count() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Furniture revenue was $245,324.74 from 526 units.",
+        "Furniture revenue was R245,324.74 from 526 units.",
         result,
     )
 
@@ -708,7 +718,7 @@ def test_customer_identifier_is_not_interpreted_as_numeric_count() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Customer 037 generated $50.00 in revenue.",
+        "Customer 037 generated R50.00 in revenue.",
         result,
     )
 
@@ -760,7 +770,7 @@ def test_period_change_uses_sibling_metric_context() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Revenue increased by 1000 cents, or 15.38%.",
+        "Revenue increased by R10.00, or 15.38%.",
         result,
     )
 
@@ -801,9 +811,9 @@ def test_downward_change_magnitudes_match_signed_change_evidence() -> None:
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Completed\u2011order revenue fell from\u202f$40,179.49\u202fin "
-        "November\u202f2024 to\u202f$15,747.92\u202fin December\u202f2024, "
-        "a decrease of\u202f$24,431.57 (\u221260.8\u202f%). This reflects "
+        "Completed\u2011order revenue fell from\u202fR40,179.49\u202fin "
+        "November\u202f2024 to\u202fR15,747.92\u202fin December\u202f2024, "
+        "a decrease of\u202fR24,431.57 (\u221260.8\u202f%). This reflects "
         "only orders with status \u201ccompleted.\u201d",
         result,
     )
@@ -812,10 +822,10 @@ def test_downward_change_magnitudes_match_signed_change_evidence() -> None:
     assert issues == []
 
 
-def test_downward_change_magnitude_in_cents_matches_signed_evidence() -> None:
-    """An explicitly stated decrease in cents matches a negative change."""
+def test_downward_change_magnitude_in_rand_matches_signed_evidence() -> None:
+    """An explicitly stated decrease in Rand matches a negative change."""
     is_valid, issues = check_numeric_evidence(
-        "Revenue had a decrease of 2,443,157 cents.",
+        "Revenue had a decrease of R24,431.57.",
         _result(
             {
                 "data": [
@@ -852,7 +862,7 @@ def test_positive_change_magnitude_without_decrease_wording_is_rejected() -> Non
     ]
 
     is_valid, issues = check_numeric_evidence(
-        "Revenue changed by $24,431.57.",
+        "Revenue changed by R24,431.57.",
         result,
     )
 

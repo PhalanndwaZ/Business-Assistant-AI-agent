@@ -29,8 +29,9 @@ When the user requests a report, a document, or a summary file:
   insufficient. An optional chart uses `title`, `x`, `y`, `value_format`,
   `highlight_last`, and `source_ref`; each table uses `title`, `columns`,
   `formats`, `rows`, and `source_ref`. Monetary values must remain raw integer
-  cents; use `money` as the format. Use `percent`, `integer`, or `text` only
-  when appropriate.
+  cents in the report payload; use
+  `money` as the format so they are displayed in South African rand (R). Use
+  `percent`, `integer`, or `text` only when appropriate.
 - Do not provide `tool_results_by_ref`; the workflow attaches the actual MCP
   results for evidence validation. Do not claim a file was created unless
   `generate_report` returns a path.

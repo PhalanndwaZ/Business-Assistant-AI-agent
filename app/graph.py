@@ -30,6 +30,7 @@ from app.services.evidence_check import (
     check_document_evidence,
     check_numeric_evidence,
 )
+from app.reporting.formatting import format_money
 from evaluation.langfuse_setup.tracing import build_langgraph_callback_handler
 from app.moderation.moderator import (
     MODERATION_RULES_PATH,
@@ -289,12 +290,18 @@ def _period_change_fallback(
         current_label = period_label("current")
         if previous_label is None or current_label is None:
             continue
-        unit = "cents" if metric == "revenue" else metric
-        summary = (
-            f"{metric.capitalize()} changed by {absolute_change:,} {unit}, "
-            f"from {previous_label} ({previous_value:,} {unit}) to "
-            f"{current_label} ({current_value:,} {unit})."
-        )
+        if metric == "revenue":
+            summary = (
+                f"Revenue changed by {format_money(absolute_change)}, from "
+                f"{previous_label} ({format_money(previous_value)}) to "
+                f"{current_label} ({format_money(current_value)})."
+            )
+        else:
+            summary = (
+                f"{metric.capitalize()} changed by {absolute_change:,} "
+                f"{metric}, from {previous_label} ({previous_value:,} "
+                f"{metric}) to {current_label} ({current_value:,} {metric})."
+            )
         if _outlier_question(question) and not _has_successful_analysis(
             tool_results,
             "outliers",
@@ -359,7 +366,8 @@ def _customer_segment_fallback(
             if segment["revenue_cents"] == highest_revenue
         ]
         descriptions = [
-            f"{segment['name']} with {segment['revenue_cents']:,} cents in "
+            f"{segment['name']} with "
+            f"{format_money(segment['revenue_cents'])} in "
             f"revenue and {segment['customers']} customers"
             for segment in leaders
         ]
@@ -424,8 +432,8 @@ def _top_customers_fallback(
             else ""
         )
         ranked_customers = "; ".join(
-            f"{row['customer_name']} — R "
-            f"{row['revenue_cents'] / 100:,.2f} across "
+            f"{row['customer_name']} — "
+            f"{format_money(row['revenue_cents'])} across "
             f"{row['order_count']:,} orders"
             for row in valid_rows[:5]
         )
@@ -539,7 +547,8 @@ def _build_top_customers_report(
                     ),
                     "evidence": (
                         f"{leader['customer_name']} had "
-                        f"{leader['revenue_cents']:,} cents in revenue across "
+                        f"{format_money(leader['revenue_cents'])} in revenue "
+                        f"across "
                         f"{leader['order_count']} orders."
                     ),
                     "action": "Use the ranking as a starting point for review.",
@@ -556,7 +565,7 @@ def _build_top_customers_report(
                     ),
                     "evidence": (
                         f"{runner_up['customer_name']} had "
-                        f"{runner_up['revenue_cents']:,} cents in revenue "
+                        f"{format_money(runner_up['revenue_cents'])} in revenue "
                         f"across {runner_up['order_count']} orders."
                     ),
                     "action": (
@@ -570,7 +579,8 @@ def _build_top_customers_report(
                 },
             ],
             "notes": [
-                "Revenue is reported in integer cents by the analysis tool."
+                "Money is displayed in South African rand (R); calculations "
+                "use integer cents internally."
             ],
         }
     return None
@@ -872,10 +882,11 @@ def _build_monthly_sales_report(
     customer_name = top_customer["customer_name"]
     category_evidence = (
         f"{category_name} revenue was "
-        f"{leading_category['revenue_cents']:,} cents."
+        f"{format_money(leading_category['revenue_cents'])}."
     )
     customer_evidence = (
-        f"{customer_name} revenue was {top_customer['revenue_cents']:,} cents "
+        f"{customer_name} revenue was "
+        f"{format_money(top_customer['revenue_cents'])} "
         f"across {top_customer['order_count']} orders."
     )
 
@@ -936,7 +947,8 @@ def _build_monthly_sales_report(
             },
         ],
         "notes": [
-            "Revenue is quantity multiplied by unit price in integer cents."
+            "Money is displayed in South African rand (R); calculations use "
+            "integer cents internally."
         ],
     }
 
@@ -1036,7 +1048,7 @@ def _build_revenue_comparison_report(
             {
                 "finding": f"Revenue {change_description} in the current period.",
                 "evidence": (
-                    f"Revenue change was {absolute_change} cents."
+                    f"Revenue change was {format_money(absolute_change)}."
                 ),
                 "action": "Review the underlying sales results for context.",
                 "caveat": (
@@ -1048,20 +1060,22 @@ def _build_revenue_comparison_report(
             {
                 "finding": "The comparison uses the two requested periods.",
                 "evidence": (
-                    f"{current_label} revenue was {current_value} cents; "
-                    f"{previous_label} revenue was {previous_value} cents."
+                    f"{current_label} revenue was "
+                    f"{format_money(current_value)}; {previous_label} "
+                    f"revenue was {format_money(previous_value)}."
                 ),
                 "action": "Use the same metric and date ranges for follow-up.",
                 "caveat": (
-                    "Revenue is quantity multiplied by unit price in "
-                    "integer cents."
+                    "Money is displayed in South African rand (R); "
+                    "calculations use integer cents internally."
                 ),
                 "source_refs": [call_id],
             },
         ],
         "notes": [
             "Only completed orders are included.",
-            "Revenue is quantity multiplied by unit price in integer cents.",
+            "Money is displayed in South African rand (R); calculations use "
+            "integer cents internally.",
         ],
     }
 
@@ -1105,7 +1119,7 @@ def _revenue_period_fallback(
             or not isinstance(row.get("revenue_cents"), int)
         ):
             return None
-        revenue = f"{row['revenue_cents']:,} cents"
+        revenue = format_money(row["revenue_cents"])
         units = row.get("units")
         if isinstance(units, int) and not isinstance(units, bool):
             revenue += f" across {units:,} units"
@@ -1114,7 +1128,8 @@ def _revenue_period_fallback(
     return (
         f"Sales for {period['start']} to {period['end']}: "
         + "; ".join(summaries)
-        + ". Revenue is quantity multiplied by unit price in integer cents; "
+        + ". Money is displayed in South African rand (R); calculations use "
+        "integer cents internally; "
         "only completed orders are included."
     )
 

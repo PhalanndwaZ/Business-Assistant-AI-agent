@@ -88,7 +88,10 @@ RELATIONSHIPS = (
 )
 
 BUSINESS_GLOSSARY = {
-    "revenue": "quantity multiplied by unit price in integer cents.",
+    "revenue": (
+        "Quantity multiplied by unit price, calculated internally in integer "
+        "cents and presented to users in South African rand (R)."
+    ),
     "sales": (
         "Revenue from completed orders only; cancelled and returned orders "
         "are excluded."

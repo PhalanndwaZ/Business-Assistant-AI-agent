@@ -62,7 +62,7 @@ def validate_report_evidence(
         if figure.format == "text":
             content = str(figure.value)
         elif figure.format == "money":
-            content = f"{figure.label} {figure.value} cents"
+            content = f"{figure.label} {format_value(figure.value, 'money')}"
         else:
             content = format_value(figure.value, figure.format)
         check_section(
@@ -80,7 +80,7 @@ def validate_report_evidence(
                 report.chart.title,
                 *report.chart.x,
                 *(
-                    f"Revenue {value} cents"
+                    f"Revenue {format_value(value, 'money')}"
                     if report.chart.value_format == "money"
                     else format_value(value, report.chart.value_format)
                     for value in report.chart.y
@@ -105,7 +105,8 @@ def validate_report_evidence(
                     row_parts.append(str(value))
                 elif value_format == "money":
                     row_parts.append(
-                        f"{table.columns[column_index]} {value} cents"
+                        f"{table.columns[column_index]} "
+                        f"{format_value(value, 'money')}"
                     )
                 else:
                     row_parts.append(

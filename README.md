@@ -314,10 +314,10 @@ synthetic source text; they are not reported as additional live model runs.
 `revenue`, current dates `2024-12-01`–`2024-12-31`, and previous dates
 `2024-11-01`–`2024-11-30`.
 
-**Answer:** Completed-order revenue fell from **$40,179.49** in November to
-**$15,747.92** in December, a decrease of **$24,431.57 (60.8%)**. The
-calculation includes only completed orders; the tool returns revenue in
-integer cents.
+**Answer:** Completed-order revenue fell from **R40,179.49** in November to
+**R15,747.92** in December, a decrease of **R24,431.57 (60.8%)**. The
+calculation includes only completed orders; amounts are displayed in Rand and
+calculated using integer cents internally.
 
 ### Document lookup
 
@@ -339,7 +339,7 @@ report?
 `search_documents(query="Management-reported factors during the December order dip", document_type="management_report")`.
 
 **Answer:** Completed-order revenue decreased **60.8%** from November to
-December 2024, from **$40,179.49** to **$15,747.92**. The report says
+December 2024, from **R40,179.49** to **R15,747.92**. The report says
 “supplier delays affected availability of several popular electronics
 products during the first half of December” and that “seasonal staffing
 constraints lengthened fulfilment times near the end of the month”
@@ -393,9 +393,8 @@ the optional RAG quality signals. These live options call external services.
 - **Database-backed business data:** live structured queries use Neon
   PostgreSQL. JSON snapshots are isolated under `tests/fixtures/business_data`
   for migration and independent offline evaluation.
-- **Integer-cent money:** calculations keep money in integer cents and
-  convert to dollars only when the answer explicitly presents that
-  equivalent.
+- **Rand presentation:** calculations keep money in integer cents and display
+  monetary values in South African rand (R).
 
 ## Demo recording
 
@@ -619,6 +618,7 @@ redacted solely because they contain an employee ID.
 For HR users with salary-field access, `query_business_data` supports the
 restricted `sum_salary_cents` aggregation grouped only by department. Results
 contain department payroll totals in integer cents, not individual salaries;
+these values are displayed as South African rand in the user interface.
 roles without salary access cannot invoke this aggregation. Ask for a chart of
 "total earnings by department" to render those supported totals as bars.
 

@@ -158,7 +158,7 @@ The included datasets are:
 | `customers` | Customer name, region, and segment |
 | `products` | Product name and category |
 | `orders` | Customer, order date, and order status |
-| `order_items` | Product, quantity, and unit price in cents |
+| `order_items` | Product, quantity, and unit price stored in integer cents |
 | `employees` | Department and employment attributes, subject to role policy |
 
 `query_business_data` supports validated field selection, filters, date ranges
@@ -176,8 +176,9 @@ analyses currently in the schema and dispatcher are:
 - `trend` and `outliers`
 
 Sales calculations join order items to orders, products, and customers.
-Revenue is quantity multiplied by unit price and represented in integer cents.
-Only completed orders are included. Trend is a least-squares slope over the
+Revenue is quantity multiplied by unit price and represented internally in
+integer cents. User-facing monetary values are presented in South African rand
+(R). Only completed orders are included. Trend is a least-squares slope over the
 observed periods; an outlier is more than two population standard deviations
 from the selected range's mean. Analysis results include their date periods
 and assumptions.

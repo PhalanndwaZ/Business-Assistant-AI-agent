@@ -109,7 +109,7 @@ def _field_category(field_path: str) -> str:
         for key in ("percent", "percentage", "_pct", "growth_rate")
     ):
         return "percentage"
-    if "share_of_customers" in normalized_path:
+    if "share_of_customers" in normalized_path or "share_of_revenue" in normalized_path:
         return "ratio"
     if any(
         key in normalized_path
@@ -184,7 +184,7 @@ def _collect_numbers(
                     NumericEvidence(
                         float(value) / 100,
                         category,
-                        "dollars",
+                        "rands",
                         value_field,
                     )
                 )
@@ -254,22 +254,24 @@ def _claim_category(
     if re.search(r"\brevenue_cents\b\s*[=:of]+\s*$", preceding_text, re.IGNORECASE):
         return "revenue", "cents"
     sentence_context = preceding_text[-60:] + following_text[:60]
-    if re.search(
-        r"\b(?:revenue\s+share|share\s+(?:of\s+)?revenue)\b",
-        sentence_context,
-        re.IGNORECASE,
-    ):
-        return "revenue", "revenue"
     count_terms = (
         r"(?:customers?|orders?|employees?|products?|items?|units?|"
         r"records?|days?|weeks?)"
     )
+    has_explicit_currency = bool(
+        re.search(r"(?:[$€£]\s*|(?<!\w)[Rr]\s*)$", preceding_text)
+        or re.match(
+            r"^\s*(?:dollars?|usd|rands?|zar|cents?|¢)\b",
+            unit_following_text,
+            re.IGNORECASE,
+        )
+    )
     if re.search(
         r"\b(?:revenue\s+share|share\s+(?:of\s+)?revenue)\b",
-        preceding_text[-40:] + following_text[:40],
+        sentence_context,
         re.IGNORECASE,
-    ):
-        return "revenue", "revenue"
+    ) and not has_explicit_currency:
+        return "ratio", "ratio"
     share_ratio_prefix = re.search(
         r"\b(?:customer\s+share|share\s+of\s+customers?|share_of_customers)"
         r"\s*(?:(?:is|of|=|:)\s*)?$",
@@ -287,10 +289,6 @@ def _claim_category(
     is_calendar_day = bool(
         re.match(r"^\s*days?\b", following_text, re.IGNORECASE)
         and MONTH_PATTERN.search(preceding_text)
-    )
-    has_explicit_currency = bool(
-        re.search(r"(?:[$€£]\s*|(?<!\w)[Rr]\s*)$", preceding_text)
-        or re.match(r"^\s*(?:dollars?|usd|cents?|¢)\b", unit_following_text, re.IGNORECASE)
     )
     date_start = max(0, match.start() - 10)
     date_end = min(len(draft_answer), match.end() + 10)
@@ -344,7 +342,7 @@ def _claim_category(
         and re.match(rf"^\s*(?:average\s+)?{count_terms}\b", following_text, re.IGNORECASE)
     ):
         return "count", None
-    if re.match(
+    if not has_explicit_currency and re.match(
         r"\s+(?:average\s+)?orders?\b",
         following_text,
         re.IGNORECASE,
@@ -370,12 +368,17 @@ def _claim_category(
     elif (
         preceding_text.rstrip().endswith(("$", "R", "r"))
         or re.search(
-            r"\b(dollars?|usd)\b",
+            r"\b(dollars?|usd|rands?|zar)\b",
             unit_following_text,
             re.IGNORECASE,
         )
     ):
-        unit = "dollars"
+        unit = (
+            "rands"
+            if preceding_text.rstrip().endswith(("R", "r"))
+            or re.search(r"\b(?:rands?|zar)\b", unit_following_text, re.IGNORECASE)
+            else "dollars"
+        )
     elif re.search(r"\bcents?\b", unit_following_text, re.IGNORECASE):
         unit = "cents"
         if re.search(r"\brevenue\b|\bsales\b", preceding_text, re.IGNORECASE):
@@ -394,7 +397,7 @@ def _claim_category(
     context_start = sentence_start
     context_end = sentence_end
     for category, pattern in METRIC_TERMS:
-        if unit in {"cents", "dollars"} and category not in {
+        if unit in {"cents", "dollars", "rands"} and category not in {
             "payroll",
             "revenue",
             "price",
@@ -479,6 +482,16 @@ def check_numeric_evidence(
             if is_percent_conversion or is_cents_conversion:
                 continue
         claim_category, claim_unit = _claim_category(draft_answer, match)
+        if (
+            claim_category
+            in {"payroll", "revenue", "price", "cost", "spend", "amount"}
+            and claim_unit != "rands"
+        ):
+            issues.append(
+                f"Money claim {match.group()!r} must be explicitly presented "
+                "in South African rand (R)."
+            )
+            continue
         has_matching_evidence = any(
             _claim_matches_number(claimed_number, match, draft_answer, evidence)
             and _claim_matches_evidence(
@@ -539,7 +552,16 @@ def _claim_matches_number(
         re.search(r"[-−‑]\s*[Rr]\s*$", preceding_text)
     )
     normalized_claim = -claimed_number if has_negative_rand_prefix else claimed_number
-    tolerance = 0.5 if is_rand and evidence.unit == "dollars" else 0.005
+    decimal_places = (
+        len(match.group().rsplit(".", maxsplit=1)[1])
+        if "." in match.group()
+        else 0
+    )
+    tolerance = (
+        0.5 / (10**decimal_places)
+        if is_rand and evidence.unit == "rands"
+        else 0.005
+    )
     if math.isclose(
         normalized_claim,
         evidence.value,

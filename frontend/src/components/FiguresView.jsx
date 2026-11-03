@@ -1,3 +1,5 @@
+import { formatChartValue } from "../charts/chartFormat.js";
+
 const MAX_PREVIEW_ROWS = 5;
 
 /** Check for a JSON object without treating arrays as records. */
@@ -6,14 +8,24 @@ function isRecord(value) {
 }
 
 /** Convert API field names into concise labels for people. */
-function formatLabel(value) {
-  return String(value)
+function formatLabel(value, metric = "") {
+  const fieldName = String(value);
+  const currencyField = /_cents(?:_sum)?$/i.test(fieldName);
+  const revenueChangeField =
+    metric === "revenue" &&
+    ["current_value", "previous_value", "absolute_change"].includes(fieldName);
+  return fieldName
+    .replace(/_cents(?:_sum)?$/i, " (R)")
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(
+      /^(Current Value|Previous Value|Absolute Change)$/,
+      (label) => (currencyField || revenueChangeField ? `${label} (R)` : label),
+    );
 }
 
 /** Format date-shaped values for the evidence summary. */
-function formatValue(value, fieldName = "") {
+function formatValue(value, fieldName = "", metric = "") {
   if (value === null || value === undefined) {
     return "Not available";
   }
@@ -21,6 +33,15 @@ function formatValue(value, fieldName = "") {
     return value ? "Yes" : "No";
   }
   if (typeof value === "number") {
+    if (
+      /_cents(?:_sum)?$/i.test(fieldName) ||
+      (metric === "revenue" &&
+        ["current_value", "previous_value", "absolute_change"].includes(
+          fieldName,
+        ))
+    ) {
+      return formatChartValue(value, "money_cents");
+    }
     if (/percent|percentage|growth_rate/i.test(fieldName)) {
       return `${Number(value.toFixed(2))}%`;
     }
@@ -63,13 +84,13 @@ function formatValue(value, fieldName = "") {
 }
 
 /** Render nested values with labels rather than exposing JSON syntax. */
-function FigureValue({ value, fieldName = "" }) {
+function FigureValue({ value, fieldName = "", metric = "" }) {
   if (Array.isArray(value)) {
     return (
       <ul className="figure-value-list">
         {value.map((item, index) => (
           <li key={`${fieldName}-${index}`}>
-            <FigureValue value={item} fieldName={fieldName} />
+            <FigureValue value={item} fieldName={fieldName} metric={metric} />
           </li>
         ))}
       </ul>
@@ -77,13 +98,19 @@ function FigureValue({ value, fieldName = "" }) {
   }
 
   if (isRecord(value)) {
+    const valueMetric =
+      typeof value.metric === "string" ? value.metric : metric;
     return (
       <dl className="figure-fields">
         {Object.entries(value).map(([key, fieldValue]) => (
           <div className="figure-field" key={key}>
-            <dt>{formatLabel(key)}</dt>
+            <dt>{formatLabel(key, valueMetric)}</dt>
             <dd>
-              <FigureValue value={fieldValue} fieldName={key} />
+              <FigureValue
+                value={fieldValue}
+                fieldName={key}
+                metric={valueMetric}
+              />
             </dd>
           </div>
         ))}
@@ -91,7 +118,7 @@ function FigureValue({ value, fieldName = "" }) {
     );
   }
 
-  return <span>{formatValue(value, fieldName)}</span>;
+  return <span>{formatValue(value, fieldName, metric)}</span>;
 }
 
 /** Build a preview table with a stable set of human-readable columns. */
@@ -112,7 +139,7 @@ function FigureTable({ rows, totalRows, dataset }) {
           <tr>
             {columns.map((column) => (
               <th key={column} scope="col">
-                {formatLabel(column)}
+                {formatLabel(column, rows.find((row) => row.metric)?.metric)}
               </th>
             ))}
           </tr>
@@ -122,7 +149,11 @@ function FigureTable({ rows, totalRows, dataset }) {
             <tr key={rowIndex}>
               {columns.map((column) => (
                 <td key={column}>
-                  <FigureValue value={row[column]} fieldName={column} />
+                  <FigureValue
+                    value={row[column]}
+                    fieldName={column}
+                    metric={typeof row.metric === "string" ? row.metric : ""}
+                  />
                 </td>
               ))}
             </tr>

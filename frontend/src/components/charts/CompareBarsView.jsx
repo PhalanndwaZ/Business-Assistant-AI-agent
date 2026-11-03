@@ -37,7 +37,7 @@ function getComparisonSeries(series) {
 
 function getValueAxisLabel(unit) {
   if (unit === "money_cents") {
-    return "Value (cents)";
+    return "Value (R)";
   }
   return typeof unit === "string" && unit ? `Value (${unit})` : "Value";
 }
@@ -140,6 +140,7 @@ export function CompareBarsView({ chart }) {
             </XAxis>
             <YAxis
               tick={{ fill: "var(--color-text-muted)", fontSize: 11 }}
+              tickFormatter={(value) => formatChartValue(value, chart?.unit)}
               type="number"
             >
               <Label

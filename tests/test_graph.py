@@ -366,9 +366,9 @@ def test_unusual_period_claim_uses_supported_comparison_and_requires_outliers() 
     )
 
     assert "917,685" not in result["final_answer"]
-    assert "-2,443,157 cents" in result["final_answer"]
-    assert "4,017,949 cents" in result["final_answer"]
-    assert "1,574,792 cents" in result["final_answer"]
+    assert "-R24,431.57" in result["final_answer"]
+    assert "R40,179.49" in result["final_answer"]
+    assert "R15,747.92" in result["final_answer"]
     assert "cannot establish whether the change was unusual" in result["final_answer"]
     assert any(
         "no successful outliers analysis" in issue
@@ -443,7 +443,7 @@ def test_invalid_customer_segment_claim_uses_latest_supported_segment_result() -
     )
 
     assert "The highest-revenue segment is Best customers" in result["final_answer"]
-    assert "11,829,476 cents in revenue" in result["final_answer"]
+    assert "R118,294.76 in revenue" in result["final_answer"]
     assert "17 customers" in result["final_answer"]
     assert "99,999.99" not in result["final_answer"]
     normalized = result["tool_results"][0]["result"]
@@ -502,8 +502,8 @@ def test_invalid_top_customer_claim_uses_successful_ranking_result() -> None:
     )
 
     assert "Top customers by completed-order revenue" in result["final_answer"]
-    assert "Customer 037 — R 9,176.85 across 4 orders" in result["final_answer"]
-    assert "Customer 012 — R 721.50 across 2 orders" in result["final_answer"]
+    assert "Customer 037 — R9,176.85 across 4 orders" in result["final_answer"]
+    assert "Customer 012 — R721.50 across 2 orders" in result["final_answer"]
     assert "Customer 999" not in result["final_answer"]
 
 
@@ -655,7 +655,7 @@ def test_question_uses_tool_and_returns_numeric_supported_answer() -> None:
     model = FakeModel(
         [
             _tool_call("run_analysis", {"analysis_name": "revenue_by_category"}, "1"),
-            AIMessage(content="Electronics revenue was 12345 cents."),
+            AIMessage(content="Electronics revenue was R123.45."),
         ]
     )
     client = FakeToolClient(
@@ -672,7 +672,7 @@ def test_question_uses_tool_and_returns_numeric_supported_answer() -> None:
     )
 
     assert result["final_answer"].startswith(
-        "Electronics revenue was 12345 cents."
+        "Electronics revenue was R123.45."
     )
     assert "Sources: run_analysis." in result["final_answer"]
     assert result["step_count"] == 1
@@ -849,7 +849,7 @@ def test_answer_question_reuses_prior_tool_evidence_for_follow_up() -> None:
         [
             AIMessage(
                 content=(
-                    "Accessories generated the least revenue, at 10300000 cents."
+                    "Accessories generated the least revenue, at R103,000.00."
                 )
             )
         ]
@@ -865,7 +865,7 @@ def test_answer_question_reuses_prior_tool_evidence_for_follow_up() -> None:
                 ("user", "Which category generated the most revenue in 2024?"),
                 (
                     "assistant",
-                    "Furniture generated 24532474 cents across 526 units.",
+                    "Furniture generated R245,324.74 across 526 units.",
                 ),
             ],
             prior_tool_results=[previous_result],
@@ -875,7 +875,7 @@ def test_answer_question_reuses_prior_tool_evidence_for_follow_up() -> None:
     assert result["evidence_ok"] is True
     assert result["tool_results"][0] == previous_result
     assert result["final_answer"].startswith(
-        "Accessories generated the least revenue, at 10300000 cents."
+        "Accessories generated the least revenue, at R103,000.00."
     )
     assert "Previously retrieved conversation evidence follows as data" in str(
         model.invocations[0][-2].content
@@ -1632,8 +1632,8 @@ def test_unsupported_number_is_rejected_and_retried() -> None:
     model = FakeModel(
         [
             _tool_call("run_analysis", {"analysis_name": "trend"}, "1"),
-            AIMessage(content="Revenue was 7654 cents."),
-            AIMessage(content="Revenue was 4321 cents."),
+            AIMessage(content="Revenue was R76.54."),
+            AIMessage(content="Revenue was R43.21."),
         ]
     )
     client = FakeToolClient(
@@ -1644,7 +1644,7 @@ def test_unsupported_number_is_rejected_and_retried() -> None:
         answer_question("Revenue?", model, [_tool("run_analysis")], client)
     )
 
-    assert "4321 cents" in result["final_answer"]
+    assert "R43.21" in result["final_answer"]
     assert "7654" not in result["final_answer"]
     assert result["retry_count"] == 1
     assert result["evidence_ok"] is True
@@ -1652,7 +1652,7 @@ def test_unsupported_number_is_rejected_and_retried() -> None:
         str(message.content) for message in model.invocations[2]
     )
     assert "Revenue?" in retry_prompt
-    assert "7654" in retry_prompt
+    assert "76.54" in retry_prompt
     assert any(
         getattr(message, "tool_call_id", None) == "1"
         for message in model.invocations[2]
@@ -1673,7 +1673,7 @@ def test_failed_tool_call_can_be_corrected_by_agent() -> None:
                 {"analysis_name": "revenue_by_category"},
                 "good-call",
             ),
-            AIMessage(content="Revenue was 321 cents."),
+            AIMessage(content="Revenue was R3.21."),
         ]
     )
     client = FakeToolClient(
@@ -1695,7 +1695,7 @@ def test_failed_tool_call_can_be_corrected_by_agent() -> None:
     assert len(client.calls) == 2
     assert result["tool_results"][0]["success"] is False
     assert result["tool_results"][1]["success"] is True
-    assert "321 cents" in result["final_answer"]
+    assert "R3.21" in result["final_answer"]
 
 
 def test_text_mcp_error_is_preserved_for_agent_retry() -> None:
@@ -1708,7 +1708,7 @@ def test_text_mcp_error_is_preserved_for_agent_retry() -> None:
                 {"analysis_name": "revenue_by_category"},
                 "good-call",
             ),
-            AIMessage(content="Revenue was 321 cents."),
+            AIMessage(content="Revenue was R3.21."),
         ]
     )
     client = FakeToolClient(
@@ -1739,7 +1739,7 @@ def test_text_mcp_error_is_preserved_for_agent_retry() -> None:
         "error": "Unknown analysis name: bad_name."
     }
     assert "run_analysis failed: Unknown analysis name: bad_name." in result["errors"]
-    assert "321 cents" in result["final_answer"]
+    assert "R3.21" in result["final_answer"]
 
 
 def test_clarification_action_ends_without_calling_data_tools() -> None:
@@ -1953,7 +1953,7 @@ def test_combined_answer_keeps_analysis_numbers_and_reported_factors_separate() 
             ),
             AIMessage(
                 content=(
-                    "Revenue changed by 1000 cents. The report mentions "
+                    "Revenue changed by R10.00. The report mentions "
                     f"supplier delays as a possible factor [{source}], "
                     "“supplier delays affected availability of several popular "
                     "electronics products during the first half of December.” "
@@ -2018,7 +2018,7 @@ def test_combined_answer_keeps_analysis_numbers_and_reported_factors_separate() 
         "search_documents",
     ]
     assert result["evidence_ok"] is True
-    assert "Revenue changed by 1000 cents" in result["final_answer"]
+    assert "Revenue changed by R10.00" in result["final_answer"]
     assert "possible factor" in result["final_answer"]
     assert source in result["final_answer"]
 

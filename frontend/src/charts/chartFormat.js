@@ -9,7 +9,8 @@ export function formatChartValue(value, unit) {
     return value === null ? "null" : String(value);
   }
   if (unit === "money_cents") {
-    return `R${randFormatter.format(value / 100)} (${String(value)} cents)`;
+    const formatted = randFormatter.format(Math.abs(value) / 100);
+    return value < 0 ? `-R${formatted}` : `R${formatted}`;
   }
   return String(value);
 }

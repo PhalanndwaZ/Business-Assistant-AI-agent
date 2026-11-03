@@ -4,13 +4,21 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function formatFieldLabel(field) {
+function formatFieldLabel(field, unit) {
   return field
+    .replace(/_cents(?:_sum)?/gi, " (R)")
     .replace(/\[(\d+)\]/g, " $1")
     .replace(/[._-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
+    .replace(
+      /^(Value|Current Value|Previous Value|Absolute Change)$/,
+      (label) =>
+        unit === "money_cents" && !/\(R\)$/.test(label)
+          ? `${label} (R)`
+          : label,
+    );
 }
 
 function appendValue(rows, context, field, value, unit) {
@@ -36,6 +44,7 @@ function appendValue(rows, context, field, value, unit) {
     ...context,
     field,
     value: formatChartValue(value, unit),
+    unit,
   });
 }
 
@@ -116,7 +125,9 @@ export function ChartTable({ chart }) {
                 <tr key={`${row.series}-${row.label}-${row.field}-${index}`}>
                   <td>{row.series || "—"}</td>
                   <td>{row.label || "—"}</td>
-                  <td>{row.field ? formatFieldLabel(row.field) : "—"}</td>
+                  <td>
+                    {row.field ? formatFieldLabel(row.field, row.unit) : "—"}
+                  </td>
                   <td>{row.value}</td>
                 </tr>
               ))}
