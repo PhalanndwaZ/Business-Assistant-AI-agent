@@ -27,6 +27,8 @@ export function ChatWindow({
   selectConversation,
   user,
   onLogout,
+  darkMode,
+  onToggleDarkMode,
   pendingQuestion,
   onClearPendingQuestion,
   documents = [],
@@ -38,18 +40,29 @@ export function ChatWindow({
   const recentSidebarRef = useRef(null);
   const recentHeadingRef = useRef(null);
   const recentToggleRef = useRef(null);
+  const chatMainRef = useRef(null);
   const recentSidebarWasOpenRef = useRef(false);
   const focusInputAfterCloseRef = useRef(false);
+  const requestStartedRef = useRef(false);
   const [recentSidebarOpen, setRecentSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const starterQuestions = STARTER_QUESTIONS_BY_ROLE[user.role] || [];
   const isAdmin = user.role === "admin";
   const isManager = user.role === "manager";
+  const firstName = user.name?.trim().split(/\s+/)[0] || "there";
 
   useEffect(
     /** Return focus to the input after the current response finishes. */
     function focusInputAfterResponse() {
-      if (!loading && !error) {
-        questionInputRef.current?.focus();
+      if (loading) {
+        requestStartedRef.current = true;
+        return;
+      }
+      if (requestStartedRef.current) {
+        requestStartedRef.current = false;
+        if (!error) {
+          questionInputRef.current?.focus();
+        }
       }
     },
     [loading, error],
@@ -113,6 +126,16 @@ export function ChatWindow({
     }
   }
 
+  /** Return to the top of the current workspace and focus its composer. */
+  function handleFocusWorkspace() {
+    focusInputAfterCloseRef.current = true;
+    setRecentSidebarOpen(false);
+    chatMainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    if (!recentSidebarWasOpenRef.current) {
+      questionInputRef.current?.focus();
+    }
+  }
+
   /** Resend a question kept when this user's session expired. */
   function handleResendPendingQuestion() {
     if (!pendingQuestion) {
@@ -137,9 +160,10 @@ export function ChatWindow({
       return;
     }
 
-    const focusableItems = recentSidebarRef.current?.querySelectorAll(
-      "button:not(:disabled)",
-    );
+    const focusableItems = [
+      ...(recentSidebarRef.current?.querySelectorAll("button:not(:disabled)") ||
+        []),
+    ].filter((item) => item.getClientRects().length > 0);
     if (!focusableItems?.length) {
       event.preventDefault();
       recentHeadingRef.current?.focus();
@@ -166,30 +190,67 @@ export function ChatWindow({
   }
 
   return (
-    <div className={isAdmin ? "app-shell app-shell--admin" : "app-shell"}>
+    <div
+      className={
+        isAdmin
+          ? "app-shell app-shell--admin"
+          : sidebarCollapsed
+            ? "app-shell app-shell--sidebar-collapsed"
+            : "app-shell"
+      }
+    >
       {!isAdmin ? (
         <RecentConversations
           activeConversationId={conversationId}
           conversations={recentConversations}
           disabled={loading}
           headingRef={recentHeadingRef}
+          isCollapsed={sidebarCollapsed}
           isOpen={recentSidebarOpen}
+          user={user}
+          darkMode={darkMode}
           onClose={() => {
             focusInputAfterCloseRef.current = false;
             setRecentSidebarOpen(false);
           }}
+          onFocusWorkspace={handleFocusWorkspace}
           onKeyDown={handleRecentSidebarKeyDown}
           onNewConversation={handleNewConversation}
+          onLogout={onLogout}
           onSelect={handleSelectConversation}
+          onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          onToggleDarkMode={onToggleDarkMode}
           sidebarRef={recentSidebarRef}
         />
       ) : null}
       <div className="app-workspace">
         <header className="app-header">
           <div className="app-header__inner">
-            <div className="app-header__actions">
-              <UserMenu user={user} onLogout={onLogout} />
+            <div className="app-header__identity">
+              <span className="app-header__mark" aria-hidden="true">
+                BA
+              </span>
+              <div>
+                <p className="app-header__product">Business Analyst AI</p>
+                <p className="app-header__workspace">Your analysis workspace</p>
+              </div>
             </div>
+            {isAdmin ? (
+              <div className="app-header__actions">
+                <button
+                  aria-label={
+                    darkMode ? "Switch to light mode" : "Switch to dark mode"
+                  }
+                  aria-pressed={darkMode}
+                  className="button button--secondary"
+                  onClick={onToggleDarkMode}
+                  type="button"
+                >
+                  {darkMode ? "Light mode" : "Dark mode"}
+                </button>
+                <UserMenu user={user} onLogout={onLogout} />
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -211,7 +272,7 @@ export function ChatWindow({
           </div>
         ) : null}
 
-        <main className="chat-main">
+        <main className="chat-main" ref={chatMainRef}>
           {isAdmin ? (
             <AdminUsersPanel />
           ) : (
@@ -219,18 +280,26 @@ export function ChatWindow({
               {isManager ? <ManagerOverviewPanel /> : null}
               {messages.length === 0 && !loading ? (
                 <section className="empty-state" aria-labelledby="welcome-title">
-                  <p className="empty-state__eyebrow">Ask a business question</p>
+                  <p className="empty-state__eyebrow">
+                    Good {getGreeting()}, {firstName}
+                  </p>
                   <h2 id="welcome-title">Answers grounded in your data</h2>
                   <p>
-                    Ask about business results or supporting documents. Answers
-                    are checked against the available evidence.
+                    Explore business results and supporting documents. Every
+                    answer is checked against the available evidence.
                   </p>
                   {starterQuestions.length > 0 ? (
-                    <ExampleQuestions
-                      questions={starterQuestions}
-                      onSelect={send}
-                      disabled={loading}
-                    />
+                    <div className="starter-prompts">
+                      <div className="starter-prompts__heading">
+                        <h3>Try asking</h3>
+                        <span>Pick a prompt to get started</span>
+                      </div>
+                      <ExampleQuestions
+                        questions={starterQuestions}
+                        onSelect={send}
+                        disabled={loading}
+                      />
+                    </div>
                   ) : null}
                 </section>
               ) : null}
@@ -281,4 +350,16 @@ export function ChatWindow({
       </div>
     </div>
   );
+}
+
+/** Match the welcome message to the user's local time. */
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return "morning";
+  }
+  if (hour < 18) {
+    return "afternoon";
+  }
+  return "evening";
 }
