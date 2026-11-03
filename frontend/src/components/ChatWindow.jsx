@@ -9,6 +9,8 @@ import { UserMenu } from "./UserMenu.jsx";
 import { STARTER_QUESTIONS_BY_ROLE } from "../config.js";
 import { DraftCard } from "./DraftCard.jsx";
 import { DocumentsPanel } from "./DocumentsPanel.jsx";
+import { AdminUsersPanel } from "./AdminUsersPanel.jsx";
+import { ManagerOverviewPanel } from "./ManagerOverviewPanel.jsx";
 
 /** Compose the conversation sidebar, message area, and question input. */
 export function ChatWindow({
@@ -44,7 +46,8 @@ export function ChatWindow({
   const focusInputAfterCloseRef = useRef(false);
   const [recentSidebarOpen, setRecentSidebarOpen] = useState(false);
   const starterQuestions = STARTER_QUESTIONS_BY_ROLE[user.role] || [];
-  const isAdminWithoutAuditView = user.role === "admin";
+  const isAdmin = user.role === "admin";
+  const isManager = user.role === "manager";
 
   useEffect(
     /** Return focus to the input after the current response finishes. */
@@ -167,22 +170,24 @@ export function ChatWindow({
   }
 
   return (
-    <div className="app-shell">
-      <RecentConversations
-        activeConversationId={conversationId}
-        conversations={recentConversations}
-        disabled={loading}
-        headingRef={recentHeadingRef}
-        isOpen={recentSidebarOpen}
-        onClose={() => {
-          focusInputAfterCloseRef.current = false;
-          setRecentSidebarOpen(false);
-        }}
-        onKeyDown={handleRecentSidebarKeyDown}
-        onNewConversation={handleNewConversation}
-        onSelect={handleSelectConversation}
-        sidebarRef={recentSidebarRef}
-      />
+    <div className={isAdmin ? "app-shell app-shell--admin" : "app-shell"}>
+      {!isAdmin ? (
+        <RecentConversations
+          activeConversationId={conversationId}
+          conversations={recentConversations}
+          disabled={loading}
+          headingRef={recentHeadingRef}
+          isOpen={recentSidebarOpen}
+          onClose={() => {
+            focusInputAfterCloseRef.current = false;
+            setRecentSidebarOpen(false);
+          }}
+          onKeyDown={handleRecentSidebarKeyDown}
+          onNewConversation={handleNewConversation}
+          onSelect={handleSelectConversation}
+          sidebarRef={recentSidebarRef}
+        />
+      ) : null}
       <div className="app-workspace">
         <header className="app-header">
           <div className="app-header__inner">
@@ -192,100 +197,100 @@ export function ChatWindow({
           </div>
         </header>
 
-        <div className="mobile-history-toolbar">
-          <button
-            aria-controls="recent-conversations"
-            aria-expanded={recentSidebarOpen}
-            className="button button--secondary mobile-history-toggle"
-            onClick={() => {
-              focusInputAfterCloseRef.current = false;
-              setRecentSidebarOpen((isOpen) => !isOpen);
-            }}
-            ref={recentToggleRef}
-            type="button"
-          >
-            Chats
-          </button>
-        </div>
+        {!isAdmin ? (
+          <div className="mobile-history-toolbar">
+            <button
+              aria-controls="recent-conversations"
+              aria-expanded={recentSidebarOpen}
+              className="button button--secondary mobile-history-toggle"
+              onClick={() => {
+                focusInputAfterCloseRef.current = false;
+                setRecentSidebarOpen((isOpen) => !isOpen);
+              }}
+              ref={recentToggleRef}
+              type="button"
+            >
+              Chats
+            </button>
+          </div>
+        ) : null}
 
         <main className="chat-main">
-          <div className="chat-content">
-            {messages.length === 0 && !loading ? (
-              <section className="empty-state" aria-labelledby="welcome-title">
-                <p className="empty-state__eyebrow">
-                  {isAdminWithoutAuditView
-                    ? "Administrator account"
-                    : "Ask a business question"}
-                </p>
-                <h2 id="welcome-title">
-                  {isAdminWithoutAuditView
-                    ? "No business data available"
-                    : "Answers grounded in your data"}
-                </h2>
-                <p>
-                  {isAdminWithoutAuditView
-                    ? "This account has no business data."
-                    : "Ask about business results or supporting documents. Answers are checked against the available evidence."}
-                </p>
-                {starterQuestions.length > 0 ? (
-                  <ExampleQuestions
-                    questions={starterQuestions}
-                    onSelect={send}
-                    disabled={loading}
-                  />
-                ) : null}
-              </section>
-            ) : null}
-            {sessionNotice ? <SessionNotice message={sessionNotice} /> : null}
-            {pendingQuestion ? (
-              <SessionNotice
-                message="Your unsent question was saved when your session expired."
-                detail={pendingQuestion}
-                actionLabel="Resend question"
-                onAction={handleResendPendingQuestion}
-                actionDisabled={loading || retryAfterSeconds > 0}
-                dismissLabel="Discard"
-                onDismiss={onClearPendingQuestion}
+          {isAdmin ? (
+            <AdminUsersPanel />
+          ) : (
+            <div className="chat-content">
+              {isManager ? <ManagerOverviewPanel /> : null}
+              {messages.length === 0 && !loading ? (
+                <section className="empty-state" aria-labelledby="welcome-title">
+                  <p className="empty-state__eyebrow">Ask a business question</p>
+                  <h2 id="welcome-title">Answers grounded in your data</h2>
+                  <p>
+                    Ask about business results or supporting documents. Answers
+                    are checked against the available evidence.
+                  </p>
+                  {starterQuestions.length > 0 ? (
+                    <ExampleQuestions
+                      questions={starterQuestions}
+                      onSelect={send}
+                      disabled={loading}
+                    />
+                  ) : null}
+                </section>
+              ) : null}
+              {sessionNotice ? <SessionNotice message={sessionNotice} /> : null}
+              {pendingQuestion ? (
+                <SessionNotice
+                  message="Your unsent question was saved when your session expired."
+                  detail={pendingQuestion}
+                  actionLabel="Resend question"
+                  onAction={handleResendPendingQuestion}
+                  actionDisabled={loading || retryAfterSeconds > 0}
+                  dismissLabel="Discard"
+                  onDismiss={onClearPendingQuestion}
+                />
+              ) : null}
+              <MessageList
+                messages={messages}
+                loading={loading}
+                error={error}
+                retryAfterSeconds={retryAfterSeconds}
+                onCancel={cancel}
+                onRetry={retry}
               />
-            ) : null}
-            <MessageList
-              messages={messages}
-              loading={loading}
-              error={error}
-              retryAfterSeconds={retryAfterSeconds}
-              onCancel={cancel}
-              onRetry={retry}
-            />
-            {drafts.length > 0 || draftsError ? (
-              <section className="draft-panel" aria-label="Message drafts">
-                <h2>Message drafts</h2>
-                {draftsError ? <p role="alert">{draftsError}</p> : null}
-                {drafts.map((draft) => (
-                  <DraftCard key={draft.draft_id} draft={draft} onSave={onSaveDraft} />
-                ))}
-              </section>
-            ) : null}
-            {documents.length > 0 ? (
-              <DocumentsPanel
-                disabled={loading}
-                documents={documents}
-                onRemove={onRemoveDocument}
-              />
-            ) : null}
-          </div>
+              {drafts.length > 0 || draftsError ? (
+                <section className="draft-panel" aria-label="Message drafts">
+                  <h2>Message drafts</h2>
+                  {draftsError ? <p role="alert">{draftsError}</p> : null}
+                  {drafts.map((draft) => (
+                    <DraftCard key={draft.draft_id} draft={draft} onSave={onSaveDraft} />
+                  ))}
+                </section>
+              ) : null}
+              {documents.length > 0 ? (
+                <DocumentsPanel
+                  disabled={loading}
+                  documents={documents}
+                  onRemove={onRemoveDocument}
+                />
+              ) : null}
+            </div>
+          )}
         </main>
 
-        <div className="input-dock">
-          <QuestionInput
-            disabled={loading || retryAfterSeconds > 0}
-            inputRef={questionInputRef}
-            documents={documents}
-            documentError={documentError}
-            onAttachDocument={onAttachDocument}
-            onRemoveDocument={onRemoveDocument}
-            onSend={(question) => send(question, readyDocumentIds)}
-          />
-        </div>
+        {!isAdmin ? (
+          <div className="input-dock">
+            <QuestionInput
+              disabled={loading || retryAfterSeconds > 0}
+              inputRef={questionInputRef}
+              documents={documents}
+              documentError={documentError}
+              onAttachDocument={onAttachDocument}
+              onRemoveDocument={onRemoveDocument}
+              onSend={(question) => send(question, readyDocumentIds)}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

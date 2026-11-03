@@ -3,22 +3,33 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Lock
 from typing import Any
+from uuid import uuid4
 
 from pwdlib.exceptions import UnknownHashError
 
-from app.auth.passwords import PASSWORD_HASHER, verify_password
+from app.auth.passwords import PASSWORD_HASHER, hash_password, verify_password
 from app.config import PROJECT_ROOT
 
 DEFAULT_USERS_PATH = PROJECT_ROOT / "data" / "policy" / "users.json"
 VALID_ROLES = frozenset({"sales", "hr", "manager", "admin"})
 DUMMY_PASSWORD_HASH = PASSWORD_HASHER.hash("not-a-real-demo-password")
+USERNAME_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{2,63}")
+USER_STORE_LOCK = Lock()
 
 
 class UserStoreError(ValueError):
     """Raised when the demo-user data cannot be loaded or validated."""
+
+
+class UserAlreadyExistsError(UserStoreError):
+    """Raised when a new account reuses an existing username."""
 
 
 @dataclass(frozen=True)
@@ -32,8 +43,14 @@ class UserAccount:
     password_hash: str
 
 
-def load_users(path: Path = DEFAULT_USERS_PATH) -> dict[str, UserAccount]:
+def _resolve_users_path(path: Path | None) -> Path:
+    """Use the configured default path unless a caller supplies a test path."""
+    return path if path is not None else DEFAULT_USERS_PATH
+
+
+def load_users(path: Path | None = None) -> dict[str, UserAccount]:
     """Load and validate demo users from the configured JSON file."""
+    path = _resolve_users_path(path)
     try:
         records: Any = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -81,7 +98,10 @@ def load_users(path: Path = DEFAULT_USERS_PATH) -> dict[str, UserAccount]:
     return users
 
 
-def get_user_by_id(user_id: str, path: Path = DEFAULT_USERS_PATH) -> UserAccount | None:
+def get_user_by_id(
+    user_id: str,
+    path: Path | None = None,
+) -> UserAccount | None:
     """Return the account with a stable user ID, if it still exists."""
     return next(
         (user for user in load_users(path).values() if user.user_id == user_id),
@@ -89,10 +109,95 @@ def get_user_by_id(user_id: str, path: Path = DEFAULT_USERS_PATH) -> UserAccount
     )
 
 
+def create_user(
+    *,
+    username: str,
+    name: str,
+    role: str,
+    password: str,
+    path: Path | None = None,
+) -> UserAccount:
+    """Create one validated account and atomically persist its password hash."""
+    resolved_path = _resolve_users_path(path)
+    normalized_username = username.strip().lower()
+    normalized_name = name.strip()
+    if not USERNAME_PATTERN.fullmatch(normalized_username):
+        raise ValueError(
+            "Username must be 3-64 characters using letters, numbers, '.', "
+            "'_' or '-'."
+        )
+    if not normalized_name or len(normalized_name) > 120:
+        raise ValueError("Name must contain 1-120 non-whitespace characters.")
+    if role not in VALID_ROLES:
+        raise ValueError("Role must be one of the configured roles.")
+    if len(password) < 12:
+        raise ValueError("Password must contain at least 12 characters.")
+
+    account = UserAccount(
+        user_id=f"user-{uuid4().hex}",
+        username=normalized_username,
+        name=normalized_name,
+        role=role,
+        password_hash=hash_password(password),
+    )
+    with USER_STORE_LOCK:
+        users = load_users(resolved_path)
+        if normalized_username.casefold() in {
+            existing_username.casefold() for existing_username in users
+        }:
+            raise UserAlreadyExistsError("That username is already registered.")
+        records = [
+            {
+                "user_id": user.user_id,
+                "username": user.username,
+                "name": user.name,
+                "role": user.role,
+                "password_hash": user.password_hash,
+            }
+            for user in users.values()
+        ]
+        records.append(
+            {
+                "user_id": account.user_id,
+                "username": account.username,
+                "name": account.name,
+                "role": account.role,
+                "password_hash": account.password_hash,
+            }
+        )
+        temporary_path: str | None = None
+        try:
+            resolved_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=resolved_path.parent,
+                prefix=f".{resolved_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary_file:
+                temporary_path = temporary_file.name
+                json.dump(records, temporary_file, indent=2, ensure_ascii=False)
+                temporary_file.write("\n")
+                temporary_file.flush()
+                os.fsync(temporary_file.fileno())
+            os.replace(temporary_path, resolved_path)
+        except OSError as exc:
+            if temporary_path is not None:
+                try:
+                    os.unlink(temporary_path)
+                except FileNotFoundError:
+                    pass
+            raise UserStoreError(
+                f"Could not persist new demo user to {resolved_path}: {exc}"
+            ) from exc
+    return account
+
+
 def authenticate_user(
     username: str,
     password: str,
-    path: Path = DEFAULT_USERS_PATH,
+    path: Path | None = None,
 ) -> UserAccount | None:
     """Authenticate a username and password with a same-cost unknown-user check."""
     users = load_users(path)

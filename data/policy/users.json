@@ -26,5 +26,19 @@
     "name": "Admin Demo",
     "role": "admin",
     "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$vHLAjVFQV/g9Y3krAUuNoQ$zShr4U6IG1v8b74U7wR/YL0XERDT0jcPV/Q9zLLhzxU"
+  },
+  {
+    "user_id": "user-b2f9861e3b0542c8936778f9b0dab46b",
+    "username": "busi.demo",
+    "name": "Busisiwe",
+    "role": "admin",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$c9WMw3dA1XeWiGuRbrahQQ$1eKsfaSgP0Z+R5mffE8yUPNXa8N2ar4Pk9bAO6DD7AY"
+  },
+  {
+    "user_id": "user-86ffb7fc50f24a70b1f8f1c2ad997e0d",
+    "username": "zwivhuya.demo",
+    "name": "Zwivhuya",
+    "role": "manager",
+    "password_hash": "$argon2id$v=19$m=65536,t=3,p=4$cZuwzf7XOYB6pjGTgUHPbQ$75Mlob7D8XoYuQZeqlFqLZaTrnMlA9BomzegvKN+JAQ"
   }
 ]

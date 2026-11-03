@@ -14,7 +14,9 @@ from pydantic import SecretStr
 import pytest
 
 import main
+from app.auth import users as auth_users
 from app.auth.rate_limit import RateLimiter
+from app.auth.passwords import verify_password
 from app.auth.tokens import create_access_token
 from app.auth.users import UserAccount
 from app.config import ConfigurationError, Settings
@@ -765,6 +767,129 @@ def test_login_returns_token_and_me_returns_current_identity(
         json={"username": "hr.demo", "password": "wrong-password"},
     )
     assert invalid_login.status_code == 401
+
+
+def test_admin_can_register_users_and_only_receives_safe_account_fields(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Only admins create users, and the persisted password is an Argon2 hash."""
+    project_root = Path(__file__).resolve().parents[1]
+    original_users = project_root / "data" / "policy" / "users.json"
+    users_file = tmp_path / "users.json"
+    users_file.write_text(original_users.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(auth_users, "DEFAULT_USERS_PATH", users_file)
+
+    admin_client = authenticated_client(
+        monkeypatch,
+        user_id="user-admin-demo",
+    )
+    existing_users = admin_client.get("/admin/users")
+    assert existing_users.status_code == 200
+    assert all(
+        "password_hash" not in account and "password" not in account
+        for account in existing_users.json()
+    )
+
+    response = admin_client.post(
+        "/admin/users",
+        json={
+            "username": "new.manager",
+            "name": "New Manager",
+            "role": "manager",
+            "password": "secure-initial-passphrase",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["username"] == "new.manager"
+    assert response.json()["role"] == "manager"
+    assert "password_hash" not in response.json()
+    refreshed_users = admin_client.get("/admin/users")
+    assert refreshed_users.status_code == 200
+    assert any(
+        account["username"] == "new.manager"
+        for account in refreshed_users.json()
+    )
+
+    stored_users = auth_users.load_users(users_file)
+    created_account = stored_users["new.manager"]
+    assert created_account.password_hash.startswith("$argon2id$")
+    assert verify_password("secure-initial-passphrase", created_account.password_hash)
+    assert not verify_password("wrong-password", created_account.password_hash)
+    assert (
+        auth_users.authenticate_user(
+            "new.manager",
+            "secure-initial-passphrase",
+            users_file,
+        )
+        is not None
+    )
+    duplicate = admin_client.post(
+        "/admin/users",
+        json={
+            "username": "NEW.MANAGER",
+            "name": "Duplicate Manager",
+            "role": "manager",
+            "password": "secure-initial-passphrase",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    short_password = admin_client.post(
+        "/admin/users",
+        json={
+            "username": "another.user",
+            "name": "Another User",
+            "role": "sales",
+            "password": "short",
+        },
+    )
+    assert short_password.status_code == 422
+
+    sales_client = authenticated_client(monkeypatch, user_id="user-sales-demo")
+    assert sales_client.get("/admin/users").status_code == 403
+    assert (
+        sales_client.post(
+            "/admin/users",
+            json={
+                "username": "not.admin",
+                "name": "Not Admin",
+                "role": "sales",
+                "password": "secure-initial-passphrase",
+            },
+        ).status_code
+        == 403
+    )
+
+
+def test_manager_overview_is_manager_only_and_contains_department_summaries(
+    monkeypatch: Any,
+) -> None:
+    """Managers see high-level summaries while other roles are denied."""
+    manager_client = authenticated_client(
+        monkeypatch,
+        user_id="user-manager-demo",
+    )
+    response = manager_client.get("/manager/overview")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["synthetic"] is True
+    assert {row["department"] for row in data["department_overview"]} == {
+        "Sales",
+        "HR",
+        "Operations",
+    }
+    assert all(
+        not any(
+            field in row
+            for field in ("employee_id", "name", "salary_cents", "work_email")
+        )
+        for row in data["department_overview"]
+    )
+
+    sales_client = authenticated_client(monkeypatch, user_id="user-sales-demo")
+    assert sales_client.get("/manager/overview").status_code == 403
 
 
 def test_ask_and_reports_require_a_valid_bearer_token(

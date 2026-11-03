@@ -212,16 +212,9 @@ def _query_business_data(
     ):
         raise PolicyAccessDenied()
     mode = policy.dataset_mode(user.role, dataset)
-    if mode == "aggregate_only":
-        if (
-            dataset != "employees"
-            or not group_by
-            or any(field not in {"department", "tenure_band"} for field in group_by)
-            or sort is not None
-        ):
-            raise PolicyAccessDenied()
-        selected_fields = ["department"]
-    elif group_by is not None and (
+    if mode == "aggregate_only" and (not group_by or sort is not None):
+        raise PolicyAccessDenied()
+    if group_by is not None and (
         not group_by
         or any(
             (

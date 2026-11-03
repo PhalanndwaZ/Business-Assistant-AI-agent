@@ -484,6 +484,22 @@ attempts are limited per username. These in-memory limits reset when the
 service restarts and are intended for this demonstration, not production
 deployment.
 
+Administrators can list accounts with `GET /admin/users` and register accounts
+with `POST /admin/users`. Both endpoints require an admin bearer token. The
+create request accepts a `name`, a 3-64 character `username`, one of `sales`,
+`hr`, `manager`, or `admin`, and an initial password of at least 12 characters.
+Usernames are stored in lowercase, passwords are stored as Argon2id hashes,
+and password hashes are never returned by the API.
+
+Managers can view the department summary through `GET /manager/overview`. This
+demo endpoint serves the clearly labeled illustrative data in
+`data/sample_data/manager.json`; it contains aggregate sales and department
+headcount only.
+
+Manager access is intended for department-level summaries: direct dataset
+queries require grouping and enforce minimum group sizes, customer identity
+fields are hidden, and customer/product-level analyses are not available.
+
 The `/ask` response includes a `moderation` object with status `ok`,
 `redacted`, or `refused`. Input refusals return HTTP 200 without starting the
 model; sensitive or restricted output is withheld with a generic notice.

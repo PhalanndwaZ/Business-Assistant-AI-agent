@@ -187,6 +187,30 @@ def test_role_schema_and_manager_employee_aggregation(
     assert aggregate["total_groups"] == aggregate["returned_rows"]
     assert all(row["count"] >= 5 for row in aggregate["rows"])
     assert set(aggregate["rows"][0]) == {"department", "count"}
+    assert "name" not in manager_schema["datasets"]["customers"]["fields"]
+    assert "customer_id" not in manager_schema["datasets"]["customers"]["fields"]
+    customer_aggregate = business_data_server.query_business_data(
+        manager_context,
+        "customers",
+        ["region"],
+        group_by=["region"],
+    )
+    assert customer_aggregate["rows"]
+    assert all(row["count"] >= 5 for row in customer_aggregate["rows"])
+
+    with pytest.raises(PolicyAccessDenied):
+        business_data_server.query_business_data(
+            manager_context,
+            "customers",
+            ["region"],
+        )
+    with pytest.raises(PolicyAccessDenied):
+        business_data_server.query_business_data(
+            manager_context,
+            "customers",
+            ["name"],
+            group_by=["name"],
+        )
 
     with pytest.raises(PolicyAccessDenied):
         business_data_server.query_business_data(

@@ -34,9 +34,9 @@ export const STARTER_QUESTIONS_BY_ROLE = {
     "What does the leave policy say?",
   ],
   manager: [
-    "Give me a sales decline risk report for December 2024.",
-    "Headcount by department?",
-    "What changed in December revenue, and what did management report?",
+    "Show a high-level headcount summary by department.",
+    "Summarize monthly revenue by category.",
+    "How did overall revenue change between November and December 2024?",
   ],
   admin: [],
 };

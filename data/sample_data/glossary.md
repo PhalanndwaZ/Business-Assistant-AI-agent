@@ -11,3 +11,11 @@ All records are synthetic and generated with a fixed seed.
 
 December 2024 intentionally has fewer orders than November 2024 to create a
 reproducible month-over-month sales dip for combined analysis examples.
+
+`manager.json` and `admin.json` contain illustrative role-specific data for
+frontend testing. They are synthetic fixtures, are not loaded by the business
+analytics data store, and must not be treated as live management or account
+records. The manager fixture contains department/month summaries without
+person-level details. The admin fixture lists demo account metadata and the
+available registration fields; user registration is handled by the
+administrator-only API and stores password hashes in `data/policy/users.json`.

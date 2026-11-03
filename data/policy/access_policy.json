@@ -175,23 +175,16 @@
         "dataset:customers:read",
         "dataset:products:read",
         "dataset:orders:read",
-        "dataset:order_items:read",
         "dataset:employees:read",
-        "analysis:revenue_by_product:run",
         "analysis:revenue_by_category:run",
         "analysis:revenue_by_period:run",
         "analysis:period_change:run",
-        "analysis:top_customers:run",
         "analysis:trend:run",
         "analysis:outliers:run",
-        "analysis:decline_risk:run",
-        "analysis:customer_segments:run",
-        "analysis:product_portfolio:run",
         "analysis:headcount:run",
         "documents:sales:read",
         "documents:general:read",
         "report:sales:generate",
-        "report:risk:generate",
         "chart:sales:generate",
         "chart:hr:generate"
       ],
@@ -204,49 +197,45 @@
         "customers": {
           "department": "sales",
           "classification": "internal",
-          "fields": "*",
-          "mode": "read"
+          "fields": [
+            "region",
+            "segment"
+          ],
+          "mode": "aggregate_only",
+          "min_group_size": 5
         },
         "products": {
           "department": "sales",
           "classification": "internal",
-          "fields": "*",
-          "mode": "read"
+          "fields": [
+            "category"
+          ],
+          "mode": "aggregate_only",
+          "min_group_size": 2
         },
         "orders": {
           "department": "sales",
           "classification": "internal",
-          "fields": "*",
-          "mode": "read"
-        },
-        "order_items": {
-          "department": "sales",
-          "classification": "internal",
-          "fields": "*",
-          "mode": "read"
+          "fields": [
+            "status"
+          ],
+          "mode": "aggregate_only",
+          "min_group_size": 5
         },
         "employees": {
           "department": "hr",
           "classification": "confidential",
-          "fields": [
-            "department",
-            "hire_date"
-          ],
+          "fields": ["department"],
           "mode": "aggregate_only",
           "min_group_size": 5
         }
       },
       "analyses": [
-        "revenue_by_product",
         "revenue_by_category",
         "revenue_by_period",
         "period_change",
-        "top_customers",
         "trend",
         "outliers",
-        "decline_risk",
-        "customer_segments",
-        "product_portfolio",
         "headcount"
       ],
       "documents": {

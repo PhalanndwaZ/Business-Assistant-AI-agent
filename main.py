@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -16,7 +17,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request,
 from fastapi.responses import FileResponse
 from groq import APIError as GroqAPIError
 from openai import APIError as OpenAIAPIError
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, ValidationError, field_validator
 from mcp.shared.exceptions import McpError
 
 from app.auth.dependencies import get_current_user
@@ -27,7 +28,14 @@ from app.auth.tokens import (
     create_access_token,
     load_signing_secret,
 )
-from app.auth.users import UserAccount, UserStoreError, authenticate_user
+from app.auth.users import (
+    UserAccount,
+    UserAlreadyExistsError,
+    UserStoreError,
+    authenticate_user,
+    create_user,
+    load_users,
+)
 from app.rag.embeddings import MistralEmbedder
 from app.uploads import UploadError, UploadService, UploadStore
 from app.drafts.draft_store import DraftStore
@@ -134,6 +142,72 @@ class MeResponse(BaseModel):
     username: str
     name: str
     role: str
+
+
+class CreateUserRequest(BaseModel):
+    """Validated fields for an administrator-created account."""
+
+    username: str = Field(min_length=3, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    role: Literal["sales", "hr", "manager", "admin"]
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator("username", "name")
+    @classmethod
+    def strip_user_text(cls, value: str) -> str:
+        """Normalize surrounding whitespace before account validation."""
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("This field must not be blank.")
+        return normalized
+
+
+class AdminUserResponse(BaseModel):
+    """Safe account metadata exposed to the administrator user panel."""
+
+    user_id: str
+    username: str
+    name: str
+    role: Literal["sales", "hr", "manager", "admin"]
+
+
+class ManagerSalesPerformance(BaseModel):
+    """Monthly aggregate sales figures shown in the manager summary."""
+
+    month: str
+    revenue_cents: int
+    target_revenue_cents: int
+    completed_orders: int
+
+
+class ManagerDepartmentHeadcount(BaseModel):
+    """Department-level headcount without any employee-level details."""
+
+    department: str
+    headcount: int
+
+
+class ManagerDepartmentOverview(BaseModel):
+    """One high-level department status card for manager users."""
+
+    period: str
+    department: str
+    status: str
+    summary: str
+    metric: str
+    value_percent: float | None = None
+    value: int | None = None
+
+
+class ManagerOverviewResponse(BaseModel):
+    """Synthetic, aggregate-only department overview shown to managers."""
+
+    synthetic: bool
+    description: str
+    currency: str
+    sales_performance: list[ManagerSalesPerformance]
+    headcount_by_department: list[ManagerDepartmentHeadcount]
+    department_overview: list[ManagerDepartmentOverview]
 
 
 class AuditEventResponse(BaseModel):
@@ -785,6 +859,119 @@ def create_app() -> FastAPI:
             username=user.username,
             name=user.name,
             role=user.role,
+        )
+
+    @application.get(
+        "/manager/overview",
+        response_model=ManagerOverviewResponse,
+    )
+    def read_manager_overview(
+        user: UserAccount = Depends(get_current_user),
+    ) -> ManagerOverviewResponse:
+        """Return synthetic department summaries to managers only."""
+        if user.role != "manager":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Department overview requires a manager account.",
+            )
+        data_dir = Path(os.getenv("DATA_DIR", "data/sample_data"))
+        if not data_dir.is_absolute():
+            data_dir = PROJECT_ROOT / data_dir
+        overview_path = data_dir.resolve() / "manager.json"
+        try:
+            data = json.loads(overview_path.read_text(encoding="utf-8"))
+            return ManagerOverviewResponse.model_validate(data)
+        except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            LOGGER.error(
+                "Manager overview read failed path=%s error_type=%s",
+                overview_path,
+                type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Department overview is temporarily unavailable.",
+            ) from exc
+
+    @application.get("/admin/users", response_model=list[AdminUserResponse])
+    def list_admin_users(
+        user: UserAccount = Depends(get_current_user),
+    ) -> list[AdminUserResponse]:
+        """List account metadata for admins without returning password hashes."""
+        if user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User administration requires an administrator account.",
+            )
+        try:
+            users = load_users()
+        except UserStoreError as exc:
+            LOGGER.error("User administration read failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="User data is temporarily unavailable.",
+            ) from exc
+        return [
+            AdminUserResponse(
+                user_id=account.user_id,
+                username=account.username,
+                name=account.name,
+                role=account.role,
+            )
+            for account in sorted(users.values(), key=lambda item: item.username)
+        ]
+
+    @application.post(
+        "/admin/users",
+        response_model=AdminUserResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def register_admin_user(
+        payload: CreateUserRequest,
+        user: UserAccount = Depends(get_current_user),
+    ) -> AdminUserResponse:
+        """Allow only admins to register accounts for the configured roles."""
+        if user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User administration requires an administrator account.",
+            )
+        try:
+            account = create_user(
+                username=payload.username,
+                name=payload.name,
+                role=payload.role,
+                password=payload.password.get_secret_value(),
+            )
+        except UserAlreadyExistsError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+        except UserStoreError as exc:
+            LOGGER.error("User administration write failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="User data is temporarily unavailable.",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+        _record_audit(
+            user_id=user.user_id,
+            role=user.role,
+            conversation_id=None,
+            event_type="user_registered",
+            target=account.user_id,
+            decision="allowed",
+            reason_code="admin_user_created",
+        )
+        return AdminUserResponse(
+            user_id=account.user_id,
+            username=account.username,
+            name=account.name,
+            role=account.role,
         )
 
     def upload_service() -> UploadService:
