@@ -67,7 +67,7 @@ def test_ingestion_stores_manifest_documents_chunks_and_runtime_policies(
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=Path("data/documents").resolve(),
         vector_store_path=Path("data/vector_store/chunks.json"),
         mongodb_enabled=True,

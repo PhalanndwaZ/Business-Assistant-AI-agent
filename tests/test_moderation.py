@@ -76,7 +76,7 @@ def test_retrieved_instructions_are_dropped_without_discarding_safe_chunks() -> 
 def test_output_moderation_withholds_emails_and_unauthorized_salary_values(
     tmp_path: Path,
 ) -> None:
-    data_dir = Path("data/sample_data").resolve()
+    data_dir = Path("tests/fixtures/business_data").resolve()
     vector_store_path = tmp_path / "empty-chunks.json"
     JsonVectorStore(vector_store_path).save(
         {
@@ -116,7 +116,7 @@ def test_employee_ids_follow_role_field_permissions(
     tmp_path: Path,
 ) -> None:
     """HR can see permitted employee IDs while roles without access are redacted."""
-    data_dir = Path("data/sample_data").resolve()
+    data_dir = Path("tests/fixtures/business_data").resolve()
     vector_store_path = tmp_path / "empty-chunks.json"
     JsonVectorStore(vector_store_path).save(
         {
@@ -152,7 +152,7 @@ def test_hr_can_access_employee_contacts_but_not_unrelated_contacts(
     tmp_path: Path,
 ) -> None:
     """HR may see employee contact fields allowed by policy, not arbitrary PII."""
-    data_dir = Path("data/sample_data").resolve()
+    data_dir = Path("tests/fixtures/business_data").resolve()
     vector_store_path = tmp_path / "empty-chunks.json"
     JsonVectorStore(vector_store_path).save(
         {
@@ -183,7 +183,7 @@ def test_hr_employee_query_response_passes_api_output_moderation(
     tmp_path: Path,
 ) -> None:
     """Authorized HR employee rows survive the API's complete output check."""
-    data_dir = Path("data/sample_data").resolve()
+    data_dir = Path("tests/fixtures/business_data").resolve()
     vector_store_path = tmp_path / "empty-chunks.json"
     JsonVectorStore(vector_store_path).save(
         {
@@ -281,7 +281,7 @@ def test_output_moderation_detects_system_prompt_fragments(
     result = moderate_output(
         prompt_fragment,
         "sales",
-        Path("data/sample_data").resolve(),
+        Path("tests/fixtures/business_data").resolve(),
         vector_store_path,
     )
 
@@ -303,7 +303,7 @@ def test_output_moderation_allows_short_prompt_overlap(tmp_path: Path) -> None:
         "December revenue was lower than November, but the monthly result "
         "still stayed within the business planning range.",
         "sales",
-        Path("data/sample_data").resolve(),
+        Path("tests/fixtures/business_data").resolve(),
         vector_store_path,
     )
 
@@ -334,7 +334,7 @@ def test_output_moderation_detects_quotes_from_forbidden_documents(
     result = moderate_output(
         f'The document states: “{secret_text}”',
         "sales",
-        Path("data/sample_data").resolve(),
+        Path("tests/fixtures/business_data").resolve(),
         vector_store_path,
     )
 
@@ -367,7 +367,7 @@ def test_input_refusal_returns_http_200_without_building_model(
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=Path("data/documents").resolve(),
         vector_store_path=tmp_path / "chunks.json",
         conversation_db_path=tmp_path / "conversations.sqlite3",
@@ -435,7 +435,7 @@ def test_output_redaction_clears_figures_sources_and_saved_evidence(
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=Path("data/documents").resolve(),
         vector_store_path=tmp_path / "chunks.json",
         conversation_db_path=tmp_path / "conversations.sqlite3",

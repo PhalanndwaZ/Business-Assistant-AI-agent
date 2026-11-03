@@ -5,16 +5,20 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2.extras import execute_batch
+from psycopg2.extras import execute_values
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.data_access.json_loader import JsonDataStore
+from app.data_access.schema import DATASETS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +34,121 @@ MIGRATION_ORDER = [
     "orders",       # Depends on customers
     "order_items",  # Depends on orders and products
 ]
+MIGRATION_BATCH_SIZE = 100
+IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+
+
+def _quote_identifier(identifier: str) -> str:
+    """Quote a validated SQL identifier used in migration statements."""
+    if not IDENTIFIER_PATTERN.fullmatch(identifier):
+        raise ValueError(f"Invalid SQL identifier: {identifier!r}")
+    return f'"{identifier}"'
+
+
+def _table_metadata(
+    cursor: psycopg2.extensions.cursor,
+    table_name: str,
+) -> tuple[list[str], list[str]]:
+    """Read the real target table columns and primary-key columns."""
+    cursor.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s
+        ORDER BY ordinal_position
+        """,
+        (table_name,),
+    )
+    columns = [row[0] for row in cursor.fetchall()]
+    cursor.execute(
+        """
+        SELECT key_column.column_name
+        FROM information_schema.table_constraints AS table_constraint
+        JOIN information_schema.key_column_usage AS key_column
+          ON key_column.constraint_catalog = table_constraint.constraint_catalog
+         AND key_column.constraint_schema = table_constraint.constraint_schema
+         AND key_column.constraint_name = table_constraint.constraint_name
+         AND key_column.table_schema = table_constraint.table_schema
+         AND key_column.table_name = table_constraint.table_name
+        WHERE table_constraint.constraint_type = 'PRIMARY KEY'
+          AND table_constraint.table_schema = 'public'
+          AND table_constraint.table_name = %s
+        ORDER BY key_column.ordinal_position
+        """,
+        (table_name,),
+    )
+    primary_key = [row[0] for row in cursor.fetchall()]
+    if not columns or not primary_key:
+        raise ValueError(
+            f"Table '{table_name}' is missing or has no primary key."
+        )
+    return columns, primary_key
+
+
+def _validate_records(
+    table_name: str,
+    records: list[dict],
+    table_columns: list[str],
+    primary_key: list[str],
+) -> list[str]:
+    """Ensure source rows match the approved schema and target key."""
+    approved_columns = set(DATASETS[table_name].fields)
+    if not records:
+        return list(DATASETS[table_name].fields)
+    columns = list(records[0])
+    if set(columns) != approved_columns:
+        raise ValueError(
+            f"{table_name}.json fields do not match the approved schema: "
+            f"expected {sorted(approved_columns)}, found {sorted(columns)}."
+        )
+    missing_columns = set(columns) - set(table_columns)
+    missing_key = set(primary_key) - set(columns)
+    if missing_columns or missing_key:
+        raise ValueError(
+            f"Target table '{table_name}' is incompatible with its JSON source; "
+            f"missing columns={sorted(missing_columns)}, "
+            f"missing primary-key fields={sorted(missing_key)}."
+        )
+
+    seen_keys: set[tuple[object, ...]] = set()
+    for row_number, record in enumerate(records, start=1):
+        if not isinstance(record, dict) or set(record) != set(columns):
+            raise ValueError(
+                f"{table_name}.json row {row_number} has inconsistent fields."
+            )
+        key = tuple(record[column] for column in primary_key)
+        if key in seen_keys:
+            raise ValueError(
+                f"{table_name}.json contains duplicate primary key {key!r}."
+            )
+        seen_keys.add(key)
+    return columns
+
+
+def _build_upsert_query(
+    table_name: str,
+    columns: list[str],
+    primary_key: list[str],
+) -> str:
+    """Build an insert that adds new rows and refreshes changed source rows."""
+    quoted_table = _quote_identifier(table_name)
+    quoted_columns = ", ".join(_quote_identifier(column) for column in columns)
+    conflict_columns = ", ".join(
+        _quote_identifier(column) for column in primary_key
+    )
+    update_columns = [column for column in columns if column not in primary_key]
+    if update_columns:
+        conflict_action = "DO UPDATE SET " + ", ".join(
+            f"{_quote_identifier(column)} = "
+            f"EXCLUDED.{_quote_identifier(column)}"
+            for column in update_columns
+        )
+    else:
+        conflict_action = "DO NOTHING"
+    return (
+        f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES %s "
+        f"ON CONFLICT ({conflict_columns}) {conflict_action}"
+    )
 
 
 def load_json_data(data_dir: Path, dataset_name: str) -> list[dict]:
@@ -58,59 +177,117 @@ def migrate_table(
     table_name: str,
     records: list[dict],
 ) -> int:
-    """Insert records into a database table using batch insert."""
+    """Insert new rows and update existing rows from the JSON source."""
     if not records:
-        LOGGER.warning(f"No records to migrate for {table_name}")
+        LOGGER.warning("No records to migrate for %s", table_name)
         return 0
-    
-    # Get column names from first record
-    columns = list(records[0].keys())
-    column_names = ", ".join(columns)
-    placeholders = ", ".join(["%s"] * len(columns))
-    
-    insert_query = f"""
-        INSERT INTO {table_name} ({column_names})
-        VALUES ({placeholders})
-        ON CONFLICT DO NOTHING
-    """
-    
-    # Convert records to tuples in correct order
-    values = [tuple(record[col] for col in columns) for record in records]
-    
+    table_columns, primary_key = _table_metadata(cursor, table_name)
+    columns = _validate_records(
+        table_name,
+        records,
+        table_columns,
+        primary_key,
+    )
+    insert_query = _build_upsert_query(table_name, columns, primary_key)
+    values = [tuple(record[column] for column in columns) for record in records]
+
     try:
-        execute_batch(cursor, insert_query, values, page_size=100)
-        inserted = cursor.rowcount
-        LOGGER.info(f"✓ Inserted {inserted} records into {table_name}")
-        return inserted
-    
+        affected = 0
+        for offset in range(0, len(values), MIGRATION_BATCH_SIZE):
+            batch = values[offset : offset + MIGRATION_BATCH_SIZE]
+            execute_values(
+                cursor,
+                insert_query,
+                batch,
+                page_size=MIGRATION_BATCH_SIZE,
+            )
+            affected += cursor.rowcount
+        LOGGER.info(
+            "✓ Inserted or updated %d source records in %s",
+            affected,
+            table_name,
+        )
+        return affected
     except psycopg2.Error as exc:
-        LOGGER.error(f"Failed to insert into {table_name}: {exc}")
+        LOGGER.error("Failed to upsert %s: %s", table_name, exc)
         raise
 
 
 def verify_migration(
     cursor: psycopg2.extensions.cursor,
     table_name: str,
-    expected_count: int,
+    records: list[dict],
 ) -> bool:
-    """Verify that all records were migrated successfully."""
-    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-    actual_count = cursor.fetchone()[0]
-    
-    if actual_count == expected_count:
-        LOGGER.info(f"✓ Verification passed for {table_name}: {actual_count} rows")
-        return True
+    """Verify all JSON source keys exist, allowing unrelated target rows."""
+    table_columns, primary_key = _table_metadata(cursor, table_name)
+    _validate_records(table_name, records, table_columns, primary_key)
+    cursor.execute(
+        f"SELECT COUNT(*) FROM {_quote_identifier(table_name)}"
+    )
+    target_count = cursor.fetchone()[0]
+    if not records:
+        matched_count = 0
     else:
-        LOGGER.error(
-            f"✗ Verification failed for {table_name}: "
-            f"expected {expected_count}, found {actual_count}"
+        key_columns = ", ".join(
+            _quote_identifier(column) for column in primary_key
         )
-        return False
+        join_condition = " AND ".join(
+            f"target.{_quote_identifier(column)} = "
+            f"source.{_quote_identifier(column)}"
+            for column in primary_key
+        )
+        query = (
+            f"SELECT COUNT(*) FROM {_quote_identifier(table_name)} AS target "
+            f"JOIN (VALUES %s) AS source ({key_columns}) ON {join_condition}"
+        )
+        keys = [
+            tuple(record[column] for column in primary_key)
+            for record in records
+        ]
+        matched_count = 0
+        for offset in range(0, len(keys), MIGRATION_BATCH_SIZE):
+            batch = keys[offset : offset + MIGRATION_BATCH_SIZE]
+            result = execute_values(
+                cursor,
+                query,
+                batch,
+                page_size=MIGRATION_BATCH_SIZE,
+                fetch=True,
+            )
+            matched_count += result[0][0]
+
+    if matched_count == len(records):
+        LOGGER.info(
+            "✓ Verification passed for %s: all %d JSON records present "
+            "(%d rows total in database)",
+            table_name,
+            matched_count,
+            target_count,
+        )
+        return True
+    LOGGER.error(
+        "✗ Verification failed for %s: %d of %d source keys found "
+        "(%d rows total in database)",
+        table_name,
+        matched_count,
+        len(records),
+        target_count,
+    )
+    return False
 
 
 def migrate_all_data(database_url: str, data_dir: Path) -> None:
     """Migrate all datasets from JSON to PostgreSQL."""
     LOGGER.info("Starting data migration to Neon PostgreSQL...")
+    if set(MIGRATION_ORDER) != set(DATASETS):
+        raise ValueError(
+            "Migration order does not match the approved business datasets."
+        )
+    source_store = JsonDataStore(data_dir)
+    if set(source_store.dataset_names) != set(MIGRATION_ORDER):
+        raise ValueError(
+            "The JSON data store datasets do not match the migration order."
+        )
     
     connection = None
     try:
@@ -148,43 +325,60 @@ def migrate_all_data(database_url: str, data_dir: Path) -> None:
             # Load JSON data
             records = load_json_data(data_dir, table_name)
             
-            # Migrate to database
-            inserted = migrate_table(cursor, table_name, records)
-            
-            # Commit after each table
-            connection.commit()
-            
-            # Verify migration
-            if verify_migration(cursor, table_name, len(records)):
+            affected = migrate_table(cursor, table_name, records)
+            verified = verify_migration(cursor, table_name, records)
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {_quote_identifier(table_name)}"
+            )
+            target_count = cursor.fetchone()[0]
+            if verified:
                 migration_stats[table_name] = {
                     "source_count": len(records),
-                    "inserted": inserted,
-                    "status": "success"
+                    "affected": affected,
+                    "target_count": target_count,
+                    "status": "success",
                 }
             else:
                 migration_stats[table_name] = {
                     "source_count": len(records),
-                    "inserted": inserted,
-                    "status": "failed"
+                    "affected": affected,
+                    "target_count": target_count,
+                    "status": "failed",
                 }
         
+        all_success = all(
+            stats["status"] == "success"
+            for stats in migration_stats.values()
+        )
+        if all_success:
+            connection.commit()
+        else:
+            connection.rollback()
+
         # Print summary
         print("\n" + "="*70)
         print("MIGRATION SUMMARY")
         print("="*70)
         
-        total_records = 0
-        all_success = True
+        total_affected = 0
         
         for table_name, stats in migration_stats.items():
             status_icon = "✓" if stats["status"] == "success" else "✗"
-            print(f"{status_icon} {table_name:15} {stats['inserted']:6} records")
-            total_records += stats['inserted']
+            print(
+                f"{status_icon} {table_name:15} "
+                f"{stats['affected']:6} inserted/updated; "
+                f"{stats['source_count']:6} source records; "
+                f"{stats['target_count']:6} total in Neon"
+            )
+            total_affected += stats["affected"]
             if stats['status'] != "success":
                 all_success = False
         
         print("="*70)
-        print(f"Total records migrated: {total_records}")
+        print(
+            "Total source records inserted or updated: "
+            f"{total_affected}"
+        )
         print("="*70)
         
         if all_success:
@@ -194,8 +388,9 @@ def migrate_all_data(database_url: str, data_dir: Path) -> None:
             LOGGER.info("  2. Restart your application")
             LOGGER.info("  3. Test with: python -m app.cli 'How many customers do we have?'")
         else:
-            LOGGER.error("\n✗ Some tables failed verification. Check logs above.")
-            sys.exit(1)
+            raise RuntimeError(
+                "Some tables failed verification; the migration was rolled back."
+            )
         
         cursor.close()
         
@@ -226,7 +421,7 @@ def main() -> None:
     load_dotenv(PROJECT_ROOT / ".env")
     
     database_url = os.getenv("NEON_DATABASE_URL", "").strip()
-    data_dir_path = os.getenv("DATA_DIR", "data/sample_data")
+    data_dir_path = os.getenv("DATA_DIR", "tests/fixtures/business_data")
     
     if not database_url:
         LOGGER.error(
@@ -248,8 +443,8 @@ def main() -> None:
     print("="*70)
     print(f"\nSource: {data_dir}")
     print(f"Target: Neon PostgreSQL")
-    print("\nThis will migrate data from JSON files to your Neon database.")
-    print("Existing records with the same primary key will be skipped.")
+    print("\nThis will insert new JSON records and update matching records in Neon.")
+    print("Records in Neon that are absent from JSON will not be deleted.")
     print("="*70)
     
     response = input("\nProceed with migration? (yes/no): ").strip().lower()

@@ -41,7 +41,9 @@ def audit_cases(
     documents_dir: Path | None = None,
 ) -> list[CaseAudit]:
     """Check the complete case bank, data truth, and cited-source fixtures."""
-    dataset_dir = data_dir or PROJECT_ROOT / "data" / "sample_data"
+    dataset_dir = (
+        data_dir or PROJECT_ROOT / "tests" / "fixtures" / "business_data"
+    )
     document_dir = documents_dir or PROJECT_ROOT / "data" / "documents"
     expected_answers = compute_expected_answers(dataset_dir)
     case_ids = [case.case_id for case in QUESTIONS]

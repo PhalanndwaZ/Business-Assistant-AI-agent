@@ -33,7 +33,7 @@ SCHEMA_STATEMENTS = [
     
     # Create customers table
     """
-    CREATE TABLE customers (
+    CREATE TABLE IF NOT EXISTS customers (
         customer_id VARCHAR(10) PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         region VARCHAR(50) NOT NULL,
@@ -44,7 +44,7 @@ SCHEMA_STATEMENTS = [
     
     # Create products table
     """
-    CREATE TABLE products (
+    CREATE TABLE IF NOT EXISTS products (
         product_id VARCHAR(10) PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         category VARCHAR(50) NOT NULL,
@@ -54,7 +54,7 @@ SCHEMA_STATEMENTS = [
     
     # Create orders table
     """
-    CREATE TABLE orders (
+    CREATE TABLE IF NOT EXISTS orders (
         order_id VARCHAR(10) PRIMARY KEY,
         customer_id VARCHAR(10) NOT NULL,
         order_date DATE NOT NULL,
@@ -70,7 +70,7 @@ SCHEMA_STATEMENTS = [
     
     # Create order_items table
     """
-    CREATE TABLE order_items (
+    CREATE TABLE IF NOT EXISTS order_items (
         order_id VARCHAR(10) NOT NULL,
         product_id VARCHAR(10) NOT NULL,
         quantity INTEGER NOT NULL CHECK (quantity > 0),
@@ -92,7 +92,7 @@ SCHEMA_STATEMENTS = [
     
     # Create employees table
     """
-    CREATE TABLE employees (
+    CREATE TABLE IF NOT EXISTS employees (
         employee_id VARCHAR(10) PRIMARY KEY,
         department VARCHAR(50) NOT NULL,
         job_title VARCHAR(100) NOT NULL,
@@ -113,17 +113,17 @@ SCHEMA_STATEMENTS = [
     
     # Create indexes for performance
     """
-    CREATE INDEX idx_orders_customer_id ON orders(customer_id);
-    CREATE INDEX idx_orders_order_date ON orders(order_date);
-    CREATE INDEX idx_orders_status ON orders(status);
-    CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-    CREATE INDEX idx_order_items_product_id ON order_items(product_id);
-    CREATE INDEX idx_employees_manager_id ON employees(manager_id);
-    CREATE INDEX idx_employees_department ON employees(department);
-    CREATE INDEX idx_employees_hire_date ON employees(hire_date);
-    CREATE INDEX idx_products_category ON products(category);
-    CREATE INDEX idx_customers_region ON customers(region);
-    CREATE INDEX idx_customers_segment ON customers(segment);
+    CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders(order_date);
+    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+    CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
+    CREATE INDEX IF NOT EXISTS idx_employees_manager_id ON employees(manager_id);
+    CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department);
+    CREATE INDEX IF NOT EXISTS idx_employees_hire_date ON employees(hire_date);
+    CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+    CREATE INDEX IF NOT EXISTS idx_customers_region ON customers(region);
+    CREATE INDEX IF NOT EXISTS idx_customers_segment ON customers(segment);
     """,
 ]
 
@@ -160,12 +160,20 @@ def create_schema(database_url: str, *, drop_existing: bool = False) -> None:
             try:
                 cursor.execute(statement)
                 # Extract table name for logging
-                if "CREATE TABLE" in statement:
-                    table_name = statement.split("CREATE TABLE")[1].split("(")[0].strip()
-                    LOGGER.info(f"✓ Created table: {table_name}")
-                elif "CREATE INDEX" in statement:
-                    index_name = statement.split("CREATE INDEX")[1].split("ON")[0].strip()
-                    LOGGER.info(f"✓ Created index: {index_name}")
+                if "CREATE TABLE IF NOT EXISTS" in statement:
+                    table_name = (
+                        statement.split("CREATE TABLE IF NOT EXISTS", 1)[1]
+                        .split("(", 1)[0]
+                        .strip()
+                    )
+                    LOGGER.info("✓ Ensured table: %s", table_name)
+                elif "CREATE INDEX IF NOT EXISTS" in statement:
+                    index_name = (
+                        statement.split("CREATE INDEX IF NOT EXISTS", 1)[1]
+                        .split("ON", 1)[0]
+                        .strip()
+                    )
+                    LOGGER.info("✓ Ensured index: %s", index_name)
             except psycopg2.Error as exc:
                 LOGGER.error(f"Failed to execute statement {idx}: {exc}")
                 raise

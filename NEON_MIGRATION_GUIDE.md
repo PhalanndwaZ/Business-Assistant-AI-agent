@@ -1,6 +1,8 @@
 # Neon PostgreSQL Migration Guide
 
-This guide explains how to migrate the Business Assistant AI from JSON files to Neon PostgreSQL database.
+This guide explains how to seed and use Neon PostgreSQL for the Business
+Assistant AI. The checked-in JSON snapshots are isolated under
+`tests/fixtures/business_data` for migration and offline validation.
 
 ## Table of Contents
 
@@ -18,8 +20,8 @@ This guide explains how to migrate the Business Assistant AI from JSON files to 
 
 The application now supports **two data storage modes**:
 
-1. **JSON Mode (Legacy)** - Loads data from `data/sample_data/*.json` files
-2. **Database Mode (New)** - Connects to Neon PostgreSQL for scalable, real-time data access
+1. **Database Mode (Default)** - Connects to Neon PostgreSQL for business-data access
+2. **JSON Mode (Legacy/Test)** - Loads fixture data from `tests/fixtures/business_data/*.json`
 
 You can toggle between modes using the `USE_DATABASE` environment variable.
 
@@ -72,7 +74,7 @@ DATABASE_MAX_OVERFLOW=10
 # 1. Create database schema (tables, indexes, foreign keys)
 python scripts/create_neon_schema.py
 
-# 2. Migrate data from JSON files to database
+# 2. Seed Neon from the retained migration fixtures
 python scripts/migrate_data_to_neon.py
 ```
 
@@ -99,10 +101,14 @@ The migration creates 5 tables:
 | Table | Primary Key | Records | Description |
 |-------|-------------|---------|-------------|
 | `customers` | customer_id | 60 | Customer information |
-| `products` | product_id | 10 | Product catalog |
-| `orders` | order_id | 601 | Order records |
-| `order_items` | (order_id, product_id) | Variable | Order line items |
+| `products` | product_id | 30 | Product catalog |
+| `orders` | order_id | 961 | Order records |
+| `order_items` | (order_id, product_id) | 1,871 | Order line items |
 | `employees` | employee_id | 15 | Employee data |
+
+Counts above reflect the retained fixtures at the time this guide was updated.
+The migration reads `tests/fixtures/business_data` unless `DATA_DIR` overrides
+that source path.
 
 **Relationships:**
 - `orders.customer_id` → `customers.customer_id`
@@ -139,13 +145,17 @@ python scripts/create_neon_schema.py
 
 #### 2. `scripts/migrate_data_to_neon.py`
 
-Migrates data from JSON files to Neon database.
+Seeds or refreshes Neon from the retained JSON fixtures.
 
 **Features:**
 - Respects foreign key dependencies
 - Batch inserts for performance (100 records per batch)
-- Skips duplicate records (ON CONFLICT DO NOTHING)
-- Verifies row counts after migration
+- Inserts new records and updates matching primary keys from JSON
+- Uses each database table's primary key, including the composite order-item key
+- Verifies that every JSON source key exists after migration; extra database
+  rows do not cause verification to fail
+- Runs as one transaction and rolls back if verification fails
+- Does not delete database rows absent from the JSON source
 - Shows detailed progress and summary
 
 **Run it:**
@@ -155,13 +165,13 @@ python scripts/migrate_data_to_neon.py
 
 **Expected output:**
 ```
-✓ customers       60 records
-✓ products        10 records
-✓ employees       15 records
-✓ orders         601 records
-✓ order_items   1234 records
+✓ customers        60 source records
+✓ products         30 source records
+✓ employees        15 source records
+✓ orders          961 source records
+✓ order_items    1871 source records
 ================================
-Total records migrated: 1920
+Total source records inserted or updated: 2937
 ```
 
 ---
@@ -172,11 +182,11 @@ Total records migrated: 1920
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `USE_DATABASE` | No | `false` | Set to `true` to use Neon PostgreSQL |
+| `USE_DATABASE` | No | `true` | Use Neon PostgreSQL for business-data queries |
 | `NEON_DATABASE_URL` | Yes (if USE_DATABASE=true) | - | Neon connection string |
 | `DATABASE_POOL_SIZE` | No | `5` | Minimum connections in pool |
 | `DATABASE_MAX_OVERFLOW` | No | `10` | Maximum additional connections |
-| `DATA_DIR` | No | `data/sample_data` | JSON files directory (fallback mode) |
+| `DATA_DIR` | No | `tests/fixtures/business_data` | Migration and evaluation fixture directory |
 
 ### Connection String Format
 
@@ -252,7 +262,9 @@ DROP TABLE IF EXISTS order_items, orders, products, customers, employees CASCADE
 
 **Problem:** `Duplicate key value violates unique constraint`
 
-**Solution:** This is expected if you run migration multiple times. The script uses `ON CONFLICT DO NOTHING` to skip duplicates.
+**Solution:** The script upserts records using the target table primary key and
+verifies that all source keys exist. Rows present only in Neon are retained,
+and matching JSON records update their values.
 
 ### Performance Issues
 
@@ -293,7 +305,9 @@ pip install --upgrade --force-reinstall psycopg2-binary
 
 ### Q: Will my JSON files be deleted?
 
-**A:** No, JSON files are never modified or deleted. They remain as a backup.
+**A:** The business-data snapshots were moved out of `data/sample_data` into
+`tests/fixtures/business_data`. They remain available for migration and offline
+evaluation, but Neon is the live source when `USE_DATABASE=true`.
 
 ### Q: How do I update data in the database?
 
@@ -391,7 +405,7 @@ python scripts/migrate_data_to_neon.py
          ▼                        ▼
 ┌──────────────────┐    ┌────────────────────┐
 │   JSON Files     │    │  Neon PostgreSQL   │
-│ data/sample_data/│    │  (Cloud Database)  │
+│ tests/fixtures/  │───▶│ Neon PostgreSQL    │
 └──────────────────┘    └────────────────────┘
 ```
 

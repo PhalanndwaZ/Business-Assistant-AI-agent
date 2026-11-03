@@ -29,8 +29,8 @@ The current interactive application consists of:
 - **Two local MCP subprocesses**: the business-data server and the
   document-search server. The backend starts and closes these for a question;
   they are not separately launched by the developer.
-- **Local JSON business datasets**, MongoDB documents, embedded chunks, and
-  runtime policies; SQLite remains responsible for conversations, audit
+- **Neon PostgreSQL business datasets**, MongoDB documents, embedded chunks,
+  and runtime policies; SQLite remains responsible for conversations, audit
   events, and report ownership.
 - **External model services**: Inception is the primary chat model when
   configured, Groq is its fallback (or can run alone), and Mistral supplies
@@ -44,7 +44,7 @@ flowchart LR
     AUTH --> GRAPH[LangGraph]
     GRAPH <--> LLM[Inception, then Groq fallback]
     GRAPH <--> MCP[Role-filtered MCP tools]
-    MCP --> DATA[Validated JSON + Pandas analyses]
+    MCP --> DATA[Neon PostgreSQL + Pandas analyses]
     MCP --> DOCS[Document vector search]
     DOCS --> MONGO[(MongoDB documents, chunks, policies)]
     GRAPH --> CHECK[Numeric and document evidence checks]
@@ -144,10 +144,12 @@ budget remains.
 
 ### E. Structured business-data path
 
-The business-data MCP server loads the configured JSON datasets into validated
-in-memory Pandas data frames. It rejects malformed records, invalid field
-types, duplicate keys where keys must be unique, and broken relationships.
-Queries return copies and do not write to the source datasets.
+With `USE_DATABASE=true`, the business-data MCP server reads the approved
+datasets from Neon PostgreSQL and exposes them through read-only Pandas data
+frames. It validates that the required tables exist; PostgreSQL constraints
+enforce the primary keys and relationships. The JSON snapshots are kept under `tests/fixtures/business_data` for migration
+and offline evaluation; the employee snapshot is also used by moderation
+checks. They are not the live source for structured business queries.
 
 The included datasets are:
 

@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "description": "Illustrative registered-account list and registration options for admin-role frontend testing. Account creation is handled by the admin API.",
+  "users": [
+    {
+      "user_id": "user-sales-demo",
+      "username": "sales.demo",
+      "name": "Sales Demo",
+      "role": "sales"
+    },
+    {
+      "user_id": "user-hr-demo",
+      "username": "hr.demo",
+      "name": "HR Demo",
+      "role": "hr"
+    },
+    {
+      "user_id": "user-manager-demo",
+      "username": "manager.demo",
+      "name": "Manager Demo",
+      "role": "manager"
+    },
+    {
+      "user_id": "user-admin-demo",
+      "username": "admin.demo",
+      "name": "Admin Demo",
+      "role": "admin"
+    }
+  ],
+  "registration": {
+    "available_roles": ["sales", "hr", "manager", "admin"],
+    "required_fields": ["name", "username", "role", "password"],
+    "minimum_password_length": 12
+  }
+}

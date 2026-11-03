@@ -38,15 +38,6 @@ export function AssistantMessage({ content, response }) {
           ),
         }
       : response;
-  const reportFilename = getReportFilename(
-    content,
-    response?.report_filename,
-  );
-  const visibleAnswer = removeReportPathFromAnswer(
-    content,
-    response?.report_filename,
-  );
-
   return (
     <article
       className={

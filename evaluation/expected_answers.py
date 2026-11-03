@@ -186,7 +186,9 @@ def compute_expected_answers(
     data_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Calculate exact expected results for every structured benchmark case."""
-    source_dir = data_dir or PROJECT_ROOT / "data" / "sample_data"
+    source_dir = (
+        data_dir or PROJECT_ROOT / "tests" / "fixtures" / "business_data"
+    )
     sales = _completed_sales(source_dir)
     orders = _read_dataset(source_dir, "orders")
     orders["order_date"] = pd.to_datetime(orders["order_date"])

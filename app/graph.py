@@ -11,6 +11,7 @@ import time
 from datetime import date
 from pathlib import Path
 from typing import Any, Protocol
+from uuid import uuid4
 
 from groq import (
     APIConnectionError,
@@ -369,6 +370,209 @@ def _customer_segment_fallback(
             + "; ".join(descriptions)
             + "."
         )
+    return None
+
+
+def _top_customers_fallback(
+    question: str,
+    tool_results: list[ToolResult],
+) -> str | None:
+    """Answer customer-ranking questions from a successful ranking result."""
+    asks_for_customer_ranking = (
+        re.search(r"\b(?:top|highest|most|leading)\b", question, re.IGNORECASE)
+        and re.search(r"\bcustomers?\b", question, re.IGNORECASE)
+        and not re.search(
+            r"\b(?:orders?|units?|frequency)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    if not asks_for_customer_ranking:
+        return None
+
+    for tool_result in reversed(tool_results):
+        if (
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "run_analysis"
+        ):
+            continue
+        result = tool_result.get("result")
+        if not isinstance(result, dict) or result.get("analysis") != "top_customers":
+            continue
+        rows = result.get("data")
+        if not isinstance(rows, list) or not rows:
+            return None
+
+        valid_rows = [
+            row
+            for row in rows
+            if isinstance(row, dict)
+            and isinstance(row.get("customer_name"), str)
+            and isinstance(row.get("revenue_cents"), int)
+            and not isinstance(row.get("revenue_cents"), bool)
+            and isinstance(row.get("order_count"), int)
+            and not isinstance(row.get("order_count"), bool)
+        ]
+        if not valid_rows:
+            return None
+        period = result.get("period")
+        start = period.get("start") if isinstance(period, dict) else None
+        end = period.get("end") if isinstance(period, dict) else None
+        period_label = (
+            f" for {start} to {end}"
+            if isinstance(start, str) and isinstance(end, str)
+            else ""
+        )
+        ranked_customers = "; ".join(
+            f"{row['customer_name']} — R "
+            f"{row['revenue_cents'] / 100:,.2f} across "
+            f"{row['order_count']:,} orders"
+            for row in valid_rows[:5]
+        )
+        return (
+            "Top customers by completed-order revenue"
+            f"{period_label}: {ranked_customers}."
+        )
+    return None
+
+
+def _build_top_customers_report(
+    tool_results: list[ToolResult],
+) -> dict[str, Any] | None:
+    """Build a sourced customer-ranking report from a successful analysis."""
+    for tool_result in reversed(tool_results):
+        if (
+            not tool_result.get("success")
+            or tool_result.get("tool_name") != "run_analysis"
+        ):
+            continue
+        result = tool_result.get("result")
+        call_id = tool_result.get("call_id")
+        if (
+            not isinstance(result, dict)
+            or result.get("analysis") != "top_customers"
+            or not isinstance(call_id, str)
+        ):
+            continue
+        rows = result.get("data")
+        period = result.get("period")
+        if (
+            not isinstance(rows, list)
+            or len(rows) < 2
+            or not isinstance(period, dict)
+            or not isinstance(period.get("start"), str)
+            or not isinstance(period.get("end"), str)
+        ):
+            continue
+        try:
+            as_of_date = date.fromisoformat(period["end"])
+        except ValueError:
+            continue
+        valid_rows = [
+            row
+            for row in rows[:5]
+            if isinstance(row, dict)
+            and isinstance(row.get("customer_name"), str)
+            and isinstance(row.get("segment"), str)
+            and isinstance(row.get("revenue_cents"), int)
+            and not isinstance(row.get("revenue_cents"), bool)
+            and isinstance(row.get("order_count"), int)
+            and not isinstance(row.get("order_count"), bool)
+        ]
+        if len(valid_rows) < 2:
+            continue
+
+        leader = valid_rows[0]
+        runner_up = valid_rows[1]
+        return {
+            "title": "Top Customer Revenue Report",
+            "period_label": f"{period['start']} to {period['end']}",
+            "as_of_date": as_of_date.isoformat(),
+            "key_figures": [
+                {
+                    "label": "Leading customer revenue",
+                    "value": leader["revenue_cents"],
+                    "format": "money",
+                    "source_ref": call_id,
+                },
+                {
+                    "label": "Leading customer orders",
+                    "value": leader["order_count"],
+                    "format": "integer",
+                    "source_ref": call_id,
+                },
+                {
+                    "label": "Leading customer segment",
+                    "value": leader["segment"],
+                    "format": "text",
+                    "source_ref": call_id,
+                },
+            ],
+            "summary": [
+                (
+                    "Customers are ranked by revenue from completed orders "
+                    "during the stated reporting period."
+                )
+            ],
+            "tables": [
+                {
+                    "title": "Customer revenue ranking",
+                    "columns": ["#", "Customer", "Revenue", "Orders"],
+                    "formats": ["integer", "text", "money", "integer"],
+                    "rows": [
+                        [
+                            rank,
+                            row["customer_name"],
+                            row["revenue_cents"],
+                            row["order_count"],
+                        ]
+                        for rank, row in enumerate(valid_rows, start=1)
+                    ],
+                    "source_ref": call_id,
+                }
+            ],
+            "findings": [
+                {
+                    "finding": (
+                        f"{leader['customer_name']} leads the returned "
+                        "customer ranking."
+                    ),
+                    "evidence": (
+                        f"{leader['customer_name']} had "
+                        f"{leader['revenue_cents']:,} cents in revenue across "
+                        f"{leader['order_count']} orders."
+                    ),
+                    "action": "Use the ranking as a starting point for review.",
+                    "caveat": (
+                        "The result includes completed orders in the stated "
+                        "period only."
+                    ),
+                    "source_refs": [call_id],
+                },
+                {
+                    "finding": (
+                        f"{runner_up['customer_name']} is next in the "
+                        "returned ranking."
+                    ),
+                    "evidence": (
+                        f"{runner_up['customer_name']} had "
+                        f"{runner_up['revenue_cents']:,} cents in revenue "
+                        f"across {runner_up['order_count']} orders."
+                    ),
+                    "action": (
+                        "Compare the leading customers using the same period."
+                    ),
+                    "caveat": (
+                        "This is a revenue ranking, not an explanation of "
+                        "customer behavior."
+                    ),
+                    "source_refs": [call_id],
+                },
+            ],
+            "notes": [
+                "Revenue is reported in integer cents by the analysis tool."
+            ],
+        }
     return None
 
 
@@ -1064,6 +1268,59 @@ def build_graph(
 
     async def agent_node(state: AnalystState) -> dict[str, Any]:
         """Ask the LLM to clarify, call an MCP tool, or draft an answer."""
+        current_results = _current_tool_results(state)
+        if _report_requested(state.get("question", "")):
+            completed_report = next(
+                (
+                    result
+                    for result in current_results
+                    if result.get("success")
+                    and result.get("tool_name") == "generate_report"
+                    and isinstance(result.get("result"), dict)
+                    and isinstance(result["result"].get("path"), str)
+                ),
+                None,
+            )
+            if completed_report is not None:
+                report_answer = "The requested Word report has been generated."
+                return {
+                    "messages": [AIMessage(content=report_answer)],
+                    "draft_answer": report_answer,
+                    "workflow_trace": [
+                        {
+                            "event": "report_ready",
+                            "call_id": completed_report.get("call_id"),
+                        }
+                    ],
+                }
+
+            report_data = _build_top_customers_report(
+                state.get("tool_results", [])
+            )
+            if (
+                report_data is not None
+                and state.get("step_count", 0) < max_steps
+                and any(tool.name == "generate_report" for tool in tools)
+            ):
+                report_call = {
+                    "name": "generate_report",
+                    "args": {"report": report_data},
+                    "id": f"generated-report-{uuid4().hex}",
+                    "type": "tool_call",
+                }
+                return {
+                    "messages": [
+                        AIMessage(content="", tool_calls=[report_call])
+                    ],
+                    "draft_answer": "",
+                    "workflow_trace": [
+                        {
+                            "event": "report_prepared",
+                            "call_id": report_call["id"],
+                        }
+                    ],
+                }
+
         messages = list(state.get("messages", []))
         if messages and isinstance(messages[0], SystemMessage):
             messages[0] = SystemMessage(content=system_prompt)
@@ -1280,6 +1537,7 @@ def build_graph(
                         )
                         or _build_revenue_comparison_report(evidence_results)
                         or _build_monthly_sales_report(evidence_results)
+                        or _build_top_customers_report(evidence_results)
                     )
                     if _report_requested(state.get("question", ""))
                     else None
@@ -1660,6 +1918,10 @@ def build_graph(
                         state.get("question", ""),
                         state.get("tool_results", []),
                     )
+                    or _top_customers_fallback(
+                        state.get("question", ""),
+                        state.get("tool_results", []),
+                    )
                     or _period_change_fallback(
                         state.get("question", ""),
                         state.get("tool_results", []),
@@ -1797,6 +2059,8 @@ async def answer_question(
     history: list[tuple[str, str]] | None = None,
     prior_tool_results: list[ToolResult] | None = None,
     prior_retrieved_chunks: list[dict[str, Any]] | None = None,
+    moderation_rules_path: Path | None = MODERATION_RULES_PATH,
+    trace_metadata: dict[str, Any] | None = None,
 ) -> AnalystState:
     """Run a single question with a fresh state and no conversational memory."""
     if not question.strip():

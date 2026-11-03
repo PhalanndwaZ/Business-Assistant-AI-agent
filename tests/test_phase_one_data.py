@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 def test_employee_data_loads_and_supports_five_person_groups() -> None:
     """Employee records validate and each department meets the group minimum."""
-    data_dir = PROJECT_ROOT / "data" / "sample_data"
+    data_dir = PROJECT_ROOT / "tests" / "fixtures" / "business_data"
 
     records = load_employee_records(data_dir)
 
@@ -34,7 +34,9 @@ def test_employee_data_loads_and_supports_five_person_groups() -> None:
 
 def test_employee_loader_rejects_unknown_manager_reference(tmp_path: Path) -> None:
     """Employee manager IDs must refer to an existing different employee."""
-    records = load_employee_records(PROJECT_ROOT / "data" / "sample_data")
+    records = load_employee_records(
+        PROJECT_ROOT / "tests" / "fixtures" / "business_data"
+    )
     records[1]["manager_id"] = "E999"
     (tmp_path / "employees.json").write_text(
         json.dumps(records), encoding="utf-8"

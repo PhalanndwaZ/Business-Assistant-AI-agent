@@ -51,7 +51,9 @@ def test_tool_analysis_and_role_access(policy: AccessPolicy) -> None:
     """Tool and analysis permissions remain role-specific."""
     assert policy.can_use_tool("sales", "run_analysis")
     assert not policy.can_use_tool("hr", "run_analysis")
-    assert policy.can_run_analysis("manager", "decline_risk")
+    assert not policy.can_run_analysis("manager", "decline_risk")
+    assert not policy.can_run_analysis("manager", "top_customers")
+    assert policy.can_run_analysis("manager", "revenue_by_category")
     assert not policy.can_run_analysis("hr", "decline_risk")
     assert policy.can_run_analysis("hr", "headcount")
     assert policy.can_run_analysis("sales", "customer_segments")
@@ -84,9 +86,13 @@ def test_manager_employee_access_is_aggregate_and_hides_restricted_fields(
         "manager",
         "employees",
         ["employee_id", "department", "hire_date", "salary_cents"],
-    ) == ["department", "hire_date"]
+    ) == ["department"]
     assert policy.can_access_field("hr", "employees", "salary_cents")
     assert not policy.can_access_field("manager", "employees", "salary_cents")
+    assert policy.dataset_mode("manager", "customers") == "aggregate_only"
+    assert not policy.can_access_field("manager", "customers", "customer_id")
+    assert not policy.can_access_field("manager", "customers", "name")
+    assert policy.can_access_field("manager", "customers", "region")
 
 
 def test_documents_are_filtered_by_department_and_classification(

@@ -452,6 +452,113 @@ def test_invalid_customer_segment_claim_uses_latest_supported_segment_result() -
     assert normalized["period"] == normalized["window"]
 
 
+def test_invalid_top_customer_claim_uses_successful_ranking_result() -> None:
+    """A rejected draft still gets a useful answer from the chart's analysis."""
+    model = FakeModel(
+        [
+            _tool_call(
+                "run_analysis",
+                {"analysis_name": "top_customers"},
+                "top-customers",
+            ),
+            AIMessage(content="Customer 999 had $99,999.99 in revenue."),
+        ]
+    )
+    client = FakeToolClient(
+        [
+            _tool_response(
+                {
+                    "data": [
+                        {
+                            "customer_name": "Customer 037",
+                            "segment": "Enterprise",
+                            "revenue_cents": 917685,
+                            "order_count": 4,
+                        },
+                        {
+                            "customer_name": "Customer 012",
+                            "segment": "Small Business",
+                            "revenue_cents": 72150,
+                            "order_count": 2,
+                        },
+                    ],
+                    "period": {
+                        "start": "2024-01-01",
+                        "end": "2024-12-31",
+                    },
+                }
+            )
+        ]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Who were the top customers in 2024?",
+            model,
+            [_tool("run_analysis")],
+            client,
+            max_retries=0,
+        )
+    )
+
+    assert "Top customers by completed-order revenue" in result["final_answer"]
+    assert "Customer 037 — R 9,176.85 across 4 orders" in result["final_answer"]
+    assert "Customer 012 — R 721.50 across 2 orders" in result["final_answer"]
+    assert "Customer 999" not in result["final_answer"]
+
+
+def test_top_customer_report_is_generated_from_prior_successful_result() -> None:
+    """A report request after customer analysis uses the retained tool result."""
+    prior_result = {
+        "call_id": "top-customers-prior",
+        "tool_name": "run_analysis",
+        "arguments": {"analysis_name": "top_customers"},
+        "success": True,
+        "result": {
+            "analysis": "top_customers",
+            "data": [
+                {
+                    "customer_name": "Customer 037",
+                    "segment": "Enterprise",
+                    "revenue_cents": 917685,
+                    "order_count": 4,
+                },
+                {
+                    "customer_name": "Customer 012",
+                    "segment": "Small Business",
+                    "revenue_cents": 72150,
+                    "order_count": 2,
+                },
+            ],
+            "period": {"start": "2024-01-01", "end": "2024-12-31"},
+        },
+    }
+    model = FakeModel([])
+    client = FakeToolClient(
+        [_tool_response({"path": "reports/top-customers.docx"})]
+    )
+
+    result = asyncio.run(
+        answer_question(
+            "Generate a report about these top customers.",
+            model,
+            [_tool("generate_report")],
+            client,
+            prior_tool_results=[prior_result],
+        )
+    )
+
+    assert [name for name, _ in client.calls] == ["generate_report"]
+    report_data = client.calls[0][1]["report"]
+    report = ReportObject.model_validate(report_data)
+    assert not validate_report_evidence(
+        report,
+        {"top-customers-prior": prior_result},
+    )
+    assert "The requested Word report has been generated." in result["final_answer"]
+    assert "reports/top-customers.docx" in result["final_answer"]
+
+
 def test_customer_segment_report_uses_latest_segmentation_result() -> None:
     """The graph converts the latest segment result into a grounded report."""
     old_result = {
@@ -2315,7 +2422,7 @@ def test_analyst_mcp_client_routes_both_servers_over_stdio(tmp_path: Path) -> No
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=tmp_path,
         vector_store_path=vector_store_path,
     )
@@ -2428,7 +2535,7 @@ def test_manager_mcp_query_returns_only_thresholded_aggregates(
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=tmp_path,
         vector_store_path=vector_store_path,
     )
@@ -2571,7 +2678,7 @@ def test_mcp_client_closes_transport_if_initialization_fails(
         max_rows=100,
         max_steps=8,
         max_retries=2,
-        data_dir=Path("data/sample_data").resolve(),
+        data_dir=Path("tests/fixtures/business_data").resolve(),
         documents_dir=tmp_path,
         vector_store_path=tmp_path / "chunks.json",
     )

@@ -222,7 +222,10 @@ def load_settings(*, require_groq_api_key: bool = True) -> Settings:
         max_rows=max_rows,
         max_steps=max_steps,
         max_retries=max_retries,
-        data_dir=_path_from_environment("DATA_DIR", "data/sample_data"),
+        data_dir=_path_from_environment(
+            "DATA_DIR",
+            "tests/fixtures/business_data",
+        ),
         documents_dir=_path_from_environment("DOCUMENTS_DIR", "data/documents"),
         vector_store_path=_path_from_environment(
             "VECTOR_STORE_PATH", "data/vector_store/chunks.json"

@@ -85,7 +85,9 @@ def test_ground_truth_is_independent_and_contains_all_numeric_cases() -> None:
 def test_independent_pandas_truth_matches_production_analysis_outputs() -> None:
     """Compare independent expected values with each production analysis result."""
     expected = compute_expected_answers()
-    store = JsonDataStore(PROJECT_ROOT / "data" / "sample_data")
+    store = JsonDataStore(
+        PROJECT_ROOT / "tests" / "fixtures" / "business_data"
+    )
     analysis_cases = [case for case in QUESTIONS if case.analysis_name]
 
     for case in analysis_cases:

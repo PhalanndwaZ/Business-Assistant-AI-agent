@@ -77,7 +77,9 @@ def get_store() -> JsonDataStore | PostgresDataStore:
             LOGGER.info("✓ Connected to Neon PostgreSQL database")
         else:
             # Use JSON files (legacy mode)
-            data_dir = Path(os.getenv("DATA_DIR", "data/sample_data"))
+            data_dir = Path(
+                os.getenv("DATA_DIR", "tests/fixtures/business_data")
+            )
             if not data_dir.is_absolute():
                 data_dir = PROJECT_ROOT / data_dir
             LOGGER.info("Initializing JsonDataStore from %s", data_dir)
@@ -245,16 +247,9 @@ def _query_business_data(
     ):
         raise PolicyAccessDenied()
     mode = policy.dataset_mode(user.role, dataset)
-    if mode == "aggregate_only":
-        if (
-            dataset != "employees"
-            or not group_by
-            or any(field not in {"department", "tenure_band"} for field in group_by)
-            or sort is not None
-        ):
-            raise PolicyAccessDenied()
-        selected_fields = ["department"]
-    elif group_by is not None and (
+    if mode == "aggregate_only" and (not group_by or sort is not None):
+        raise PolicyAccessDenied()
+    if group_by is not None and (
         not group_by
         or any(
             (

@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "description": "Illustrative high-level department summaries for manager-role frontend testing. Contains no person-level records.",
+  "currency": "ZAR",
+  "sales_performance": [
+    {
+      "month": "2024-11",
+      "revenue_cents": 4017949,
+      "target_revenue_cents": 3750000,
+      "completed_orders": 49
+    },
+    {
+      "month": "2024-12",
+      "revenue_cents": 1574792,
+      "target_revenue_cents": 1800000,
+      "completed_orders": 20
+    }
+  ],
+  "headcount_by_department": [
+    {
+      "department": "Sales",
+      "headcount": 5
+    },
+    {
+      "department": "HR",
+      "headcount": 5
+    },
+    {
+      "department": "Operations",
+      "headcount": 5
+    }
+  ],
+  "department_overview": [
+    {
+      "period": "2024-12",
+      "department": "Sales",
+      "status": "Below target",
+      "summary": "Revenue was below the monthly target.",
+      "metric": "Revenue attainment",
+      "value_percent": 87.5
+    },
+    {
+      "period": "2024-12",
+      "department": "HR",
+      "status": "Stable",
+      "summary": "Department headcount remained steady.",
+      "metric": "Headcount",
+      "value": 5
+    },
+    {
+      "period": "2024-12",
+      "department": "Operations",
+      "status": "Stable",
+      "summary": "Department headcount remained steady.",
+      "metric": "Headcount",
+      "value": 5
+    }
+  ]
+}

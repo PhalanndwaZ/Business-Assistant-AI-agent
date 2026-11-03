@@ -116,7 +116,7 @@ flowchart LR
     G <--> MCPC[MCP client]
 
     MCPC <--> DMCP[Business-data MCP server]
-    DMCP --> JSON[(Synthetic JSON datasets)]
+    DMCP --> NEON[(Neon PostgreSQL business data)]
     DMCP --> PD[Pandas named analyses]
 
     MCPC <--> RMCP[Document-search MCP server]
@@ -132,7 +132,11 @@ flowchart LR
     EVAL[pytest and evaluation runner] -. checks .-> G
 ```
 
-Business datasets and authentication users remain file-backed. With
+Structured business-data queries use Neon PostgreSQL when
+`USE_DATABASE=true`. Synthetic JSON snapshots live under
+`tests/fixtures/business_data` for migration, offline evaluation, employee
+moderation, and optional legacy JSON mode. Authentication users and the
+illustrative manager overview remain file-backed. With
 `MONGODB_ENABLED=true`, MongoDB stores document text, embedded chunks, and
 runtime access/moderation policies; generated DOCX reports are stored in
 GridFS. Conversations, audit events, and report ownership remain in SQLite.
@@ -214,7 +218,9 @@ The checked-in `.env.example` contains blank credentials and default settings:
 | `MAX_RETRIES` | No | `2` | Model/workflow correction retries. |
 | `MAX_HISTORY_TURNS` | No | `10` | Maximum recent user/assistant turns included in chat context. |
 | `CONVERSATION_DB_PATH` | No | `data/conversations.sqlite3` | Local SQLite file for persistent API conversation history. |
-| `DATA_DIR` | No | `data/sample_data` | Directory containing the approved JSON datasets. |
+| `USE_DATABASE` | Yes | `true` | Use Neon PostgreSQL for business-data tools. |
+| `NEON_DATABASE_URL` | Yes | — | Neon PostgreSQL connection string; keep it private. |
+| `DATA_DIR` | No | `tests/fixtures/business_data` | Seed/test datasets used for migration, offline evaluation, employee moderation, and optional legacy JSON mode. |
 | `DOCUMENTS_DIR` | No | `data/documents` | Document files and their manifest. |
 | `MONGODB_ENABLED` | No | `true` in `.env.example` | Use MongoDB for runtime document retrieval and access/moderation policies. |
 | `MONGODB_URI` | Yes, for MongoDB mode | Atlas SRV URI placeholder in `.env.example` | MongoDB Atlas connection URI; replace all placeholders with the cluster and database-user values. |
@@ -225,6 +231,21 @@ Transient Groq fallback errors use bounded exponential retries and honor a
 valid `Retry-After` response header. Retries cannot overcome an exhausted
 provider quota or billing limit; configure an available provider key or wait
 for its quota window to reset.
+
+The checked-in `.env.example` configures Neon for business-data queries. Set
+`NEON_DATABASE_URL` in `.env` and keep `USE_DATABASE=true`. For a new Neon
+database, run the schema and seed scripts once from the project root (choose
+the non-destructive option if prompted):
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\create_neon_schema.py
+.\.venv\Scripts\python.exe .\scripts\migrate_data_to_neon.py
+```
+
+The migration source snapshots are kept in `tests/fixtures/business_data`;
+they are not the live source for structured business queries. `DATA_DIR` also
+supplies local employee records used by moderation and can enable legacy JSON
+mode when `USE_DATABASE=false`.
 
 With MongoDB Atlas configured and reachable, and `MONGODB_ENABLED=true`, ingest the checked-in
 synthetic documents and policies before starting the API or CLI. This command
@@ -369,9 +390,9 @@ the optional RAG quality signals. These live options call external services.
   tool results; document claims require the retrieved filename and exact
   supporting quote. Causal wording must be qualified because reported context
   does not establish causation.
-- **JSON first:** JSON datasets keep the demonstration self-contained. File
-  access stays behind data-access and vector-store modules, leaving a future
-  database migration as a separate planned phase.
+- **Database-backed business data:** live structured queries use Neon
+  PostgreSQL. JSON snapshots are isolated under `tests/fixtures/business_data`
+  for migration and independent offline evaluation.
 - **Integer-cent money:** calculations keep money in integer cents and
   convert to dollars only when the answer explicitly presents that
   equivalent.
@@ -389,7 +410,7 @@ above provide a repeatable live demo.
 
 - Built a Python business-analysis assistant using LangGraph, MCP, Pandas,
   Inception with Groq fallback, Mistral embeddings, and FastAPI over synthetic
-  JSON data and documents.
+  Neon PostgreSQL data and documents.
 - Added constrained data tools, thresholded document retrieval, and
   deterministic evidence checks; the current deterministic suite passes
   **148 tests**.
@@ -469,9 +490,10 @@ requests.
 
 The benchmark contains 31 questions: 12 structured-data, 7 document, 4
 combined, 4 unanswerable, and 4 safety/injection cases. Ground-truth values
-are calculated directly from the raw JSON datasets with independent Pandas
-code in `evaluation/expected_answers.py`; the expected-answer calculations do
-not call the production analysis functions.
+are calculated directly from the isolated JSON snapshots in
+`tests/fixtures/business_data` with independent Pandas code in
+`evaluation/expected_answers.py`; the expected-answer calculations do not call
+the production analysis functions.
 
 Run the deterministic benchmark-contract checks and create the Markdown
 report:
@@ -566,6 +588,22 @@ token. `/ask` is limited to 20 requests per user per rolling minute; login
 attempts are limited per username. These in-memory limits reset when the
 service restarts and are intended for this demonstration, not production
 deployment.
+
+Administrators can list accounts with `GET /admin/users` and register accounts
+with `POST /admin/users`. Both endpoints require an admin bearer token. The
+create request accepts a `name`, a 3-64 character `username`, one of `sales`,
+`hr`, `manager`, or `admin`, and an initial password of at least 12 characters.
+Usernames are stored in lowercase, passwords are stored as Argon2id hashes,
+and password hashes are never returned by the API.
+
+Managers can view the department summary through `GET /manager/overview`. This
+demo endpoint serves the clearly labeled illustrative data in
+`data/sample_data/manager.json`; it contains aggregate sales and department
+headcount only.
+
+Manager access is intended for department-level summaries: direct dataset
+queries require grouping and enforce minimum group sizes, customer identity
+fields are hidden, and customer/product-level analyses are not available.
 
 The `/ask` response includes a `moderation` object with status `ok`,
 `redacted`, or `refused`. Input refusals return HTTP 200 without starting the

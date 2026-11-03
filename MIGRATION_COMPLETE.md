@@ -143,7 +143,7 @@ python -m uvicorn main:app --reload
 ### JSON Mode (Legacy)
 ```env
 USE_DATABASE=false
-DATA_DIR=data/sample_data
+DATA_DIR=tests/fixtures/business_data
 ```
 
 ### Database Mode (New)

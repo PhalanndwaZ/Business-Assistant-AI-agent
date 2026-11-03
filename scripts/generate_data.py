@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = PROJECT_ROOT / "data" / "sample_data"
+OUTPUT_DIR = PROJECT_ROOT / "tests" / "fixtures" / "business_data"
 RANDOM_SEED = 42017
 YEAR = 2024
 
