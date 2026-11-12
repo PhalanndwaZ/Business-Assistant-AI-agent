@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.tracing.mask import MaskingError, fail_closed_mask, mask_sensitive
+from evaluation.langfuse_setup import tracing
 from evaluation.langfuse_setup.tracing import (
     build_langgraph_callback_handler,
     build_workflow_trace,
@@ -44,6 +45,40 @@ def test_tracing_disabled_sends_nothing(monkeypatch) -> None:
     send_trace({"answer": "unchanged"})
 
     assert not tracing_enabled()
+
+
+def test_send_trace_uses_langfuse_observation_api_and_masks_payload(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    class FakeObservation:
+        def end(self) -> None:
+            calls.append(("end", None))
+
+    class FakeClient:
+        def start_observation(self, **kwargs: object) -> FakeObservation:
+            calls.append(("start_observation", kwargs))
+            return FakeObservation()
+
+        def flush(self) -> None:
+            calls.append(("flush", None))
+
+    monkeypatch.setenv("TRACING_ENABLED", "true")
+    monkeypatch.setattr(tracing, "create_langfuse_client", FakeClient)
+
+    send_trace({"email": "alice@example.com"}, name="test-trace")
+
+    assert calls == [
+        (
+            "start_observation",
+            {
+                "name": "test-trace",
+                "as_type": "span",
+                "input": {"email": "[REDACTED]"},
+            },
+        ),
+        ("end", None),
+        ("flush", None),
+    ]
 
 
 def test_missing_mask_config_is_explicit(monkeypatch, tmp_path: Path) -> None:

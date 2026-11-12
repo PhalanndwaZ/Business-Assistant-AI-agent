@@ -53,6 +53,11 @@ flowchart LR
     API --> UI
 ```
 
+[Application swimlane](./APPLICATION_SWIMLANE.md)
+
+For the implementation behind each swimlane node, see the
+[Application Node Reference](./APPLICATION_NODE_REFERENCE.md).
+
 The models do not receive arbitrary Python execution or unrestricted database
 access. They request specifically declared tools, and the tool implementations
 validate parameters and apply role policy.

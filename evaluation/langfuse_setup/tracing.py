@@ -8,7 +8,7 @@ from app.tracing.mask import fail_closed_mask, hash_user_id
 
 
 class TraceClient(Protocol):
-    def trace(self, **kwargs: Any) -> Any: ...
+    def start_observation(self, **kwargs: Any) -> Any: ...
     def flush(self) -> Any: ...
 
 
@@ -110,7 +110,12 @@ def send_trace(payload: dict[str, Any], *, name: str = "business-ai-evaluation")
     if client is None:
         return
     safe_payload = fail_closed_mask(payload)
-    client.trace(name=name, input=safe_payload)
+    observation = client.start_observation(
+        name=name,
+        as_type="span",
+        input=safe_payload,
+    )
+    observation.end()
     client.flush()
 
 

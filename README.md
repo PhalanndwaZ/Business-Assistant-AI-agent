@@ -13,6 +13,8 @@ checks numeric and document claims before returning an answer.
 ## Contents
 
 - [Current application workflow guide](APPLICATION_WORKFLOW.md)
+- [Application node-to-code reference](APPLICATION_NODE_REFERENCE.md)
+- [System walkthrough presentation](SYSTEM_WALKTHROUGH.md)
 - [Architecture](#architecture)
 - [LangGraph workflow](#langgraph-workflow)
 - [Setup and run](#setup-and-run)

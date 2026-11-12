@@ -15,7 +15,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from groq import APIError as GroqAPIError
 from openai import APIError as OpenAIAPIError
 from pydantic import BaseModel, Field, SecretStr, ValidationError, field_validator
